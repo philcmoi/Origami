@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Origami Zen - Créations artisanales japonaises</title>
+    <style>
+      /* Style général */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f9f9f9;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      /* En-tête */
+      header {
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        position: fixed;
+        width: 100%;
+        top: 0;
+        z-index: 1000;
+      }
+
+      .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+      }
+
+      .logo {
+        font-family: "Georgia", serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #d40000;
+        text-decoration: none;
+      }
+
+      .logo span {
+        color: #333;
+      }
+
+      nav ul {
+        display: flex;
+        list-style: none;
+      }
+
+      nav ul li {
+        margin-left: 30px;
+      }
+
+      nav ul li a {
+        text-decoration: none;
+        color: #333;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: color 0.3s;
+      }
+
+      nav ul li a:hover {
+        color: #d40000;
+      }
+
+      /* Styles pour le panier */
+      #compteur-panier {
+        background: #d40000;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+
+      /* Bannière principale */
+      .hero {
+        background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)),
+          url("img/ai-generated-8662190_1280.png");
+        background-size: cover;
+        background-position: center;
+        height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        margin-top: 60px;
+      }
+
+      .hero-content {
+        max-width: 800px;
+        padding: 0 20px;
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 20px;
+        font-weight: 300;
+        letter-spacing: 2px;
+      }
+
+      .hero p {
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+        font-weight: 300;
+      }
+
+      .btn {
+        display: inline-block;
+        background-color: #d40000;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 2px;
+        font-size: 14px;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        background-color: #b30000;
+      }
+
+      .btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Section à propos */
+      .about {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+      }
+
+      .section-title {
+        text-align: center;
+        margin-bottom: 50px;
+        position: relative;
+      }
+
+      .section-title h2 {
+        font-size: 2rem;
+        font-weight: 300;
+        color: #333;
+        display: inline-block;
+        padding-bottom: 10px;
+      }
+
+      .section-title h2:after {
+        content: "";
+        position: absolute;
+        width: 50px;
+        height: 2px;
+        background-color: #d40000;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .about-content {
+        display: flex;
+        align-items: center;
+        gap: 50px;
+      }
+
+      .about-text {
+        flex: 1;
+      }
+
+      .about-text h3 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: 400;
+      }
+
+      .about-text p {
+        margin-bottom: 20px;
+        color: #666;
+      }
+
+      .about-image {
+        flex: 1;
+        border-radius: 2px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .about-image img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* Section produits */
+      .products {
+        padding: 80px 0;
+      }
+
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 30px;
+      }
+
+      .product-card {
+        background-color: white;
+        border-radius: 2px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s, box-shadow 0.3s;
+      }
+
+      .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      .product-image {
+        height: 250px;
+        overflow: hidden;
+      }
+
+      .product-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s;
+      }
+
+      .product-card:hover .product-image img {
+        transform: scale(1.05);
+      }
+
+      .product-info {
+        padding: 20px;
+      }
+
+      .product-info h3 {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+        font-weight: 400;
+      }
+
+      .product-info p {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+      }
+
+      .product-price {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .price {
+        font-weight: bold;
+        color: #d40000;
+      }
+
+      /* Section valeurs */
+      .values {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+      }
+
+      .values-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 40px;
+      }
+
+      .value-item {
+        text-align: center;
+        padding: 30px 20px;
+      }
+
+      .value-icon {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+        color: #d40000;
+      }
+
+      .value-item h3 {
+        font-size: 1.3rem;
+        margin-bottom: 15px;
+        font-weight: 400;
+      }
+
+      .value-item p {
+        color: #666;
+      }
+
+      /* Section témoignages */
+      .testimonials {
+        padding: 80px 0;
+      }
+
+      .testimonials-container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .testimonial {
+        background-color: white;
+        padding: 30px;
+        border-radius: 2px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+      }
+
+      .testimonial-text {
+        font-style: italic;
+        margin-bottom: 20px;
+        color: #555;
+      }
+
+      .testimonial-author {
+        display: flex;
+        align-items: center;
+      }
+
+      .author-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        overflow: hidden;
+        margin-right: 15px;
+      }
+
+      .author-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .author-info h4 {
+        font-size: 1rem;
+        margin-bottom: 5px;
+      }
+
+      .author-info p {
+        font-size: 0.8rem;
+        color: #888;
+      }
+
+      /* Section contact */
+      .contact {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+      }
+
+      .contact-container {
+        display: flex;
+        gap: 50px;
+      }
+
+      .contact-info {
+        flex: 1;
+      }
+
+      .contact-info h3 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: 400;
+      }
+
+      .contact-info p {
+        margin-bottom: 30px;
+        color: #666;
+      }
+
+      .contact-details {
+        margin-bottom: 30px;
+      }
+
+      .contact-detail {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .contact-icon {
+        margin-right: 15px;
+        color: #d40000;
+      }
+
+      .contact-form {
+        flex: 1;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+        color: #555;
+      }
+
+      .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        font-family: inherit;
+      }
+
+      textarea.form-control {
+        height: 150px;
+        resize: vertical;
+      }
+
+      /* Pied de page */
+      footer {
+        background-color: #333;
+        color: white;
+        padding: 50px 0 20px;
+      }
+
+      .footer-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+      }
+
+      .footer-col {
+        flex: 1;
+        padding: 0 15px;
+      }
+
+      .footer-col h3 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        font-weight: 400;
+        position: relative;
+        padding-bottom: 10px;
+      }
+
+      .footer-col h3:after {
+        content: "";
+        position: absolute;
+        width: 30px;
+        height: 2px;
+        background-color: #d40000;
+        bottom: 0;
+        left: 0;
+      }
+
+      .footer-col ul {
+        list-style: none;
+      }
+
+      .footer-col ul li {
+        margin-bottom: 10px;
+      }
+
+      .footer-col ul li a {
+        color: #aaa;
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+
+      .footer-col ul li a:hover {
+        color: white;
+      }
+
+      .social-links {
+        display: flex;
+        gap: 15px;
+      }
+
+      .social-links a {
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+        width: 36px;
+        height: 36px;
+        background-color: #444;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 36px;
+        transition: background-color 0.3s;
+      }
+
+      .social-links a:hover {
+        background-color: #d40000;
+      }
+
+      .copyright {
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #444;
+        color: #aaa;
+        font-size: 0.9rem;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .header-container {
+          flex-direction: column;
+          padding: 15px 0;
+        }
+
+        nav ul {
+          margin-top: 15px;
+        }
+
+        nav ul li {
+          margin-left: 15px;
+          margin-right: 15px;
+        }
+
+        .hero h1 {
+          font-size: 2.5rem;
+        }
+
+        .about-content {
+          flex-direction: column;
+        }
+
+        .contact-container {
+          flex-direction: column;
+        }
+
+        .footer-container {
+          flex-direction: column;
+        }
+
+        .footer-col {
+          margin-bottom: 30px;
+        }
+      }
+
+      /* Styles pour la modal panier */
+      #panier-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      @media (max-width: 768px) {
+        #panier-modal > div {
+          width: 95% !important;
+          margin: 20px;
+          padding: 15px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- En-tête -->
+    <header>
+      <div class="container header-container">
+        <a href="#" class="logo">Origami<span>Zen</span></a>
+        <nav>
+          <ul>
+            <li><a href="#">Accueil</a></li>
+            <li><a href="#nosCreations">Nos créations</a></li>
+            <li><a href="#">À propos</a></li>
+            <li><a href="#">Ateliers</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li>
+              <a
+                href="#"
+                id="lien-panier"
+                style="display: flex; align-items: center; gap: 5px"
+              >
+                🛒 Panier (<span id="compteur-panier">0</span>)
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Bannière principale -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1>L'art délicat de l'origami</h1>
+        <p>
+          Découvrez des créations uniques pliées à la main avec passion et
+          précision
+        </p>
+        <a href="#" class="btn">Explorer la collection</a>
+      </div>
+    </section>
+
+    <!-- Section à propos -->
+    <section class="about">
+      <div class="container">
+        <div class="section-title">
+          <h2>Notre histoire</h2>
+        </div>
+        <div class="about-content">
+          <div class="about-text">
+            <h3>L'artisanat au service de la beauté</h3>
+            <p>
+              Passionnée par l'art japonais, j'ai découvert l'origami. Depuis,
+              je consacre mon temps à créer des pièces uniques qui capturent
+              l'essence de cette tradition millénaire.
+            </p>
+            <p>
+              Chaque création est réalisée avec soin, en utilisant des papiers
+              de qualité sélectionnés pour leurs textures et leurs motifs. Mon
+              objectif est de partager la sérénité et la beauté de l'origami à
+              travers des œuvres qui inspirent et apaisent.
+            </p>
+            <a href="#" class="btn">En savoir plus</a>
+          </div>
+          <div class="about-image">
+            <img src="img/Cygne.jpg" alt="Origami Cygne" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section produits -->
+    <section class="products">
+      <div class="container">
+        <div class="section-title" id="nosCreations">
+          <h2>Nos créations</h2>
+        </div>
+        <div class="products-grid">
+          <!-- Produit 1 - Grue -->
+          <div class="product-card" data-id="1">
+            <div class="product-image">
+              <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
+            </div>
+            <div class="product-info">
+              <h3>La grue Élégante</h3>
+              <p>
+                Symbole de paix et de longévité, cette grue est pliée avec un
+                papier washi traditionnel.
+              </p>
+              <div class="product-price">
+                <span class="price">24€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Produit 2 - Fleur -->
+          <div class="product-card" data-id="2">
+            <div class="product-image">
+              <img src="img/flower.jpg" alt="Origami fleur" />
+            </div>
+            <div class="product-info">
+              <h3>Fleur de Cerisier</h3>
+              <p>
+                Inspirée des sakura japonais, cette fleur délicate apporte une
+                touche de printemps éternel.
+              </p>
+              <div class="product-price">
+                <span class="price">18€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Produit 3 - Dragon -->
+          <div class="product-card" data-id="3">
+            <div class="product-image">
+              <img src="img/dragon.png" alt="Origami dragon" />
+            </div>
+            <div class="product-info">
+              <h3>Dragon Majestueux</h3>
+              <p>
+                Une création complexe et impressionnante, symbole de puissance
+                et de sagesse.
+              </p>
+              <div class="product-price">
+                <span class="price">45€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Produit 4 - Éventail -->
+          <div class="product-card" data-id="4">
+            <div class="product-image">
+              <img src="img/eventail.jpg" alt="Origami éventail" />
+            </div>
+            <div class="product-info">
+              <h3>Éventail Traditionnel</h3>
+              <p>
+                Accessoire élégant et fonctionnel, plié avec un papier aux
+                motifs traditionnels.
+              </p>
+              <div class="product-price">
+                <span class="price">32€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section valeurs -->
+    <section class="values">
+      <div class="container">
+        <div class="section-title">
+          <h2>Nos valeurs</h2>
+        </div>
+        <div class="values-grid">
+          <div class="value-item">
+            <div class="value-icon">🎨</div>
+            <h3>Artisanat authentique</h3>
+            <p>
+              Chaque pièce est créée à la main avec une attention particulière
+              aux détails et aux techniques traditionnelles.
+            </p>
+          </div>
+
+          <div class="value-item">
+            <div class="value-icon">🌱</div>
+            <h3>Matériaux durables</h3>
+            <p>
+              Nous sélectionnons soigneusement nos papiers, en privilégiant les
+              sources écologiques et responsables.
+            </p>
+          </div>
+
+          <div class="value-item">
+            <div class="value-icon">💝</div>
+            <h3>Créations personnalisées</h3>
+            <p>
+              Nous proposons des origami sur mesure pour des occasions
+              spéciales, adaptés à vos souhaits.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section témoignages -->
+    <section class="testimonials">
+      <div class="container">
+        <div class="section-title">
+          <h2>Témoignages</h2>
+        </div>
+        <div class="testimonials-container">
+          <div class="testimonial">
+            <p class="testimonial-text">
+              "J'ai offert la grue en origami à ma mère pour son anniversaire.
+              Elle a été tellement touchée par la beauté et le symbolisme de
+              cette création. Un travail d'une finesse incroyable !"
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar">
+                <img
+                  src="https://randomuser.me/api/portraits/women/32.jpg"
+                  alt="Sophie Martin"
+                />
+              </div>
+              <div class="author-info">
+                <h4>Sophie Martin</h4>
+                <p>Paris</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="testimonial">
+            <p class="testimonial-text">
+              "Le dragon que j'ai commandé dépasse toutes mes attentes. La
+              complexité des pliages et la qualité du papier sont remarquables.
+              Une véritable œuvre d'art qui trône maintenant dans mon bureau."
+            </p>
+            <div class="testimonial-author">
+              <div class="author-avatar">
+                <img
+                  src="https://randomuser.me/api/portraits/men/54.jpg"
+                  alt="Thomas Lefebvre"
+                />
+              </div>
+              <div class="author-info">
+                <h4>Thomas Lefebvre</h4>
+                <p>Lyon</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section contact -->
+    <section class="contact" id="contact">
+      <div class="container">
+        <div class="section-title">
+          <h2>Contactez-nous</h2>
+        </div>
+        <div class="contact-container">
+          <div class="contact-info">
+            <h3>Parlons de votre projet</h3>
+            <p>
+              Que vous souhaitiez commander une pièce unique, organiser un
+              atelier ou simplement en savoir plus sur notre travail, n'hésitez
+              pas à nous contacter.
+            </p>
+
+            <div class="contact-details">
+              <div class="contact-detail">
+                <div class="contact-icon">📍</div>
+                <div>123 Rue du Papier, 75000 Paris, France</div>
+              </div>
+              <div class="contact-detail">
+                <div class="contact-icon">📞</div>
+                <div>+33 1 23 45 67 89</div>
+              </div>
+              <div class="contact-detail">
+                <div class="contact-icon">✉️</div>
+                <div>contact@origamizen.fr</div>
+              </div>
+            </div>
+
+            <div class="social-links">
+              <a href="#">📘</a>
+              <a href="#">📷</a>
+              <a href="#">🐦</a>
+              <a href="#">📌</a>
+            </div>
+          </div>
+
+          <div class="contact-form">
+            <form>
+              <div class="form-group">
+                <label for="name">Nom*</label>
+                <input type="text" id="name" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label for="email">Email*</label>
+                <input type="email" id="email" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label for="subject">Sujet*</label>
+                <input type="text" id="subject" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label for="message">Message*</label>
+                <textarea id="message" class="form-control" required></textarea>
+              </div>
+              <button type="submit" class="btn">Envoyer</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pied de page -->
+    <footer>
+      <div class="container">
+        <div class="footer-container">
+          <div class="footer-col">
+            <h3>Origami Zen</h3>
+            <p>
+              Créations artisanales d'origami inspirées par l'esthétique
+              japonaise et réalisées avec passion.
+            </p>
+          </div>
+
+          <div class="footer-col">
+            <h3>Liens rapides</h3>
+            <ul>
+              <li><a href="#">Accueil</a></li>
+              <li><a href="#">Nos créations</a></li>
+              <li><a href="#">À propos</a></li>
+              <li><a href="#">Ateliers</a></li>
+              <li><a href="#">Contact</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h3>Informations</h3>
+            <ul>
+              <li><a href="#">Conditions générales</a></li>
+              <li><a href="#">Politique de confidentialité</a></li>
+              <li><a href="#">Livraison et retours</a></li>
+              <li><a href="#">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h3>Newsletter</h3>
+            <p>
+              Inscrivez-vous pour recevoir nos dernières créations et
+              actualités.
+            </p>
+            <form>
+              <div class="form-group">
+                <input
+                  type="email"
+                  class="form-control"
+                  placeholder="Votre email"
+                />
+              </div>
+              <button type="submit" class="btn">S'inscrire</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="copyright">
+          <p>&copy; 2023 Origami Zen. Tous droits réservés.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      class OrigamiAPI {
+        constructor() {
+          this.baseUrl = "acheter.php";
+          this.idClient = 1; // ID client temporaire pour la démo
+        }
+
+        async ajouterAuPanier(idOrigami, quantite = 1) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "ajouter_au_panier",
+                idClient: this.idClient,
+                idOrigami: parseInt(idOrigami),
+                quantite: parseInt(quantite),
+              }),
+            });
+
+            const result = await response.json();
+            return result;
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async getPanier() {
+          try {
+            const response = await fetch(
+              `${this.baseUrl}?action=get_panier&idClient=${this.idClient}`
+            );
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async modifierQuantite(idLignePanier, quantite) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "modifier_quantite",
+                idLignePanier: parseInt(idLignePanier),
+                quantite: parseInt(quantite),
+              }),
+            });
+
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async supprimerDuPanier(idLignePanier) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "supprimer_du_panier",
+                idLignePanier: parseInt(idLignePanier),
+              }),
+            });
+
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async viderPanier() {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "vider_panier",
+                idClient: this.idClient,
+              }),
+            });
+
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async creerCommande(adresseLivraison) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "creer_commande",
+                idClient: this.idClient,
+                idAdresseLivraison: adresseLivraison.idAdresse,
+                modeReglement: "CB",
+                fraisDePort: 5.9,
+              }),
+            });
+
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+      }
+
+      // Initialisation de l'API
+      const origamiAPI = new OrigamiAPI();
+
+      // Fonction pour gérer les clics sur les boutons "Commander"
+      function setupBoutonsCommander() {
+        // Ajouter des écouteurs d'événements à tous les boutons "Commander"
+        document.querySelectorAll(".product-card .btn").forEach((bouton) => {
+          bouton.addEventListener("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const carteProduit = this.closest(".product-card");
+            const idProduit = carteProduit.getAttribute("data-id");
+
+            if (!idProduit) {
+              console.error("ID produit non trouvé");
+              alert("Erreur: ID produit manquant");
+              return;
+            }
+
+            const result = await origamiAPI.ajouterAuPanier(idProduit);
+
+            if (result.status === 200) {
+              // Animation de confirmation
+              const originalText = this.textContent;
+              const originalBgColor = this.style.backgroundColor;
+              this.textContent = "✓ Ajouté !";
+              this.style.backgroundColor = "#28a745";
+
+              setTimeout(() => {
+                this.textContent = originalText;
+                this.style.backgroundColor = originalBgColor;
+              }, 1500);
+
+              // Mettre à jour l'affichage du panier
+              updateAffichagePanier();
+
+              // Afficher notification
+              showNotification("Produit ajouté au panier !", "success");
+            } else {
+              showNotification(
+                "Erreur: " + (result.error || "Impossible d'ajouter au panier"),
+                "error"
+              );
+            }
+          });
+        });
+      }
+
+      // Fonction pour afficher les notifications
+      function showNotification(message, type = "info") {
+        // Créer la notification
+        const notification = document.createElement("div");
+        notification.style.cssText = `
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              padding: 15px 20px;
+              background: ${
+                type === "success"
+                  ? "#28a745"
+                  : type === "error"
+                  ? "#dc3545"
+                  : "#17a2b8"
+              };
+              color: white;
+              border-radius: 4px;
+              z-index: 10000;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              transform: translateX(400px);
+              transition: transform 0.3s ease;
+          `;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Animation d'entrée
+        setTimeout(() => {
+          notification.style.transform = "translateX(0)";
+        }, 100);
+
+        // Supprimer après 3 secondes
+        setTimeout(() => {
+          notification.style.transform = "translateX(400px)";
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
+      }
+
+      // Fonction pour mettre à jour l'affichage du panier
+      async function updateAffichagePanier() {
+        const panier = await origamiAPI.getPanier();
+        if (panier.status === 200) {
+          const compteurPanier = document.getElementById("compteur-panier");
+          if (compteurPanier) {
+            compteurPanier.textContent = panier.data.totalQuantites || 0;
+          }
+        }
+      }
+
+      // Afficher le panier dans une modal
+      function afficherPanierModal() {
+        let modal = document.getElementById("panier-modal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "panier-modal";
+          modal.style.cssText = `
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+                  height: 100%;
+                  background: rgba(0,0,0,0.5);
+                  display: none;
+                  justify-content: center;
+                  align-items: center;
+                  z-index: 2000;
+              `;
+
+          modal.innerHTML = `
+                  <div style="background: white; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                          <h2 style="margin: 0; color: #333;">Votre Panier</h2>
+                          <button onclick="fermerPanierModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                      </div>
+                      <div id="panier-content"></div>
+                      <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                          <button onclick="viderPanier()" style="padding: 10px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Vider le panier</button>
+                          <button onclick="passerCommande()" style="padding: 10px 20px; background: #d40000; color: white; border: none; border-radius: 4px; cursor: pointer;">Passer la commande</button>
+                      </div>
+                  </div>
+              `;
+          document.body.appendChild(modal);
+        }
+
+        modal.style.display = "flex";
+        chargerContenuPanier();
+      }
+
+      async function chargerContenuPanier() {
+        const panier = await origamiAPI.getPanier();
+        const content = document.getElementById("panier-content");
+
+        if (
+          panier.status === 200 &&
+          panier.data.articles &&
+          panier.data.articles.length > 0
+        ) {
+          let html = `
+                  <div style="max-height: 400px; overflow-y: auto;">
+                      <table style="width: 100%; border-collapse: collapse;">
+                          <thead>
+                              <tr style="border-bottom: 2px solid #eee;">
+                                  <th style="text-align: left; padding: 10px;">Produit</th>
+                                  <th style="text-align: center; padding: 10px;">Prix</th>
+                                  <th style="text-align: center; padding: 10px;">Quantité</th>
+                                  <th style="text-align: center; padding: 10px;">Total</th>
+                                  <th style="text-align: center; padding: 10px;">Action</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+              `;
+
+          panier.data.articles.forEach((article) => {
+            html += `
+                      <tr style="border-bottom: 1px solid #f0f0f0;">
+                          <td style="padding: 15px 10px;">
+                              <div style="display: flex; align-items: center; gap: 10px;">
+                                  <img src="${article.photo}" alt="${
+              article.nom
+            }" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                  <div>
+                                      <strong>${article.nom}</strong><br>
+                                      <small style="color: #666;">${article.description.substring(
+                                        0,
+                                        50
+                                      )}...</small>
+                                  </div>
+                              </div>
+                          </td>
+                          <td style="text-align: center; padding: 10px;">${
+                            article.prixUnitaire
+                          }€</td>
+                          <td style="text-align: center; padding: 10px;">
+                              <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                  <button onclick="modifierQuantite(${
+                                    article.idLignePanier
+                                  }, ${
+              article.quantite - 1
+            })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
+                                  <span style="min-width: 30px; display: inline-block;">${
+                                    article.quantite
+                                  }</span>
+                                  <button onclick="modifierQuantite(${
+                                    article.idLignePanier
+                                  }, ${
+              article.quantite + 1
+            })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
+                              </div>
+                          </td>
+                          <td style="text-align: center; padding: 10px; font-weight: bold;">${
+                            article.totalLigne
+                          }€</td>
+                          <td style="text-align: center; padding: 10px;">
+                              <button onclick="supprimerArticle(${
+                                article.idLignePanier
+                              })" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
+                          </td>
+                      </tr>
+                  `;
+          });
+
+          html += `
+                          </tbody>
+                      </table>
+                  </div>
+                  <div style="border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between;">
+                      <span>Total:</span>
+                      <span>${panier.data.total}€</span>
+                  </div>
+              `;
+          content.innerHTML = html;
+        } else {
+          content.innerHTML = `
+                  <div style="text-align: center; padding: 40px; color: #666;">
+                      <div style="font-size: 48px; margin-bottom: 20px;">🛒</div>
+                      <h3>Votre panier est vide</h3>
+                      <p>Ajoutez des articles pour commencer vos achats</p>
+                  </div>
+              `;
+        }
+      }
+
+      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
+        if (nouvelleQuantite < 1) return;
+
+        const result = await origamiAPI.modifierQuantite(
+          idLignePanier,
+          nouvelleQuantite
+        );
+        if (result.status === 200) {
+          chargerContenuPanier();
+          updateAffichagePanier();
+        } else {
+          showNotification(
+            "Erreur lors de la modification de la quantité",
+            "error"
+          );
+        }
+      }
+
+      async function supprimerArticle(idLignePanier) {
+        const result = await origamiAPI.supprimerDuPanier(idLignePanier);
+        if (result.status === 200) {
+          showNotification("Article supprimé du panier", "success");
+          chargerContenuPanier();
+          updateAffichagePanier();
+        } else {
+          showNotification("Erreur lors de la suppression", "error");
+        }
+      }
+
+      async function viderPanier() {
+        if (confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
+          const result = await origamiAPI.viderPanier();
+          if (result.status === 200) {
+            showNotification("Panier vidé", "success");
+            fermerPanierModal();
+            updateAffichagePanier();
+          } else {
+            showNotification("Erreur lors du vidage du panier", "error");
+          }
+        }
+      }
+
+      function fermerPanierModal() {
+        const modal = document.getElementById("panier-modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      }
+
+      function passerCommande() {
+        // Pour l'instant, simple message. Vous pourriez rediriger vers une page de commande
+        showNotification("Fonctionnalité de commande à compléter", "info");
+        // window.location.href = 'commande.html';
+      }
+
+      // Initialiser quand la page est chargée
+      document.addEventListener("DOMContentLoaded", function () {
+        setupBoutonsCommander();
+        updateAffichagePanier();
+
+        // Ajouter l'écouteur d'événement pour le lien panier
+        document
+          .getElementById("lien-panier")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            afficherPanierModal();
+          });
+      });
+    </script>
+  </body>
+</html>
