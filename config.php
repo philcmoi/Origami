@@ -1,21 +1,15 @@
 <?php
-class Database {
-    private $host = "localhost";
-    private $db_name = "origami";
-    private $username = "root";
-    private $password = "";
-    public $conn;
+// config.php
+$host = 'localhost';
+$dbname = 'origami'; // Le nom de votre base de données
+$username = 'root';   // Votre utilisateur MySQL (root par défaut sur WAMP)
+$password = '';       // Votre mot de passe MySQL (vide par défaut sur WAMP)
 
-    public function getConnection() {
-        $this->conn = null;
-        try {
-            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
-            $this->conn->exec("set names utf8");
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch(PDOException $exception) {
-            echo "Erreur de connexion: " . $exception->getMessage();
-        }
-        return $this->conn;
-    }
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
 }
 ?>

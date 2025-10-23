@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test POST</title>
+  </head>
+  <body>
+    <button onclick="testPost()">Test POST</button>
+    <script>
+      async function testPost() {
+        const response = await fetch("envoyer_email_simple.php", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "envoyer_lien_confirmation",
+            email: "test@example.com",
+            type: "existant",
+          }),
+        });
+        const data = await response.json();
+        console.log(data);
+        alert(JSON.stringify(data));
+      }
+    </script>
+  </body>
+</html>

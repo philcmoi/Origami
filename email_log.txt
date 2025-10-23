@@ -1,0 +1,3 @@
+2025-10-23 06:11:32 - Email: test@example.com, Lien: http://localhost/ORIGAMI/confirmer.php?email=test%40example.com&token=2426f4e80e33d70cfce7f32828b6e800
+2025-10-23 06:14:34 - Email: test@example.com, Lien: http://localhost/ORIGAMI/confirmer.php?email=test%40example.com&token=ff73afd72e150bec7f74f8f707881dc0
+2025-10-23 06:14:38 - Email: test@example.com, Lien: http://localhost/ORIGAMI/confirmer.php?email=test%40example.com&token=c9d4e2c497aba549b790cbfc583e9731
