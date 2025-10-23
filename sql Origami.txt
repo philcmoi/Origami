@@ -101,3 +101,7 @@ motDePasse VARCHAR(255) NOT NULL, -- Haché avec password_hash
 CONSTRAINT Administrateur_PK PRIMARY KEY (idAdmin)
 )ENGINE=InnoDB;
 
+ALTER TABLE Client 
+ADD COLUMN nom VARCHAR(50),
+ADD COLUMN prenom VARCHAR(50),
+ADD COLUMN telephone VARCHAR(20);

@@ -5,27 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Origami Zen - Créations artisanales japonaises</title>
     <style>
-     * {
+      /* Style général */
+      * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
-
-      body {
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        background-color: #f9f9f9;
-      }
-
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-      }
-
-      /* [Tous les autres styles restent identiques] */
-      /* ... */
 
       body {
         font-family: "Helvetica Neue", Arial, sans-serif;
@@ -689,7 +674,7 @@
   </head>
   <body>
     <!-- En-tête -->
-        <header>
+    <header>
       <div class="container header-container">
         <a href="#" class="logo">Origami<span>Zen</span></a>
         <nav>
@@ -1657,8 +1642,6 @@
       let typeProcessus = ""; // 'existant' ou 'nouveau'
       let idClient = null;
       let intervalVerification = null;
-      let idClientCommande = null;
-      let idAdresseLivraison = null;
 
       class OrigamiAPI {
         constructor() {
@@ -1762,6 +1745,29 @@
           }
         }
 
+        async creerCommande(adresseLivraison) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "creer_commande",
+                idClient: this.idClient,
+                idAdresseLivraison: adresseLivraison.idAdresse,
+                modeReglement: "CB",
+                fraisDePort: 5.9,
+              }),
+            });
+
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
         async panierEstVide() {
           try {
             const panier = await this.getPanier();
@@ -1786,56 +1792,6 @@
       // Initialisation de l'API
       const origamiAPI = new OrigamiAPI();
 
-      // FONCTIONS AJOUTÉES POUR LA MISE À JOUR CLIENT ET ADRESSE
-      async function creerOuMajClient(email, donneesClient) {
-        try {
-          const response = await fetch('acheter.php', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'creer_ou_maj_client',
-              email: email,
-              nom: donneesClient.nom,
-              prenom: donneesClient.prenom,
-              telephone: donneesClient.telephone
-            })
-          });
-          return await response.json();
-        } catch (error) {
-          console.error('Erreur:', error);
-          return { status: 500, error: "Erreur réseau" };
-        }
-      }
-
-      async function creerOuMajAdresse(idClient, donneesAdresse) {
-        try {
-          const response = await fetch('acheter.php', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              action: 'creer_ou_maj_adresse',
-              idClient: idClient,
-              nom: donneesAdresse.nom,
-              prenom: donneesAdresse.prenom,
-              adresse: donneesAdresse.adresse,
-              codePostal: donneesAdresse.codePostal,
-              ville: donneesAdresse.ville,
-              pays: 'France',
-              telephone: donneesAdresse.telephone,
-              societe: donneesAdresse.societe || ''
-            })
-          });
-          return await response.json();
-        } catch (error) {
-          console.error('Erreur:', error);
-          return { status: 500, error: "Erreur réseau" };
-        }
-      }
-
       // Fonction pour mettre à jour l'état du bouton vider panier
       async function updateEtatBoutonVider() {
         const btnVider = document.getElementById('btn-vider-panier');
@@ -1858,176 +1814,40 @@
           }
         } catch (error) {
           console.error('Erreur mise à jour bouton vider:', error);
+          // En cas d'erreur, désactiver le bouton par sécurité
           btnVider.disabled = true;
           btnVider.style.background = '#cccccc';
           btnVider.style.cursor = 'not-allowed';
         }
       }
 
-      // MODIFICATION DE LA FONCTION DE LIVRAISON
-      document.getElementById("form-livraison").addEventListener("submit", async function (e) {
-        e.preventDefault();
-
-        const prenom = document.getElementById("prenom").value;
-        const nom = document.getElementById("nom").value;
-        const adresse = document.getElementById("adresse").value;
-        const codePostal = document.getElementById("code-postal").value;
-        const ville = document.getElementById("ville").value;
-        const telephone = document.getElementById("telephone").value;
-
-        if (!prenom || !nom || !adresse || !codePostal || !ville || !telephone) {
-          showNotification("Veuillez remplir tous les champs", "error");
-          return;
-        }
-
-        showNotification("Mise à jour de vos informations...", "info");
-
-        try {
-          // Données client
-          const donneesClient = {
-            nom: nom,
-            prenom: prenom,
-            telephone: telephone
-          };
-
-          // Données adresse
-          const donneesAdresse = {
-            nom: nom,
-            prenom: prenom,
-            adresse: adresse,
-            codePostal: codePostal,
-            ville: ville,
-            telephone: telephone
-          };
-
-          // 1. Créer ou mettre à jour le client
-          const resultClient = await creerOuMajClient(emailEnCours, donneesClient);
-          
-          if (resultClient.status !== 200 && resultClient.status !== 201) {
-            throw new Error(resultClient.error || "Erreur mise à jour client");
-          }
-
-          // 2. Créer ou mettre à jour l'adresse
-          const clientId = resultClient.data.idClient;
-          const resultAdresse = await creerOuMajAdresse(clientId, donneesAdresse);
-          
-          if (resultAdresse.status !== 200 && resultAdresse.status !== 201) {
-            throw new Error(resultAdresse.error || "Erreur mise à jour adresse");
-          }
-
-          // Stocker les IDs pour la commande
-          idClientCommande = clientId;
-          idAdresseLivraison = resultAdresse.data.idAdresse;
-
-          showNotification("Informations enregistrées avec succès!", "success");
-          
-          document.getElementById("etape-livraison").style.display = "none";
-          document.getElementById("etape-paiement").style.display = "block";
-        } catch (error) {
-          console.error('Erreur:', error);
-          showNotification("Erreur lors de l'enregistrement: " + error.message, "error");
-        }
-      });
-
-      // MODIFICATION DE LA FONCTION DE PAIEMENT
-      document.getElementById("form-paiement").addEventListener("submit", async function (e) {
-        e.preventDefault();
-
-        const numeroCarte = document.getElementById("numero-carte").value;
-        const expiration = document.getElementById("expiration").value;
-        const cvv = document.getElementById("cvv").value;
-        const nomCarte = document.getElementById("nom-carte").value;
-
-        if (!numeroCarte || !expiration || !cvv || !nomCarte) {
-          showNotification("Veuillez remplir tous les champs de paiement", "error");
-          return;
-        }
-
-        showNotification("Traitement du paiement en cours...", "info");
-
-        try {
-          // Récupérer les valeurs du formulaire de livraison
-          const prenom = document.getElementById("prenom").value;
-          const nom = document.getElementById("nom").value;
-          const adresseLivr = document.getElementById("adresse").value;
-          const codePostal = document.getElementById("code-postal").value;
-          const ville = document.getElementById("ville").value;
-
-          // Utiliser les IDs récupérés précédemment
-          const clientId = idClientCommande;
-          const adresseId = idAdresseLivraison;
-
-          if (!clientId || !adresseId) {
-            throw new Error("Informations client ou adresse manquantes");
-          }
-
-          const response = await fetch("acheter.php", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "creer_commande",
-              idClient: clientId,
-              idAdresseLivraison: adresseId,
-              modeReglement: "CB",
-              fraisDePort: 5.9,
-            }),
-          });
-
-          const result = await response.json();
-
-          if (result.status === 201) {
-            showNotification("Commande créée avec succès!", "success");
-            fermerCommandeModal();
-
-            // Vider le panier
-            await origamiAPI.viderPanier();
-            updateAffichagePanier();
-
-            // Afficher confirmation avec les détails de livraison
-            setTimeout(() => {
-              alert("Merci pour votre commande!\n\n" +
-                    "Numéro de commande: " + result.data.numeroCommande + "\n" +
-                    "Montant total: " + result.data.montantTotal + "€\n" +
-                    "Livraison prévue pour: " + result.data.delaiLivraison + "\n\n" +
-                    "Adresse de livraison:\n" +
-                    prenom + " " + nom + "\n" +
-                    adresseLivr + "\n" +
-                    codePostal + " " + ville);
-            }, 1000);
-          } else {
-            showNotification("Erreur: " + result.error, "error");
-          }
-        } catch (error) {
-          console.error("Erreur:", error);
-          showNotification("Erreur réseau lors du traitement de la commande", "error");
-        }
-      });
-
-      // [Toutes les autres fonctions JavaScript restent identiques]
       // Fonction pour vérifier le panier avant de passer commande
       async function verifierEtPasserCommande() {
         const bouton = document.getElementById('btn-passer-commande');
         
+        // Désactiver temporairement le bouton
         bouton.disabled = true;
         bouton.innerHTML = 'Vérification...';
         bouton.style.backgroundColor = '#cccccc';
         bouton.style.cursor = 'wait';
 
         try {
+          // Vérifier l'état du panier
           const panier = await origamiAPI.getPanier();
           panierData = panier;
 
           if (panier.status === 200 && panier.data.articles && panier.data.articles.length > 0) {
+            // Panier non vide - passer commande
             setTimeout(() => {
               passerCommande();
               reinitialiserBouton();
             }, 500);
           } else {
+            // Panier vide - afficher message d'erreur
             showNotification('Votre panier est vide. Ajoutez des articles avant de passer commande.', 'error');
             reinitialiserBouton();
             
+            // Fermer le modal panier après 2 secondes
             setTimeout(() => {
               fermerPanierModal();
             }, 2000);
@@ -2039,6 +1859,7 @@
         }
       }
 
+      // Fonction pour réinitialiser l'état du bouton
       function reinitialiserBouton() {
         const bouton = document.getElementById('btn-passer-commande');
         if (!bouton) return;
@@ -2049,6 +1870,7 @@
         bouton.style.cursor = 'pointer';
       }
 
+      // Fonction pour mettre à jour l'état du bouton de commande
       async function updateEtatBoutonCommande() {
         const bouton = document.getElementById('btn-passer-commande');
         if (!bouton) return;
@@ -2058,12 +1880,14 @@
           panierData = panier;
 
           if (panier.status === 200 && panier.data.articles && panier.data.articles.length > 0) {
+            // Panier non vide - bouton actif
             bouton.disabled = false;
             bouton.style.backgroundColor = '#d40000';
             bouton.style.cursor = 'pointer';
             bouton.style.opacity = '1';
             bouton.title = 'Cliquer pour passer commande';
           } else {
+            // Panier vide - bouton désactivé
             bouton.disabled = true;
             bouton.style.backgroundColor = '#cccccc';
             bouton.style.cursor = 'not-allowed';
@@ -2072,6 +1896,7 @@
           }
         } catch (error) {
           console.error('Erreur mise à jour bouton:', error);
+          // En cas d'erreur, désactiver le bouton par sécurité
           bouton.disabled = true;
           bouton.style.backgroundColor = '#cccccc';
           bouton.style.cursor = 'not-allowed';
@@ -2079,20 +1904,56 @@
         }
       }
 
+      // Fonction principale pour passer commande
       function passerCommande() {
+        // Vérifier une dernière fois les données du panier
         if (!panierData || !panierData.data.articles || panierData.data.articles.length === 0) {
           showNotification('Impossible de passer commande: panier vide', 'error');
           return;
         }
 
+        // Afficher le modal de commande
         document.getElementById("commande-modal").style.display = "flex";
         resetProcessusCommande();
         
+        // Afficher un message de confirmation
         showNotification(`Commande en cours pour ${panierData.data.articles.length} article(s)`, 'success');
       }
 
-      // [Toutes les autres fonctions existantes restent inchangées]
+      // Fonction pour afficher le résumé de la commande
+      function afficherResumeCommande() {
+        if (!panierData) return '';
+        
+        let resume = `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; color: #333;">Résumé de votre commande</h4>
+                <div style="max-height: 200px; overflow-y: auto;">
+        `;
+        
+        panierData.data.articles.forEach(article => {
+            resume += `
+                <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee;">
+                    <span>${article.nom} x${article.quantite}</span>
+                    <span style="font-weight: bold;">${article.totalLigne}€</span>
+                </div>
+            `;
+        });
+        
+        resume += `
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid #ddd;">
+                    <strong>Total:</strong>
+                    <strong>${panierData.data.total}€</strong>
+                </div>
+            </div>
+        `;
+        
+        return resume;
+      }
+
+      // Fonction pour gérer les clics sur les boutons "Commander"
       function setupBoutonsCommander() {
+        // Ajouter des écouteurs d'événements à tous les boutons "Commander"
         document.querySelectorAll(".product-card .btn").forEach((bouton) => {
           bouton.addEventListener("click", async function (e) {
             e.preventDefault();
@@ -2110,6 +1971,7 @@
             const result = await origamiAPI.ajouterAuPanier(idProduit);
 
             if (result.status === 200) {
+              // Animation de confirmation
               const originalText = this.textContent;
               const originalBgColor = this.style.backgroundColor;
               this.textContent = "✓ Ajouté !";
@@ -2120,7 +1982,10 @@
                 this.style.backgroundColor = originalBgColor;
               }, 1500);
 
+              // Mettre à jour l'affichage du panier
               updateAffichagePanier();
+
+              // Afficher notification
               showNotification("Produit ajouté au panier !", "success");
             } else {
               showNotification(
@@ -2132,7 +1997,9 @@
         });
       }
 
+      // Fonction pour afficher les notifications
       function showNotification(message, type = "info", duree = 3000) {
+        // Créer la notification
         const notification = document.createElement("div");
         notification.className = `notification ${type}`;
         notification.innerHTML = `
@@ -2142,6 +2009,7 @@
             </div>
         `;
 
+        // Styles supplémentaires pour les notifications panier
         if (message.includes('panier') || message.includes('vide')) {
             notification.style.background = '#ffc107';
             notification.style.color = '#856404';
@@ -2149,10 +2017,12 @@
 
         document.body.appendChild(notification);
 
+        // Animation d'entrée
         setTimeout(() => {
             notification.style.transform = "translateX(0)";
         }, 100);
 
+        // Supprimer après la durée spécifiée
         setTimeout(() => {
             notification.style.transform = "translateX(400px)";
             setTimeout(() => {
@@ -2163,6 +2033,7 @@
         }, duree);
       }
 
+      // Fonction utilitaire pour les icônes de notification
       function getIconeType(type) {
         const icones = {
             'success': '✅',
@@ -2173,6 +2044,7 @@
         return icones[type] || 'ℹ️';
       }
 
+      // Fonction pour mettre à jour l'affichage du panier
       async function updateAffichagePanier() {
         const panier = await origamiAPI.getPanier();
         panierData = panier;
@@ -2184,10 +2056,12 @@
           }
         }
         
+        // Mettre à jour l'état des boutons
         updateEtatBoutonCommande();
         updateEtatBoutonVider();
       }
 
+      // Afficher le panier dans une modal
       function afficherPanierModal() {
         let modal = document.getElementById("panier-modal");
         if (!modal) {
@@ -2231,6 +2105,7 @@
         panierData = panier;
         const content = document.getElementById("panier-content");
 
+        // Mettre à jour l'état des boutons
         updateEtatBoutonCommande();
         updateEtatBoutonVider();
 
@@ -2352,6 +2227,7 @@
         }
       }
 
+      // Fonction pour passer commande
       function resetProcessusCommande() {
         document.getElementById("etape-choix-compte").style.display = "block";
         document.getElementById("etape-email-existant").style.display = "none";
@@ -2368,9 +2244,8 @@
         emailEnCours = "";
         typeProcessus = "";
         idClient = null;
-        idClientCommande = null;
-        idAdresseLivraison = null;
 
+        // Arrêter la vérification périodique
         if (intervalVerification) {
           clearInterval(intervalVerification);
           intervalVerification = null;
@@ -2382,6 +2257,7 @@
         resetProcessusCommande();
       }
 
+      // Étape 1: Choix du type de compte
       function choisirEmailExistant() {
         document.getElementById("etape-choix-compte").style.display = "none";
         document.getElementById("etape-email-existant").style.display = "block";
@@ -2398,6 +2274,7 @@
         resetProcessusCommande();
       }
 
+      // Étape 2: Traitement email existant
       document
         .getElementById("form-email-existant")
         .addEventListener("submit", async function (e) {
@@ -2410,9 +2287,11 @@
             return;
           }
 
+          // Envoyer le lien de confirmation par email
           await envoyerLienConfirmation(emailEnCours, "existant");
         });
 
+      // Étape 3: Création nouveau compte
       document
         .getElementById("form-nouveau-compte")
         .addEventListener("submit", async function (e) {
@@ -2425,9 +2304,11 @@
             return;
           }
 
+          // Créer le nouveau compte
           await creerNouveauCompte(emailEnCours);
         });
 
+      // Fonction pour envoyer le lien de confirmation
       async function envoyerLienConfirmation(email, type) {
         try {
           showNotification("Envoi du lien de confirmation...", "info");
@@ -2449,6 +2330,7 @@
           if (result.status === 200) {
             showNotification("Lien de confirmation envoyé à " + email, "success");
 
+            // Passer à l'étape d'attente
             if (typeProcessus === "existant") {
               document.getElementById("etape-email-existant").style.display = "none";
             } else {
@@ -2457,6 +2339,7 @@
             document.getElementById("etape-attente-confirmation").style.display = "block";
             document.getElementById("email-en-attente").textContent = email;
 
+            // Démarrer la vérification périodique
             demarrerVerificationConfirmation();
           } else {
             showNotification("Erreur: " + result.error, "error");
@@ -2467,6 +2350,7 @@
         }
       }
 
+      // Fonction pour créer un nouveau compte
       async function creerNouveauCompte(email) {
         try {
           showNotification("Création du compte en cours...", "info");
@@ -2479,7 +2363,7 @@
             body: JSON.stringify({
               action: "creer_client",
               email: email,
-              motDePasse: generatePassword(),
+              motDePasse: generatePassword(), // Générer un mot de passe temporaire
             }),
           });
 
@@ -2489,6 +2373,7 @@
             showNotification("Compte créé avec succès!", "success");
             idClient = result.data.idClient;
 
+            // Envoyer l'email de confirmation
             await envoyerLienConfirmation(email, "nouveau");
           } else {
             showNotification("Erreur: " + result.error, "error");
@@ -2503,6 +2388,7 @@
         return Math.random().toString(36).slice(-8);
       }
 
+      // Fonctions de navigation
       function changerEmail() {
         document.getElementById("etape-attente-confirmation").style.display = "none";
         if (typeProcessus === "existant") {
@@ -2511,6 +2397,7 @@
           document.getElementById("etape-nouveau-compte").style.display = "block";
         }
 
+        // Arrêter la vérification
         if (intervalVerification) {
           clearInterval(intervalVerification);
           intervalVerification = null;
@@ -2532,10 +2419,11 @@
         document.getElementById("etape-livraison").style.display = "block";
       }
 
+      // Vérification périodique de la confirmation email
       function demarrerVerificationConfirmation() {
         intervalVerification = setInterval(async () => {
           await verifierConfirmationEmail();
-        }, 3000);
+        }, 3000); // Vérifier toutes les 3 secondes
       }
 
       async function verifierConfirmationEmail() {
@@ -2546,6 +2434,7 @@
           const result = await response.json();
 
           if (result.status === 200 && result.data.confirme) {
+            // Email confirmé, passer à l'étape suivante
             clearInterval(intervalVerification);
             showNotification("Email confirmé avec succès!", "success");
             document.getElementById("etape-attente-confirmation").style.display = "none";
@@ -2556,7 +2445,90 @@
         }
       }
 
+      // Étape 5: Formulaire de livraison
+      document
+        .getElementById("form-livraison")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const prenom = document.getElementById("prenom").value;
+          const nom = document.getElementById("nom").value;
+          const adresse = document.getElementById("adresse").value;
+          const codePostal = document.getElementById("code-postal").value;
+          const ville = document.getElementById("ville").value;
+          const telephone = document.getElementById("telephone").value;
+
+          if (!prenom || !nom || !adresse || !codePostal || !ville || !telephone) {
+            showNotification("Veuillez remplir tous les champs", "error");
+            return;
+          }
+
+          document.getElementById("etape-livraison").style.display = "none";
+          document.getElementById("etape-paiement").style.display = "block";
+        });
+
+      // Étape 6: Paiement
+      document
+        .getElementById("form-paiement")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const numeroCarte = document.getElementById("numero-carte").value;
+          const expiration = document.getElementById("expiration").value;
+          const cvv = document.getElementById("cvv").value;
+          const nomCarte = document.getElementById("nom-carte").value;
+
+          if (!numeroCarte || !expiration || !cvv || !nomCarte) {
+            showNotification("Veuillez remplir tous les champs de paiement", "error");
+            return;
+          }
+
+          showNotification("Traitement du paiement en cours...", "info");
+
+          try {
+            // Utiliser l'ID client créé ou un ID par défaut
+            const clientId = idClient || (await obtenirIdClientParEmail(emailEnCours));
+
+            const response = await fetch("acheter.php", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "creer_commande",
+                idClient: clientId,
+                idAdresseLivraison: 1, // ID temporaire
+                modeReglement: "CB",
+                fraisDePort: 5.9,
+              }),
+            });
+
+            const result = await response.json();
+
+            if (result.status === 201) {
+              showNotification("Commande créée avec succès!", "success");
+              fermerCommandeModal();
+
+              // Vider le panier
+              await origamiAPI.viderPanier();
+              updateAffichagePanier();
+
+              // Afficher confirmation
+              setTimeout(() => {
+                alert("Merci pour votre commande! Numéro: " + result.data.numeroCommande + "\nMontant: " + result.data.montantTotal + "€");
+              }, 1000);
+            } else {
+              showNotification("Erreur: " + result.error, "error");
+            }
+          } catch (error) {
+            console.error("Erreur:", error);
+            showNotification("Erreur réseau lors du traitement de la commande", "error");
+          }
+        });
+
       async function obtenirIdClientParEmail(email) {
+        // Cette fonction devrait interroger votre base de données
+        // Pour l'instant, retourner un ID par défaut
         return 1;
       }
 
@@ -2565,13 +2537,198 @@
         setupBoutonsCommander();
         updateAffichagePanier();
 
+        // Ajouter l'écouteur d'événement pour le lien panier
         document.getElementById("lien-panier").addEventListener("click", function (e) {
           e.preventDefault();
           afficherPanierModal();
         });
 
+        // Initialiser l'état des boutons
         updateEtatBoutonCommande();
         updateEtatBoutonVider();
       });
-    </script>  </body>
+
+      // Fonction pour créer ou mettre à jour le client
+async function creerOuMajClient(email, donneesClient) {
+  try {
+    const response = await fetch('acheter.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'creer_ou_maj_client',
+        email: email,
+        nom: donneesClient.nom,
+        prenom: donneesClient.prenom,
+        telephone: donneesClient.telephone
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Erreur:', error);
+    return { status: 500, error: "Erreur réseau" };
+  }
+}
+
+// Fonction pour créer ou mettre à jour l'adresse
+async function creerOuMajAdresse(idClient, donneesAdresse) {
+  try {
+    const response = await fetch('acheter.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'creer_ou_maj_adresse',
+        idClient: idClient,
+        nom: donneesAdresse.nom,
+        prenom: donneesAdresse.prenom,
+        adresse: donneesAdresse.adresse,
+        codePostal: donneesAdresse.codePostal,
+        ville: donneesAdresse.ville,
+        pays: 'France',
+        telephone: donneesAdresse.telephone,
+        societe: donneesAdresse.societe || ''
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Erreur:', error);
+    return { status: 500, error: "Erreur réseau" };
+  }
+}
+
+// Modifier la fonction de soumission du formulaire de livraison
+document.getElementById("form-livraison").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const prenom = document.getElementById("prenom").value;
+  const nom = document.getElementById("nom").value;
+  const adresse = document.getElementById("adresse").value;
+  const codePostal = document.getElementById("code-postal").value;
+  const ville = document.getElementById("ville").value;
+  const telephone = document.getElementById("telephone").value;
+
+  if (!prenom || !nom || !adresse || !codePostal || !ville || !telephone) {
+    showNotification("Veuillez remplir tous les champs", "error");
+    return;
+  }
+
+  showNotification("Mise à jour de vos informations...", "info");
+
+  try {
+    // Données client
+    const donneesClient = {
+      nom: nom,
+      prenom: prenom,
+      telephone: telephone
+    };
+
+    // Données adresse
+    const donneesAdresse = {
+      nom: nom,
+      prenom: prenom,
+      adresse: adresse,
+      codePostal: codePostal,
+      ville: ville,
+      telephone: telephone
+    };
+
+    // 1. Créer ou mettre à jour le client
+    const resultClient = await creerOuMajClient(emailEnCours, donneesClient);
+    
+    if (resultClient.status !== 200 && resultClient.status !== 201) {
+      throw new Error(resultClient.error || "Erreur mise à jour client");
+    }
+
+    // 2. Créer ou mettre à jour l'adresse
+    const idClient = resultClient.data.idClient;
+    const resultAdresse = await creerOuMajAdresse(idClient, donneesAdresse);
+    
+    if (resultAdresse.status !== 200 && resultAdresse.status !== 201) {
+      throw new Error(resultAdresse.error || "Erreur mise à jour adresse");
+    }
+
+    // Stocker les IDs pour la commande
+    idClientCommande = idClient;
+    idAdresseLivraison = resultAdresse.data.idAdresse;
+
+    showNotification("Informations enregistrées avec succès!", "success");
+    
+    document.getElementById("etape-livraison").style.display = "none";
+    document.getElementById("etape-paiement").style.display = "block";
+  } catch (error) {
+    console.error('Erreur:', error);
+    showNotification("Erreur lors de l'enregistrement: " + error.message, "error");
+  }
+});
+
+// Modifier la fonction de paiement pour utiliser les nouvelles variables
+document.getElementById("form-paiement").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const numeroCarte = document.getElementById("numero-carte").value;
+  const expiration = document.getElementById("expiration").value;
+  const cvv = document.getElementById("cvv").value;
+  const nomCarte = document.getElementById("nom-carte").value;
+
+  if (!numeroCarte || !expiration || !cvv || !nomCarte) {
+    showNotification("Veuillez remplir tous les champs de paiement", "error");
+    return;
+  }
+
+  showNotification("Traitement du paiement en cours...", "info");
+
+  try {
+    // Utiliser les IDs récupérés précédemment
+    const clientId = idClientCommande;
+    const adresseId = idAdresseLivraison;
+
+    if (!clientId || !adresseId) {
+      throw new Error("Informations client ou adresse manquantes");
+    }
+
+    const response = await fetch("acheter.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "creer_commande",
+        idClient: clientId,
+        idAdresseLivraison: adresseId,
+        modeReglement: "CB",
+        fraisDePort: 5.9,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.status === 201) {
+      showNotification("Commande créée avec succès!", "success");
+      fermerCommandeModal();
+
+      // Vider le panier
+      await origamiAPI.viderPanier();
+      updateAffichagePanier();
+
+      // Afficher confirmation
+      setTimeout(() => {
+        alert("Merci pour votre commande! Numéro: " + result.data.numeroCommande + "\nMontant: " + result.data.montantTotal + "€\nLivraison à: " + nom + " " + prenom + ", " + adresse + ", " + codePostal + " " + ville);
+      }, 1000);
+    } else {
+      showNotification("Erreur: " + result.error, "error");
+    }
+  } catch (error) {
+    console.error("Erreur:", error);
+    showNotification("Erreur réseau lors du traitement de la commande", "error");
+  }
+});
+
+// Ajouter ces variables globales
+let idClientCommande = null;
+let idAdresseLivraison = null;
+    </script>
+  </body>
 </html>
