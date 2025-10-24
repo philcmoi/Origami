@@ -1,24 +1,40 @@
 <?php
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Origin: *");
+// verifier_confirmation.php
 
-session_start();
+// Inclure la configuration de la base de données
+require_once 'config.php';
+
+header('Content-Type: application/json');
 
 $email = $_GET['email'] ?? '';
 
-function sendResponse($status, $data = null, $error = null) {
-    http_response_code($status);
-    echo json_encode([
-        'status' => $status,
-        'data' => $data,
-        'error' => $error
-    ]);
-    exit;
+if ($email) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT idClient, email_confirme 
+            FROM Client 
+            WHERE email = ?
+        ");
+        $stmt->execute([$email]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($client) {
+            $response = [
+                'status' => 200,
+                'data' => [
+                    'confirme' => (bool)$client['email_confirme'],
+                    'id_client' => $client['idClient']
+                ]
+            ];
+        } else {
+            $response = ['status' => 404, 'error' => 'Client non trouvé'];
+        }
+    } catch (PDOException $e) {
+        $response = ['status' => 500, 'error' => 'Erreur base de données'];
+    }
+} else {
+    $response = ['status' => 400, 'error' => 'Email requis'];
 }
 
-if (isset($_SESSION['email_confirme']) && $_SESSION['email_confirme'] && $_SESSION['email_verifie'] === $email) {
-    sendResponse(200, ["confirme" => true]);
-} else {
-    sendResponse(200, ["confirme" => false]);
-}
+echo json_encode($response);
 ?>

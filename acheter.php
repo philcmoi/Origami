@@ -35,13 +35,64 @@ if (!$action) {
 }
 
 try {
-    if ($action == 'ajouter_au_panier') {
+    if ($action == 'creer_client') {
+        // Action spécifique pour créer un client depuis la modal
+        $email = $data['email'] ?? '';
+        $nom = $data['nom'] ?? '';
+        $prenom = $data['prenom'] ?? '';
+        $telephone = $data['telephone'] ?? '';
+        $motDePasse = $data['motDePasse'] ?? '';
+
+        if (!$email || !$nom || !$prenom || !$motDePasse) {
+            echo json_encode(['status' => 400, 'error' => 'Tous les champs obligatoires doivent être remplis']);
+            exit;
+        }
+
+        // Vérifier si l'email existe déjà
+        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE email = ?");
+        $stmt->execute([$email]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($clientExist) {
+            echo json_encode(['status' => 409, 'error' => 'Un compte avec cet email existe déjà']);
+            exit;
+        }
+
+        // Créer le nouveau client
+        $motDePasseHash = password_hash($motDePasse, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$email, $motDePasseHash, $nom, $prenom, $telephone]);
+        $idClient = $pdo->lastInsertId();
+
+        // Créer un panier pour le nouveau client
+        $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+        $stmt->execute([$idClient]);
+
+        echo json_encode([
+            'status' => 201, 
+            'data' => [
+                'idClient' => $idClient,
+                'message' => 'Compte créé avec succès'
+            ]
+        ]);
+
+    } elseif ($action == 'ajouter_au_panier') {
         $idClient = $data['idClient'] ?? null;
         $idOrigami = $data['idOrigami'] ?? null;
         $quantite = $data['quantite'] ?? 1;
 
         if (!$idClient || !$idOrigami) {
             echo json_encode(['status' => 400, 'error' => 'ID client ou ID origami manquant']);
+            exit;
+        }
+
+        // Vérifier si le client existe
+        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE idClient = ?");
+        $stmt->execute([$idClient]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$client) {
+            echo json_encode(['status' => 404, 'error' => 'Client non trouvé']);
             exit;
         }
 
@@ -100,6 +151,16 @@ try {
             exit;
         }
 
+        // Vérifier si le client existe
+        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE idClient = ?");
+        $stmt->execute([$idClient]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$client) {
+            echo json_encode(['status' => 404, 'error' => 'Client non trouvé']);
+            exit;
+        }
+
         // Récupérer le panier
         $stmt = $pdo->prepare("
             SELECT p.idPanier 
@@ -109,8 +170,19 @@ try {
         $stmt->execute([$idClient]);
         $panier = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Si le panier n'existe pas, le créer et retourner un panier vide
         if (!$panier) {
-            echo json_encode(['status' => 200, 'data' => ['articles' => [], 'total' => 0, 'totalQuantites' => 0]]);
+            $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+            $stmt->execute([$idClient]);
+            
+            echo json_encode([
+                'status' => 200, 
+                'data' => [
+                    'articles' => [], 
+                    'total' => 0, 
+                    'totalQuantites' => 0
+                ]
+            ]);
             exit;
         }
 
@@ -214,52 +286,99 @@ try {
         echo json_encode(['status' => 200, 'message' => 'Panier vidé']);
 
     } elseif ($action == 'creer_ou_maj_client') {
+        $idClient = $data['idClient'] ?? null;
         $email = $data['email'] ?? '';
         $nom = $data['nom'] ?? '';
         $prenom = $data['prenom'] ?? '';
         $telephone = $data['telephone'] ?? '';
 
-        if (!$email || !$nom || !$prenom) {
+        if ((!$idClient && !$email) || !$nom || !$prenom) {
             echo json_encode(['status' => 400, 'error' => 'Champs obligatoires manquants']);
             exit;
         }
 
-        // Vérifier si le client existe déjà
-        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE email = ?");
-        $stmt->execute([$email]);
-        $client = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($client) {
-            // Mettre à jour le client existant
-            $stmt = $pdo->prepare("UPDATE Client SET nom = ?, prenom = ?, telephone = ? WHERE idClient = ?");
-            $stmt->execute([$nom, $prenom, $telephone, $client['idClient']]);
-            echo json_encode([
-                'status' => 200, 
-                'data' => [
-                    'idClient' => $client['idClient'], 
-                    'action' => 'updated',
-                    'message' => 'Client mis à jour'
-                ]
-            ]);
-        } else {
-            // Créer un nouveau client
-            $motDePasse = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
-            $idClient = $pdo->lastInsertId();
-            
-            // Créer un panier pour le nouveau client
-            $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+        // Si un ID client est fourni, mettre à jour ce client spécifique
+        if ($idClient) {
+            // Vérifier que le client existe
+            $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE idClient = ?");
             $stmt->execute([$idClient]);
+            $client = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            echo json_encode([
-                'status' => 201, 
-                'data' => [
-                    'idClient' => $idClient, 
-                    'action' => 'created',
-                    'message' => 'Client créé'
-                ]
-            ]);
+            if ($client) {
+                // Mettre à jour le client existant
+                $stmt = $pdo->prepare("UPDATE Client SET email = ?, nom = ?, prenom = ?, telephone = ? WHERE idClient = ?");
+                $stmt->execute([$email, $nom, $prenom, $telephone, $idClient]);
+                
+                // S'assurer que le panier existe
+                $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
+                $stmt->execute([$idClient]);
+                $panier = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$panier) {
+                    $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+                    $stmt->execute([$idClient]);
+                }
+                
+                echo json_encode([
+                    'status' => 200, 
+                    'data' => [
+                        'idClient' => $idClient, 
+                        'action' => 'updated',
+                        'message' => 'Client mis à jour'
+                    ]
+                ]);
+            } else {
+                echo json_encode(['status' => 404, 'error' => 'Client non trouvé']);
+            }
+        } else {
+            // Logique existante pour créer/mettre à jour par email
+            $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE email = ?");
+            $stmt->execute([$email]);
+            $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($client) {
+                // Mettre à jour le client existant
+                $stmt = $pdo->prepare("UPDATE Client SET nom = ?, prenom = ?, telephone = ? WHERE idClient = ?");
+                $stmt->execute([$nom, $prenom, $telephone, $client['idClient']]);
+                
+                // S'assurer que le panier existe
+                $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
+                $stmt->execute([$client['idClient']]);
+                $panier = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$panier) {
+                    $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+                    $stmt->execute([$client['idClient']]);
+                }
+                
+                echo json_encode([
+                    'status' => 200, 
+                    'data' => [
+                        'idClient' => $client['idClient'], 
+                        'action' => 'updated',
+                        'message' => 'Client mis à jour'
+                    ]
+                ]);
+            } else {
+                // Créer un nouveau client
+                $motDePasse = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+                $idClient = $pdo->lastInsertId();
+                
+                // Créer un panier pour le nouveau client
+                $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+                $stmt->execute([$idClient]);
+                
+                echo json_encode([
+                    'status' => 201, 
+                    'data' => [
+                        'idClient' => $idClient, 
+                        'action' => 'created',
+                        'message' => 'Client créé'
+                    ]
+                ]);
+            }
         }
 
     } elseif ($action == 'creer_ou_maj_adresse') {
@@ -407,41 +526,6 @@ try {
             $pdo->rollBack();
             throw $e;
         }
-
-    } elseif ($action == 'creer_client') {
-        $email = $data['email'] ?? '';
-        $motDePasse = $data['motDePasse'] ?? '';
-
-        if (!$email || !$motDePasse) {
-            echo json_encode(['status' => 400, 'error' => 'Email et mot de passe requis']);
-            exit;
-        }
-
-        // Vérifier si l'email existe déjà
-        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE email = ?");
-        $stmt->execute([$email]);
-        
-        if ($stmt->fetch()) {
-            echo json_encode(['status' => 409, 'error' => 'Cet email est déjà utilisé']);
-            exit;
-        }
-
-        $motDePasseHash = password_hash($motDePasse, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse) VALUES (?, ?)");
-        $stmt->execute([$email, $motDePasseHash]);
-        $idClient = $pdo->lastInsertId();
-
-        // Créer un panier pour le nouveau client
-        $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
-        $stmt->execute([$idClient]);
-
-        echo json_encode([
-            'status' => 201,
-            'data' => [
-                'idClient' => $idClient,
-                'message' => 'Client créé avec succès'
-            ]
-        ]);
 
     } else {
         echo json_encode(['status' => 400, 'error' => 'Action non reconnue: ' . $action]);

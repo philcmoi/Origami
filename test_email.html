@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Email</title>
+</head>
+<body>
+    <h1>Test d'envoi d'email</h1>
+    <button onclick="testEmail()">Tester l'envoi d'email</button>
+    <div id="result"></div>
+
+    <script>
+        async function testEmail() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Envoi en cours...';
+            
+            try {
+                const response = await fetch('envoyer_email.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'envoyer_lien_confirmation',
+                        email: 'votre-email@gmail.com', // Remplacez par votre email
+                        type: 'existant'
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `Erreur: ${error}`;
+            }
+        }
+    </script>
+</body>
+</html>
