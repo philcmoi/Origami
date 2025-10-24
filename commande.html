@@ -1,269 +1,446 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Commande - Origami Zen</title>
     <style>
-        /* Reprendre le style du site */
-        body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        header {
-            background-color: #f9f9f9;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            padding: 15px 0;
-        }
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .logo {
-            font-family: "Georgia", serif;
-            font-size: 24px;
-            font-weight: bold;
-            color: #d40000;
-            text-decoration: none;
-        }
-        .logo span {
-            color: #333;
-        }
-        .btn {
-            display: inline-block;
-            background-color: #d40000;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 2px;
-            font-size: 14px;
-            letter-spacing: 1px;
-            transition: background-color 0.3s;
-            border: none;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background-color: #b30000;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            color: #555;
-        }
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 2px;
-            font-family: inherit;
-        }
-        .commande-container {
-            display: flex;
-            gap: 50px;
-            margin: 40px 0;
-        }
-        .recap-panier {
-            flex: 1;
-            background: white;
-            padding: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .form-adresse {
-            flex: 1;
-            background: white;
-            padding: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .article-panier {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #eee;
-            padding: 10px 0;
-        }
-        .total {
-            font-weight: bold;
-            font-size: 1.2rem;
-            border-top: 2px solid #333;
-            padding-top: 10px;
-            margin-top: 10px;
-        }
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f9f9f9;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      header {
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 15px 0;
+      }
+      .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .logo {
+        font-family: "Georgia", serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #d40000;
+        text-decoration: none;
+      }
+      .logo span {
+        color: #333;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #d40000;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 2px;
+        font-size: 14px;
+        letter-spacing: 1px;
+        transition: background-color 0.3s;
+        border: none;
+        cursor: pointer;
+      }
+      .btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .btn:hover:not(:disabled) {
+        background-color: #b30000;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+        color: #555;
+      }
+      .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        font-family: inherit;
+      }
+      .commande-container {
+        display: flex;
+        gap: 50px;
+        margin: 40px 0;
+      }
+      .recap-panier {
+        flex: 1;
+        background: white;
+        padding: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .form-adresse {
+        flex: 1;
+        background: white;
+        padding: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .article-panier {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #eee;
+        padding: 10px 0;
+      }
+      .total {
+        font-weight: bold;
+        font-size: 1.2rem;
+        border-top: 2px solid #333;
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+      .message-vide {
+        text-align: center;
+        color: #666;
+        padding: 20px;
+      }
+      .message-vide a {
+        color: #d40000;
+        text-decoration: none;
+      }
+      .message-vide a:hover {
+        text-decoration: underline;
+      }
+      .loading {
+        text-align: center;
+        color: #666;
+        padding: 20px;
+      }
+      .error-message {
+        background-color: #ffebee;
+        color: #c62828;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        text-align: center;
+      }
+      .success-message {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        text-align: center;
+      }
+      .link-button {
+        background: none;
+        border: none;
+        color: #d40000;
+        text-decoration: underline;
+        cursor: pointer;
+        padding: 0;
+        font-size: inherit;
+      }
+      .link-button:hover {
+        color: #b30000;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <header>
-        <div class="container header-container">
-            <a href="index.html" class="logo">Origami<span>Zen</span></a>
-        </div>
+      <div class="container header-container">
+        <a href="index.html" class="logo">Origami<span>Zen</span></a>
+      </div>
     </header>
 
     <div class="container">
-        <h1>Finaliser votre commande</h1>
-        <div class="commande-container">
-            <div class="recap-panier">
-                <h2>Récapitulatif de votre panier</h2>
-                <div id="recap-panier-content">
-                    <!-- Le contenu du panier sera chargé ici -->
-                </div>
-            </div>
-            <div class="form-adresse">
-                <h2>Adresse de livraison</h2>
-                <form id="form-adresse">
-                    <div class="form-group">
-                        <label for="nom">Nom</label>
-                        <input type="text" id="nom" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="prenom">Prénom</label>
-                        <input type="text" id="prenom" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <input type="text" id="adresse" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="codePostal">Code Postal</label>
-                        <input type="text" id="codePostal" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="ville">Ville</label>
-                        <input type="text" id="ville" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="pays">Pays</label>
-                        <input type="text" id="pays" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="telephone">Téléphone</label>
-                        <input type="text" id="telephone" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="societe">Société (optionnel)</label>
-                        <input type="text" id="societe" class="form-control">
-                    </div>
-                    <button type="submit" class="btn">Confirmer la commande</button>
-                </form>
-            </div>
+      <h1>Finaliser votre commande</h1>
+
+      <div id="message-container"></div>
+
+      <div class="commande-container">
+        <div class="recap-panier">
+          <h2>Récapitulatif de votre panier</h2>
+          <div id="recap-panier-content">
+            <div class="loading">Chargement du panier...</div>
+          </div>
         </div>
+
+        <div class="form-adresse">
+          <h2>Adresse de livraison</h2>
+          <p>
+            Vous avez déjà un compte ?
+            <a href="creer-compte.html" class="link-button">Créer un compte</a>
+          </p>
+          <form id="form-adresse">
+            <div class="form-group">
+              <label for="email">Email *</label>
+              <input type="email" id="email" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="nom">Nom *</label>
+              <input type="text" id="nom" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="prenom">Prénom *</label>
+              <input type="text" id="prenom" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="adresse">Adresse *</label>
+              <input type="text" id="adresse" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="codePostal">Code Postal *</label>
+              <input
+                type="text"
+                id="codePostal"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="ville">Ville *</label>
+              <input type="text" id="ville" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="pays">Pays *</label>
+              <input
+                type="text"
+                id="pays"
+                class="form-control"
+                required
+                value="France"
+              />
+            </div>
+            <div class="form-group">
+              <label for="telephone">Téléphone *</label>
+              <input type="text" id="telephone" class="form-control" required />
+            </div>
+            <div class="form-group">
+              <label for="societe">Société (optionnel)</label>
+              <input type="text" id="societe" class="form-control" />
+            </div>
+            <button type="submit" class="btn" id="btn-commander" disabled>
+              Confirmer la commande
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
 
     <script>
-        const api = {
-            baseUrl: 'acheter.php',
-            idClient: 1 // Temporaire
-        };
+      const api = {
+        baseUrl: "acheter.php",
+        idClient: 1, // Utiliser le client par défaut
+      };
 
-        // Charger le panier
-        async function chargerPanier() {
-            try {
-                const response = await fetch(`${api.baseUrl}?action=get_panier&idClient=${api.idClient}`);
-                const result = await response.json();
-                if (result.status === 200) {
-                    afficherPanier(result.data);
-                } else {
-                    console.error('Erreur lors du chargement du panier');
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-            }
+      let panierData = { articles: [], total: 0, totalQuantites: 0 };
+
+      // Fonction pour afficher les messages
+      function afficherMessage(message, type = "error") {
+        const container = document.getElementById("message-container");
+        container.innerHTML = `<div class="${
+          type === "error" ? "error-message" : "success-message"
+        }">${message}</div>`;
+
+        // Supprimer le message après 5 secondes
+        setTimeout(() => {
+          container.innerHTML = "";
+        }, 5000);
+      }
+
+      // Charger le panier
+      async function chargerPanier() {
+        try {
+          const response = await fetch(
+            `${api.baseUrl}?action=get_panier&idClient=${api.idClient}`
+          );
+          const result = await response.json();
+
+          if (result.status === 200) {
+            afficherPanier(result.data);
+            mettreAJourBoutonCommande(result.data.articles.length > 0);
+          } else {
+            console.error("Erreur lors du chargement du panier:", result.error);
+            afficherPanier({ articles: [], total: 0, totalQuantites: 0 });
+            mettreAJourBoutonCommande(false);
+            afficherMessage(
+              "Erreur lors du chargement du panier: " + result.error
+            );
+          }
+        } catch (error) {
+          console.error("Erreur:", error);
+          afficherPanier({ articles: [], total: 0, totalQuantites: 0 });
+          mettreAJourBoutonCommande(false);
+          afficherMessage("Erreur de connexion lors du chargement du panier");
         }
+      }
 
-        function afficherPanier(panier) {
-            const container = document.getElementById('recap-panier-content');
-            let html = '';
-            panier.articles.forEach(article => {
-                html += `
-                    <div class="article-panier">
-                        <div>
-                            <strong>${article.nom}</strong>
-                            <div>Quantité: ${article.quantite}</div>
-                        </div>
-                        <div>${article.totalLigne}€</div>
-                    </div>
-                `;
-            });
-            html += `<div class="total">Total: ${panier.total}€</div>`;
-            container.innerHTML = html;
+      function afficherPanier(panier) {
+        const container = document.getElementById("recap-panier-content");
+        let html = "";
+        panierData = panier;
+
+        if (panier.articles && panier.articles.length > 0) {
+          panier.articles.forEach((article) => {
+            html += `
+              <div class="article-panier">
+                <div>
+                  <strong>${article.nom}</strong>
+                  <div>Quantité: ${article.quantite}</div>
+                </div>
+                <div>${article.totalLigne}€</div>
+              </div>
+            `;
+          });
+          html += `<div class="total">Total: ${panier.total}€</div>`;
+          html += `<div class="success-message">Votre panier contient ${panier.articles.length} article(s)</div>`;
+        } else {
+          html = `
+            <div class="message-vide">
+              <p>Votre panier est vide</p>
+              <p><a href="test-panier.html">Ajouter des articles au panier</a></p>
+            </div>
+          `;
+          afficherMessage(
+            "Votre panier est vide. Veuillez ajouter des articles avant de commander.",
+            "error"
+          );
         }
+        container.innerHTML = html;
+      }
 
-        // Gérer la soumission du formulaire
-        document.getElementById('form-adresse').addEventListener('submit', async function(e) {
-            e.preventDefault();
+      function mettreAJourBoutonCommande(panierNonVide) {
+        const btnCommander = document.getElementById("btn-commander");
+        if (panierNonVide) {
+          btnCommander.disabled = false;
+          btnCommander.textContent = "Confirmer la commande";
+        } else {
+          btnCommander.disabled = true;
+          btnCommander.textContent = "Panier vide";
+        }
+      }
 
-            const adresse = {
+      // Gérer la soumission du formulaire de commande
+      document
+        .getElementById("form-adresse")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          // Vérifier si le panier est vide
+          if (!panierData.articles || panierData.articles.length === 0) {
+            afficherMessage(
+              "Votre panier est vide. Veuillez ajouter des articles avant de commander."
+            );
+            return;
+          }
+
+          const adresse = {
+            idClient: api.idClient,
+            nom: document.getElementById("nom").value,
+            prenom: document.getElementById("prenom").value,
+            adresse: document.getElementById("adresse").value,
+            codePostal: document.getElementById("codePostal").value,
+            ville: document.getElementById("ville").value,
+            pays: document.getElementById("pays").value,
+            telephone: document.getElementById("telephone").value,
+            societe: document.getElementById("societe").value,
+          };
+
+          const email = document.getElementById("email").value;
+
+          // Désactiver le bouton pendant le traitement
+          const btnCommander = document.getElementById("btn-commander");
+          btnCommander.disabled = true;
+          btnCommander.textContent = "Traitement en cours...";
+
+          try {
+            // Étape 1: Mettre à jour les informations du client
+            const responseClient = await fetch(api.baseUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "creer_ou_maj_client",
                 idClient: api.idClient,
-                nom: document.getElementById('nom').value,
-                prenom: document.getElementById('prenom').value,
-                adresse: document.getElementById('adresse').value,
-                codePostal: document.getElementById('codePostal').value,
-                ville: document.getElementById('ville').value,
-                pays: document.getElementById('pays').value,
-                telephone: document.getElementById('telephone').value,
-                societe: document.getElementById('societe').value
-            };
+                email: email,
+                nom: adresse.nom,
+                prenom: adresse.prenom,
+                telephone: adresse.telephone,
+              }),
+            });
 
-            try {
-                // Créer l'adresse
-                const responseAdresse = await fetch(api.baseUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'creer_adresse',
-                        ...adresse
-                    })
-                });
-                const resultAdresse = await responseAdresse.json();
-                if (resultAdresse.status !== 201) {
-                    throw new Error(resultAdresse.error);
-                }
-
-                // Créer la commande
-                const responseCommande = await fetch(api.baseUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'creer_commande',
-                        idClient: api.idClient,
-                        idAdresseLivraison: resultAdresse.data.idAdresse,
-                        modeReglement: 'CB', // Par défaut
-                        fraisDePort: 5.90
-                    })
-                });
-                const resultCommande = await responseCommande.json();
-                if (resultCommande.status === 201) {
-                    alert(`Commande créée avec succès! Numéro de commande: ${resultCommande.data.numeroCommande}`);
-                    // Rediriger vers une page de confirmation
-                    window.location.href = 'index.html';
-                } else {
-                    throw new Error(resultCommande.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                alert('Erreur lors de la création de la commande: ' + error.message);
+            const resultClient = await responseClient.json();
+            if (resultClient.status !== 200 && resultClient.status !== 201) {
+              throw new Error(
+                "Erreur mise à jour client: " + resultClient.error
+              );
             }
+
+            // Étape 2: Créer l'adresse de livraison
+            const responseAdresse = await fetch(api.baseUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "creer_ou_maj_adresse",
+                ...adresse,
+              }),
+            });
+
+            const resultAdresse = await responseAdresse.json();
+            if (resultAdresse.status !== 201 && resultAdresse.status !== 200) {
+              throw new Error(resultAdresse.error);
+            }
+
+            // Étape 3: Créer la commande
+            const responseCommande = await fetch(api.baseUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "creer_commande",
+                idClient: api.idClient,
+                idAdresseLivraison: resultAdresse.data.idAdresse,
+                modeReglement: "CB",
+                fraisDePort: 5.9,
+              }),
+            });
+
+            const resultCommande = await responseCommande.json();
+            if (resultCommande.status === 201) {
+              afficherMessage(
+                `Commande créée avec succès! Numéro de commande: ${resultCommande.data.numeroCommande}`,
+                "success"
+              );
+
+              // Rediriger vers la page de confirmation après 2 secondes
+              setTimeout(() => {
+                window.location.href =
+                  "confirmation.html?commande=" +
+                  resultCommande.data.numeroCommande;
+              }, 2000);
+            } else {
+              throw new Error(resultCommande.error);
+            }
+          } catch (error) {
+            console.error("Erreur:", error);
+            afficherMessage(
+              "Erreur lors de la création de la commande: " + error.message
+            );
+
+            // Réactiver le bouton en cas d'erreur
+            btnCommander.disabled = false;
+            btnCommander.textContent = "Confirmer la commande";
+          }
         });
 
-        // Charger le panier au chargement de la page
-        chargerPanier();
+      // Charger le panier au chargement de la page
+      chargerPanier();
     </script>
-</body>
+  </body>
 </html>

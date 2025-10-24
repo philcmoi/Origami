@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Origami Zen - Créations artisanales japonaises</title>
     <style>
-      /* Style général */
+      /* Styles existants inchangés */
       * {
         margin: 0;
         padding: 0;
@@ -567,12 +567,114 @@
         z-index: 2000;
       }
 
+      /* Styles pour la modal commande */
+      #commande-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
       @media (max-width: 768px) {
-        #panier-modal > div {
+        #panier-modal > div,
+        #commande-modal > div {
           width: 95% !important;
           margin: 20px;
           padding: 15px !important;
         }
+      }
+
+      /* Styles pour les notifications */
+      .notification {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 4px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        max-width: 300px;
+      }
+
+      .notification.success {
+        background: #28a745;
+        color: white;
+      }
+
+      .notification.error {
+        background: #dc3545;
+        color: white;
+      }
+
+      .notification.info {
+        background: #17a2b8;
+        color: white;
+      }
+
+      /* Styles pour le bouton de commande */
+      #btn-passer-commande {
+        transition: all 0.3s ease;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      #btn-passer-commande:disabled {
+        background-color: #cccccc !important;
+        cursor: not-allowed !important;
+        opacity: 0.6;
+        transform: none;
+      }
+
+      #btn-passer-commande:not(:disabled):hover {
+        background-color: #b30000 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(212, 0, 0, 0.3);
+      }
+
+      #btn-passer-commande:not(:disabled):active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(212, 0, 0, 0.3);
+      }
+
+      /* Styles pour le bouton vider panier */
+      #btn-vider-panier {
+        transition: all 0.3s ease;
+      }
+
+      #btn-vider-panier:disabled {
+        background-color: #cccccc !important;
+        cursor: not-allowed !important;
+        opacity: 0.6;
+      }
+
+      #btn-vider-panier:not(:disabled):hover {
+        background-color: #5a6268 !important;
+      }
+
+      /* Animation de chargement */
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      #btn-passer-commande.loading {
+        animation: pulse 1.5s infinite;
       }
     </style>
   </head>
@@ -610,7 +712,7 @@
           Découvrez des créations uniques pliées à la main avec passion et
           précision
         </p>
-        <a href="#" class="btn">Explorer la collection</a>
+        <a href="#nosCreations" class="btn">Explorer la collection</a>
       </div>
     </section>
 
@@ -651,7 +753,7 @@
         </div>
         <div class="products-grid">
           <!-- Produit 1 - Grue -->
-          <div class="product-card" data-id="1">
+          <div class="product-card" data-id="1" data-image="img/couple de sygnes.jpg">
             <div class="product-image">
               <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
             </div>
@@ -669,7 +771,7 @@
           </div>
 
           <!-- Produit 2 - Fleur -->
-          <div class="product-card" data-id="2">
+          <div class="product-card" data-id="2" data-image="img/flower.jpg">
             <div class="product-image">
               <img src="img/flower.jpg" alt="Origami fleur" />
             </div>
@@ -687,7 +789,7 @@
           </div>
 
           <!-- Produit 3 - Dragon -->
-          <div class="product-card" data-id="3">
+          <div class="product-card" data-id="3" data-image="img/dragon.png">
             <div class="product-image">
               <img src="img/dragon.png" alt="Origami dragon" />
             </div>
@@ -705,7 +807,7 @@
           </div>
 
           <!-- Produit 4 - Éventail -->
-          <div class="product-card" data-id="4">
+          <div class="product-card" data-id="4" data-image="img/eventail.jpg">
             <div class="product-image">
               <img src="img/eventail.jpg" alt="Origami éventail" />
             </div>
@@ -933,213 +1035,633 @@
       </div>
     </footer>
 
+    <!-- Modal Panier -->
+    <div id="panier-modal">
+      <div
+        style="
+          background: white;
+          padding: 25px;
+          border-radius: 8px;
+          max-width: 800px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0; color: #333">Votre Panier</h2>
+          <button
+            onclick="fermerPanierModal()"
+            style="
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #666;
+            "
+          >
+            &times;
+          </button>
+        </div>
+        <div id="panier-content"></div>
+        <div
+          style="
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+          "
+        >
+          <button
+            onclick="viderPanier()"
+            id="btn-vider-panier"
+            style="
+              padding: 10px 15px;
+              background: #6c757d;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+            "
+          >
+            Vider le panier
+          </button>
+          <button
+            onclick="verifierEtPasserCommande()"
+            id="btn-passer-commande"
+            style="
+              padding: 10px 20px;
+              background: #d40000;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: all 0.3s ease;
+            "
+          >
+            Passer la commande
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Commande -->
+    <div id="commande-modal">
+      <div
+        style="
+          background: white;
+          padding: 25px;
+          border-radius: 8px;
+          max-width: 500px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0; color: #333">Finaliser votre commande</h2>
+          <button
+            onclick="fermerCommandeModal()"
+            style="
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #666;
+            "
+          >
+            &times;
+          </button>
+        </div>
+
+        <!-- Étape 1: Choix du type de compte -->
+        <div id="etape-choix-compte">
+          <h3 style="margin-bottom: 15px">
+            Comment souhaitez-vous continuer ?
+          </h3>
+          <p style="margin-bottom: 20px; color: #666; font-size: 14px">
+            Choisissez une option pour finaliser votre commande
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 15px">
+            <button
+              onclick="choisirEmailExistant()"
+              style="
+                text-align: left;
+                padding: 20px;
+                background: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+              "
+            >
+              <div style="font-size: 18px; margin-bottom: 5px">📧</div>
+              <strong>Utiliser mon email</strong><br />
+              <small style="color: #666"
+                >Je recevrai un lien de confirmation par email</small
+              >
+            </button>
+
+            <button
+              onclick="choisirNouveauCompte()"
+              style="
+                text-align: left;
+                padding: 20px;
+                background: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+              "
+            >
+              <div style="font-size: 18px; margin-bottom: 5px">👤</div>
+              <strong>Créer un nouveau compte</strong><br />
+              <small style="color: #666">Inscription rapide avec email</small>
+            </button>
+          </div>
+        </div>
+
+        <!-- Étape 2: Création nouveau compte -->
+        <div id="etape-nouveau-compte" style="display: none">
+          <h3 style="margin-bottom: 15px">Création de compte</h3>
+          <p style="margin-bottom: 15px; color: #666; font-size: 14px">
+            Créez votre compte en quelques secondes
+          </p>
+          <form id="form-nouveau-compte">
+            <div style="margin-bottom: 15px">
+              <label
+                style="display: block; margin-bottom: 5px; font-weight: bold"
+                >Email</label
+              >
+              <input
+                type="email"
+                id="email-nouveau"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                "
+                required
+                placeholder="votre@email.com"
+              />
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px">
+              <button
+                type="button"
+                onclick="retourChoixCompte()"
+                style="
+                  padding: 10px 15px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  flex: 1;
+                "
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                style="
+                  padding: 10px 15px;
+                  background: #d40000;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  flex: 1;
+                "
+              >
+                Créer le compte
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Étape 3: Email existant -->
+        <div id="etape-email-existant" style="display: none">
+          <h3 style="margin-bottom: 15px">Confirmation par email</h3>
+          <p style="margin-bottom: 15px; color: #666; font-size: 14px">
+            Entrez votre email pour recevoir un lien de confirmation
+          </p>
+          <form id="form-email-existant">
+            <div style="margin-bottom: 15px">
+              <label
+                style="display: block; margin-bottom: 5px; font-weight: bold"
+                >Email</label
+              >
+              <input
+                type="email"
+                id="email-existant"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                "
+                required
+                placeholder="votre@email.com"
+              />
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px">
+              <button
+                type="button"
+                onclick="retourChoixCompte()"
+                style="
+                  padding: 10px 15px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  flex: 1;
+                "
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                style="
+                  padding: 10px 15px;
+                  background: #d40000;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  flex: 1;
+                "
+              >
+                Envoyer le lien
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Étape 4: Confirmation -->
+        <div id="etape-confirmation" style="display: none">
+          <div style="text-align: center; padding: 20px 0">
+            <div style="font-size: 48px; margin-bottom: 15px">✅</div>
+            <h3 style="margin-bottom: 10px; color: #28a745">
+              Commande confirmée !
+            </h3>
+            <p style="margin-bottom: 15px; color: #666">
+              Votre commande a été passée avec succès. Un email de confirmation
+              vous a été envoyé.
+            </p>
+            <p style="font-size: 14px; color: #888">
+              Numéro de commande: <strong>CMD-2023-78945</strong>
+            </p>
+            <button
+              onclick="fermerCommandeModal()"
+              style="
+                margin-top: 20px;
+                padding: 10px 20px;
+                background: #d40000;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+              "
+            >
+              Retour à la boutique
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
-      class OrigamiAPI {
-        constructor() {
-          this.baseUrl = "acheter.php";
-          this.idClient = 1; // ID client temporaire pour la démo
-        }
+      // Variables globales
+      let panier = [];
+      let compteurPanier = document.getElementById("compteur-panier");
+      let panierModal = document.getElementById("panier-modal");
+      let commandeModal = document.getElementById("commande-modal");
 
-        async ajouterAuPanier(idOrigami, quantite = 1) {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "ajouter_au_panier",
-                idClient: this.idClient,
-                idOrigami: parseInt(idOrigami),
-                quantite: parseInt(quantite),
-              }),
-            });
+      // Initialisation
+      document.addEventListener("DOMContentLoaded", function () {
+        // Charger le panier depuis le localStorage
+        chargerPanier();
 
-            const result = await response.json();
-            return result;
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
-
-        async getPanier() {
-          try {
-            const response = await fetch(
-              `${this.baseUrl}?action=get_panier&idClient=${this.idClient}`
+        // Ajouter les écouteurs d'événements pour les boutons "Commander"
+        document.querySelectorAll(".product-card .btn").forEach((bouton) => {
+          bouton.addEventListener("click", function (e) {
+            e.preventDefault();
+            let carteProduit = this.closest(".product-card");
+            let idProduit = carteProduit.getAttribute("data-id");
+            let nomProduit = carteProduit.querySelector("h3").textContent;
+            let prixProduit = parseFloat(
+              carteProduit
+                .querySelector(".price")
+                .textContent.replace("€", "")
+                .trim()
             );
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
+            let imageProduit = carteProduit.getAttribute("data-image");
+
+            ajouterAuPanier(idProduit, nomProduit, prixProduit, imageProduit);
+          });
+        });
+
+        // Écouteur pour le lien du panier
+        document
+          .getElementById("lien-panier")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            ouvrirPanierModal();
+          });
+
+        // Écouteurs pour les formulaires de commande
+        document
+          .getElementById("form-nouveau-compte")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            traiterCommande();
+          });
+
+        document
+          .getElementById("form-email-existant")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            traiterCommande();
+          });
+      });
+
+      // Fonctions pour gérer le panier
+      function ajouterAuPanier(id, nom, prix, image) {
+        let produitExistant = panier.find((item) => item.id === id);
+
+        if (produitExistant) {
+          produitExistant.quantite++;
+        } else {
+          panier.push({
+            id: id,
+            nom: nom,
+            prix: prix,
+            image: image,
+            quantite: 1,
+          });
         }
 
-        async modifierQuantite(idLignePanier, quantite) {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "modifier_quantite",
-                idLignePanier: parseInt(idLignePanier),
-                quantite: parseInt(quantite),
-              }),
-            });
+        sauvegarderPanier();
+        mettreAJourCompteurPanier();
+        afficherNotification(
+          `${nom} a été ajouté au panier`,
+          "success"
+        );
+      }
 
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
+      function retirerDuPanier(id) {
+        panier = panier.filter((item) => item.id !== id);
+        sauvegarderPanier();
+        mettreAJourCompteurPanier();
+        mettreAJourAffichagePanier();
+      }
 
-        async supprimerDuPanier(idLignePanier) {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "supprimer_du_panier",
-                idLignePanier: parseInt(idLignePanier),
-              }),
-            });
+      function modifierQuantite(id, changement) {
+        let produit = panier.find((item) => item.id === id);
 
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
+        if (produit) {
+          produit.quantite += changement;
 
-        async viderPanier() {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "vider_panier",
-                idClient: this.idClient,
-              }),
-            });
-
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
-
-        async creerCommande(adresseLivraison) {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "creer_commande",
-                idClient: this.idClient,
-                idAdresseLivraison: adresseLivraison.idAdresse,
-                modeReglement: "CB",
-                fraisDePort: 5.9,
-              }),
-            });
-
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur:", error);
-            return { status: 500, error: "Erreur réseau" };
+          if (produit.quantite <= 0) {
+            retirerDuPanier(id);
+          } else {
+            sauvegarderPanier();
+            mettreAJourCompteurPanier();
+            mettreAJourAffichagePanier();
           }
         }
       }
 
-      // Initialisation de l'API
-      const origamiAPI = new OrigamiAPI();
+      function viderPanier() {
+        if (panier.length === 0) return;
 
-      // Fonction pour gérer les clics sur les boutons "Commander"
-      function setupBoutonsCommander() {
-        // Ajouter des écouteurs d'événements à tous les boutons "Commander"
-        document.querySelectorAll(".product-card .btn").forEach((bouton) => {
-          bouton.addEventListener("click", async function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+        if (confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
+          panier = [];
+          sauvegarderPanier();
+          mettreAJourCompteurPanier();
+          mettreAJourAffichagePanier();
+          afficherNotification("Votre panier a été vidé", "info");
+        }
+      }
 
-            const carteProduit = this.closest(".product-card");
-            const idProduit = carteProduit.getAttribute("data-id");
+      function calculerTotalPanier() {
+        return panier.reduce(
+          (total, item) => total + item.prix * item.quantite,
+          0
+        );
+      }
 
-            if (!idProduit) {
-              console.error("ID produit non trouvé");
-              alert("Erreur: ID produit manquant");
-              return;
-            }
+      // Fonctions pour la persistance du panier
+      function sauvegarderPanier() {
+        localStorage.setItem("panierOrigamiZen", JSON.stringify(panier));
+      }
 
-            const result = await origamiAPI.ajouterAuPanier(idProduit);
+      function chargerPanier() {
+        let panierSauvegarde = localStorage.getItem("panierOrigamiZen");
+        if (panierSauvegarde) {
+          panier = JSON.parse(panierSauvegarde);
+          mettreAJourCompteurPanier();
+        }
+      }
 
-            if (result.status === 200) {
-              // Animation de confirmation
-              const originalText = this.textContent;
-              const originalBgColor = this.style.backgroundColor;
-              this.textContent = "✓ Ajouté !";
-              this.style.backgroundColor = "#28a745";
+      function mettreAJourCompteurPanier() {
+        let totalArticles = panier.reduce(
+          (total, item) => total + item.quantite,
+          0
+        );
+        compteurPanier.textContent = totalArticles;
+      }
 
-              setTimeout(() => {
-                this.textContent = originalText;
-                this.style.backgroundColor = originalBgColor;
-              }, 1500);
+      // Fonctions pour l'affichage du panier
+      function mettreAJourAffichagePanier() {
+        let contenuPanier = document.getElementById("panier-content");
+        let btnViderPanier = document.getElementById("btn-vider-panier");
+        let btnPasserCommande = document.getElementById("btn-passer-commande");
 
-              // Mettre à jour l'affichage du panier
-              updateAffichagePanier();
+        if (panier.length === 0) {
+          contenuPanier.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px; color: #666;">
+              <div style="font-size: 48px; margin-bottom: 15px;">🛒</div>
+              <h3 style="margin-bottom: 10px;">Votre panier est vide</h3>
+              <p>Explorez nos créations et ajoutez vos favoris !</p>
+            </div>
+          `;
+          btnViderPanier.disabled = true;
+          btnPasserCommande.disabled = true;
+          return;
+        }
 
-              // Afficher notification
-              showNotification("Produit ajouté au panier !", "success");
-            } else {
-              showNotification(
-                "Erreur: " + (result.error || "Impossible d'ajouter au panier"),
-                "error"
-              );
-            }
-          });
+        btnViderPanier.disabled = false;
+        btnPasserCommande.disabled = false;
+
+        let html = `
+          <div style="margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <th style="text-align: left; padding: 10px 0; width: 60px;">Image</th>
+                  <th style="text-align: left; padding: 10px 0;">Produit</th>
+                  <th style="text-align: center; padding: 10px 0;">Quantité</th>
+                  <th style="text-align: right; padding: 10px 0;">Prix</th>
+                  <th style="text-align: right; padding: 10px 0;">Total</th>
+                  <th style="text-align: center; padding: 10px 0;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        panier.forEach((item) => {
+          let totalProduit = item.prix * item.quantite;
+          html += `
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 15px 0;">
+                <img src="${item.image}" alt="${item.nom}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+              </td>
+              <td style="padding: 15px 0;">
+                <div style="font-weight: bold;">${item.nom}</div>
+                <div style="color: #666; font-size: 14px;">${item.prix}€</div>
+              </td>
+              <td style="padding: 15px 0; text-align: center;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                  <button onclick="modifierQuantite('${item.id}', -1)" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
+                  <span style="min-width: 30px; text-align: center;">${item.quantite}</span>
+                  <button onclick="modifierQuantite('${item.id}', 1)" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
+                </div>
+              </td>
+              <td style="padding: 15px 0; text-align: right;">${item.prix}€</td>
+              <td style="padding: 15px 0; text-align: right; font-weight: bold;">${totalProduit.toFixed(
+                2
+              )}€</td>
+              <td style="padding: 15px 0; text-align: center;">
+                <button onclick="retirerDuPanier('${item.id}')" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 18px;" title="Retirer du panier">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+          `;
         });
+
+        let totalPanier = calculerTotalPanier();
+        html += `
+              </tbody>
+            </table>
+          </div>
+          <div style="border-top: 2px solid #eee; padding-top: 15px; text-align: right;">
+            <div style="font-size: 1.2rem; font-weight: bold;">
+              Total: ${totalPanier.toFixed(2)}€
+            </div>
+          </div>
+        `;
+
+        contenuPanier.innerHTML = html;
+      }
+
+      // Fonctions pour les modals
+      function ouvrirPanierModal() {
+        mettreAJourAffichagePanier();
+        panierModal.style.display = "flex";
+      }
+
+      function fermerPanierModal() {
+        panierModal.style.display = "none";
+      }
+
+      function ouvrirCommandeModal() {
+        commandeModal.style.display = "flex";
+      }
+
+      function fermerCommandeModal() {
+        commandeModal.style.display = "none";
+      }
+
+      // Fonctions pour le processus de commande
+      function verifierEtPasserCommande() {
+        if (panier.length === 0) {
+          afficherNotification(
+            "Votre panier est vide. Ajoutez des articles avant de passer commande.",
+            "error"
+          );
+          return;
+        }
+
+        fermerPanierModal();
+        ouvrirCommandeModal();
+      }
+
+      function choisirNouveauCompte() {
+        document.getElementById("etape-choix-compte").style.display = "none";
+        document.getElementById("etape-nouveau-compte").style.display = "block";
+      }
+
+      function choisirEmailExistant() {
+        document.getElementById("etape-choix-compte").style.display = "none";
+        document.getElementById("etape-email-existant").style.display = "block";
+      }
+
+      function retourChoixCompte() {
+        document.getElementById("etape-nouveau-compte").style.display = "none";
+        document.getElementById("etape-email-existant").style.display = "none";
+        document.getElementById("etape-choix-compte").style.display = "block";
+      }
+
+      function traiterCommande() {
+        let btnPasserCommande = document.getElementById("btn-passer-commande");
+        btnPasserCommande.classList.add("loading");
+
+        // Simuler un délai de traitement
+        setTimeout(() => {
+          document.getElementById("etape-nouveau-compte").style.display =
+            "none";
+          document.getElementById("etape-email-existant").style.display =
+            "none";
+          document.getElementById("etape-confirmation").style.display = "block";
+
+          // Vider le panier après confirmation
+          panier = [];
+          sauvegarderPanier();
+          mettreAJourCompteurPanier();
+
+          btnPasserCommande.classList.remove("loading");
+        }, 2000);
       }
 
       // Fonction pour afficher les notifications
-      function showNotification(message, type = "info") {
-        // Créer la notification
-        const notification = document.createElement("div");
-        notification.style.cssText = `
-              position: fixed;
-              top: 80px;
-              right: 20px;
-              padding: 15px 20px;
-              background: ${
-                type === "success"
-                  ? "#28a745"
-                  : type === "error"
-                  ? "#dc3545"
-                  : "#17a2b8"
-              };
-              color: white;
-              border-radius: 4px;
-              z-index: 10000;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-              transform: translateX(400px);
-              transition: transform 0.3s ease;
-          `;
-        notification.textContent = message;
+      function afficherNotification(message, type) {
+        // Supprimer toute notification existante
+        let notificationExistante = document.querySelector(".notification");
+        if (notificationExistante) {
+          notificationExistante.remove();
+        }
 
+        // Créer la nouvelle notification
+        let notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
         document.body.appendChild(notification);
 
         // Animation d'entrée
         setTimeout(() => {
           notification.style.transform = "translateX(0)";
-        }, 100);
+        }, 10);
 
         // Supprimer après 3 secondes
         setTimeout(() => {
@@ -1152,217 +1674,14 @@
         }, 3000);
       }
 
-      // Fonction pour mettre à jour l'affichage du panier
-      async function updateAffichagePanier() {
-        const panier = await origamiAPI.getPanier();
-        if (panier.status === 200) {
-          const compteurPanier = document.getElementById("compteur-panier");
-          if (compteurPanier) {
-            compteurPanier.textContent = panier.data.totalQuantites || 0;
-          }
+      // Fermer les modals en cliquant à l'extérieur
+      window.addEventListener("click", function (e) {
+        if (e.target === panierModal) {
+          fermerPanierModal();
         }
-      }
-
-      // Afficher le panier dans une modal
-      function afficherPanierModal() {
-        let modal = document.getElementById("panier-modal");
-        if (!modal) {
-          modal = document.createElement("div");
-          modal.id = "panier-modal";
-          modal.style.cssText = `
-                  position: fixed;
-                  top: 0;
-                  left: 0;
-                  width: 100%;
-                  height: 100%;
-                  background: rgba(0,0,0,0.5);
-                  display: none;
-                  justify-content: center;
-                  align-items: center;
-                  z-index: 2000;
-              `;
-
-          modal.innerHTML = `
-                  <div style="background: white; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                          <h2 style="margin: 0; color: #333;">Votre Panier</h2>
-                          <button onclick="fermerPanierModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-                      </div>
-                      <div id="panier-content"></div>
-                      <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                          <button onclick="viderPanier()" style="padding: 10px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Vider le panier</button>
-                          <button onclick="passerCommande()" style="padding: 10px 20px; background: #d40000; color: white; border: none; border-radius: 4px; cursor: pointer;">Passer la commande</button>
-                      </div>
-                  </div>
-              `;
-          document.body.appendChild(modal);
+        if (e.target === commandeModal) {
+          fermerCommandeModal();
         }
-
-        modal.style.display = "flex";
-        chargerContenuPanier();
-      }
-
-      async function chargerContenuPanier() {
-        const panier = await origamiAPI.getPanier();
-        const content = document.getElementById("panier-content");
-
-        if (
-          panier.status === 200 &&
-          panier.data.articles &&
-          panier.data.articles.length > 0
-        ) {
-          let html = `
-                  <div style="max-height: 400px; overflow-y: auto;">
-                      <table style="width: 100%; border-collapse: collapse;">
-                          <thead>
-                              <tr style="border-bottom: 2px solid #eee;">
-                                  <th style="text-align: left; padding: 10px;">Produit</th>
-                                  <th style="text-align: center; padding: 10px;">Prix</th>
-                                  <th style="text-align: center; padding: 10px;">Quantité</th>
-                                  <th style="text-align: center; padding: 10px;">Total</th>
-                                  <th style="text-align: center; padding: 10px;">Action</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-              `;
-
-          panier.data.articles.forEach((article) => {
-            html += `
-                      <tr style="border-bottom: 1px solid #f0f0f0;">
-                          <td style="padding: 15px 10px;">
-                              <div style="display: flex; align-items: center; gap: 10px;">
-                                  <img src="${article.photo}" alt="${
-              article.nom
-            }" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
-                                  <div>
-                                      <strong>${article.nom}</strong><br>
-                                      <small style="color: #666;">${article.description.substring(
-                                        0,
-                                        50
-                                      )}...</small>
-                                  </div>
-                              </div>
-                          </td>
-                          <td style="text-align: center; padding: 10px;">${
-                            article.prixUnitaire
-                          }€</td>
-                          <td style="text-align: center; padding: 10px;">
-                              <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                  <button onclick="modifierQuantite(${
-                                    article.idLignePanier
-                                  }, ${
-              article.quantite - 1
-            })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
-                                  <span style="min-width: 30px; display: inline-block;">${
-                                    article.quantite
-                                  }</span>
-                                  <button onclick="modifierQuantite(${
-                                    article.idLignePanier
-                                  }, ${
-              article.quantite + 1
-            })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
-                              </div>
-                          </td>
-                          <td style="text-align: center; padding: 10px; font-weight: bold;">${
-                            article.totalLigne
-                          }€</td>
-                          <td style="text-align: center; padding: 10px;">
-                              <button onclick="supprimerArticle(${
-                                article.idLignePanier
-                              })" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
-                          </td>
-                      </tr>
-                  `;
-          });
-
-          html += `
-                          </tbody>
-                      </table>
-                  </div>
-                  <div style="border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between;">
-                      <span>Total:</span>
-                      <span>${panier.data.total}€</span>
-                  </div>
-              `;
-          content.innerHTML = html;
-        } else {
-          content.innerHTML = `
-                  <div style="text-align: center; padding: 40px; color: #666;">
-                      <div style="font-size: 48px; margin-bottom: 20px;">🛒</div>
-                      <h3>Votre panier est vide</h3>
-                      <p>Ajoutez des articles pour commencer vos achats</p>
-                  </div>
-              `;
-        }
-      }
-
-      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
-        if (nouvelleQuantite < 1) return;
-
-        const result = await origamiAPI.modifierQuantite(
-          idLignePanier,
-          nouvelleQuantite
-        );
-        if (result.status === 200) {
-          chargerContenuPanier();
-          updateAffichagePanier();
-        } else {
-          showNotification(
-            "Erreur lors de la modification de la quantité",
-            "error"
-          );
-        }
-      }
-
-      async function supprimerArticle(idLignePanier) {
-        const result = await origamiAPI.supprimerDuPanier(idLignePanier);
-        if (result.status === 200) {
-          showNotification("Article supprimé du panier", "success");
-          chargerContenuPanier();
-          updateAffichagePanier();
-        } else {
-          showNotification("Erreur lors de la suppression", "error");
-        }
-      }
-
-      async function viderPanier() {
-        if (confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
-          const result = await origamiAPI.viderPanier();
-          if (result.status === 200) {
-            showNotification("Panier vidé", "success");
-            fermerPanierModal();
-            updateAffichagePanier();
-          } else {
-            showNotification("Erreur lors du vidage du panier", "error");
-          }
-        }
-      }
-
-      function fermerPanierModal() {
-        const modal = document.getElementById("panier-modal");
-        if (modal) {
-          modal.style.display = "none";
-        }
-      }
-
-      function passerCommande() {
-        // Pour l'instant, simple message. Vous pourriez rediriger vers une page de commande
-        showNotification("Fonctionnalité de commande à compléter", "info");
-        // window.location.href = 'commande.html';
-      }
-
-      // Initialiser quand la page est chargée
-      document.addEventListener("DOMContentLoaded", function () {
-        setupBoutonsCommander();
-        updateAffichagePanier();
-
-        // Ajouter l'écouteur d'événement pour le lien panier
-        document
-          .getElementById("lien-panier")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            afficherPanierModal();
-          });
       });
     </script>
   </body>

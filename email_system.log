@@ -1,0 +1,6 @@
+2025-10-23 06:16:14 - Tentative d'envoi pour: lhpp.philippe@gmail.com, Action: envoyer_lien_confirmation
+2025-10-23 06:16:16 - ERREUR SMTP: SMTP Error: Could not authenticate.
+2025-10-23 06:16:16 - SIMULATION: Lien généré pour lhpp.philippe@gmail.com: http://localhost/ORIGAMI/confirmer.php?email=lhpp.philippe%40gmail.com&token=afe590f91a556d6012a2bbe01c8161b4
+2025-10-23 06:17:21 - Tentative d'envoi pour: wongfeyhong45@gmail.com, Action: envoyer_lien_confirmation
+2025-10-23 06:17:23 - ERREUR SMTP: SMTP Error: Could not authenticate.
+2025-10-23 06:17:23 - SIMULATION: Lien généré pour wongfeyhong45@gmail.com: http://localhost/ORIGAMI/confirmer.php?email=wongfeyhong45%40gmail.com&token=37a4242db0516f038d2199d55a095efd

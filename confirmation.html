@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmation - Origami Zen</title>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f9f9f9;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 15px 0;
+      }
+      .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      .logo {
+        font-family: "Georgia", serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #d40000;
+        text-decoration: none;
+      }
+      .logo span {
+        color: #333;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        text-align: center;
+      }
+      .confirmation-box {
+        background: white;
+        padding: 40px;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .btn {
+        display: inline-block;
+        background-color: #d40000;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 2px;
+        font-size: 14px;
+        letter-spacing: 1px;
+        transition: background-color 0.3s;
+        border: none;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+      .btn:hover {
+        background-color: #b30000;
+      }
+      .numero-commande {
+        font-size: 1.5em;
+        color: #d40000;
+        font-weight: bold;
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+        display: inline-block;
+      }
+      .success-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-container">
+        <a href="index.html" class="logo">Origami<span>Zen</span></a>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="confirmation-box">
+        <div class="success-icon">🎉</div>
+        <h1>Commande confirmée !</h1>
+        <p>Votre commande a été traitée avec succès.</p>
+        <p><strong>Numéro de commande:</strong></p>
+        <div class="numero-commande" id="numero-commande"></div>
+        <p>Un email de confirmation vous a été envoyé.</p>
+        <p>Merci pour votre confiance et à bientôt !</p>
+        <div>
+          <a href="index.html" class="btn">Retour à l'accueil</a>
+          <a
+            href="test-panier.html"
+            class="btn"
+            style="background-color: #666; margin-left: 10px"
+            >Nouvelle commande</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Récupérer le numéro de commande depuis l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const numeroCommande = urlParams.get("commande");
+
+      if (numeroCommande) {
+        document.getElementById("numero-commande").textContent =
+          "CMD-" + numeroCommande;
+      } else {
+        document.getElementById("numero-commande").textContent =
+          "Non disponible";
+      }
+    </script>
+  </body>
+</html>
