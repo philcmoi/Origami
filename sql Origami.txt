@@ -1,0 +1,148 @@
+-- Table Client (inchangée)
+CREATE TABLE Client (
+  idClient BIGINT NOT NULL AUTO_INCREMENT,
+  email VARCHAR(50) NOT NULL,
+  motDePasse VARCHAR(255) NOT NULL, -- ⚠️ Hacher en pratique!
+  CONSTRAINT Client_PK PRIMARY KEY (idClient)
+)ENGINE=InnoDB;
+
+-- Table Adresse (SÉPARÉE de Commande)
+CREATE TABLE Adresse (
+  idAdresse BIGINT NOT NULL AUTO_INCREMENT,
+  idClient BIGINT NOT NULL,
+  nom VARCHAR(50) NOT NULL,
+  prenom VARCHAR(50) NOT NULL,
+  adresse VARCHAR(50) NOT NULL,
+  codePostal VARCHAR(50) NOT NULL,
+  ville VARCHAR(50) NOT NULL,
+  pays VARCHAR(50) NOT NULL,
+  telephone VARCHAR(50) NOT NULL,
+  societe VARCHAR(50),
+  CONSTRAINT Adresse_PK PRIMARY KEY (idAdresse),
+  CONSTRAINT Adresse_idClient_FK FOREIGN KEY (idClient) REFERENCES Client(idClient)
+)ENGINE=InnoDB;
+
+-- Table Origami (inchangée)
+CREATE TABLE Origami (
+  idOrigami BIGINT NOT NULL AUTO_INCREMENT,
+  nom VARCHAR(50) NOT NULL,
+  description VARCHAR(300) NOT NULL,
+  photo VARCHAR(300) NOT NULL,
+  prixHorsTaxe DOUBLE NOT NULL,
+  CONSTRAINT Origami_PK PRIMARY KEY (idOrigami)
+)ENGINE=InnoDB;
+
+-- Table Panier (un par client)
+CREATE TABLE Panier (
+  idPanier BIGINT NOT NULL AUTO_INCREMENT,
+  idClient BIGINT NOT NULL UNIQUE, -- Un panier par client
+  dateModification DATETIME NOT NULL,
+  CONSTRAINT Panier_PK PRIMARY KEY (idPanier),
+  CONSTRAINT Panier_idClient_FK FOREIGN KEY (idClient) REFERENCES Client(idClient)
+)ENGINE=InnoDB;
+
+-- Table LignePanier CORRIGÉE (supprimer la contrainte UNIQUE)
+CREATE TABLE LignePanier (
+  idLignePanier BIGINT NOT NULL AUTO_INCREMENT,
+  idPanier BIGINT NOT NULL,
+  idOrigami BIGINT NOT NULL,
+  quantite INT NOT NULL DEFAULT 1,
+  prixUnitaire DOUBLE NOT NULL,
+  CONSTRAINT LignePanier_PK PRIMARY KEY (idLignePanier),
+  CONSTRAINT LignePanier_idPanier_FK FOREIGN KEY (idPanier) REFERENCES Panier(idPanier),
+  CONSTRAINT LignePanier_idOrigami_FK FOREIGN KEY (idOrigami) REFERENCES Origami(idOrigami)
+  -- ⚠️ SUPPRIMER cette ligne: UNIQUE KEY unique_article_panier (idPanier, idOrigami)
+)ENGINE=InnoDB;
+
+-- Table Commande CORRIGÉE
+CREATE TABLE Commande (
+  idCommande BIGINT NOT NULL AUTO_INCREMENT,
+  idClient BIGINT NOT NULL,
+  idAdresseLivraison BIGINT NOT NULL,
+  dateCommande DATETIME NOT NULL,
+  modeReglement VARCHAR(20) NOT NULL DEFAULT 'CB',
+  delaiLivraison DATE NOT NULL, -- ⚠️ Changé en DATE
+  fraisDePort DOUBLE NOT NULL,
+  montantTotal DOUBLE NOT NULL,
+  statut VARCHAR(20) NOT NULL DEFAULT 'en_attente',
+  CONSTRAINT Commande_PK PRIMARY KEY (idCommande),
+  CONSTRAINT Commande_idClient_FK FOREIGN KEY (idClient) REFERENCES Client(idClient),
+  CONSTRAINT Commande_idAdresseLivraison_FK FOREIGN KEY (idAdresseLivraison) REFERENCES Adresse(idAdresse)
+)ENGINE=InnoDB;
+
+-- Table LigneCommande (pour historiser)
+CREATE TABLE LigneCommande (
+  idLigneCommande BIGINT NOT NULL AUTO_INCREMENT,
+  idCommande BIGINT NOT NULL,
+  idOrigami BIGINT NOT NULL,
+  quantite INT NOT NULL,
+  prixUnitaire DOUBLE NOT NULL, -- Prix au moment de la commande
+  CONSTRAINT LigneCommande_PK PRIMARY KEY (idLigneCommande),
+  CONSTRAINT LigneCommande_idCommande_FK FOREIGN KEY (idCommande) REFERENCES Commande(idCommande),
+  CONSTRAINT LigneCommande_idOrigami_FK FOREIGN KEY (idOrigami) REFERENCES Origami(idOrigami)
+)ENGINE=InnoDB;
+
+-- Table CarteBancaire (OPTIONNELLE - sécurité)
+CREATE TABLE CarteBancaire (
+  idCarteBancaire BIGINT NOT NULL AUTO_INCREMENT, -- ⚠️ Changé en BIGINT
+  idClient BIGINT NOT NULL,
+  nomTitulaire VARCHAR(100) NOT NULL,
+  derniersChiffres VARCHAR(4) NOT NULL, -- ⚠️ Ne JAMAIS stocker le numéro complet
+  dateExpiration DATE NOT NULL,
+  typeCarte VARCHAR(20) NOT NULL,
+  CONSTRAINT CarteBancaire_PK PRIMARY KEY (idCarteBancaire),
+  CONSTRAINT CarteBancaire_idClient_FK FOREIGN KEY (idClient) REFERENCES Client(idClient)
+)ENGINE=InnoDB;
+
+CREATE TABLE Administrateur (
+idAdmin BIGINT NOT NULL AUTO_INCREMENT,
+email VARCHAR(50) NOT NULL,
+motDePasse VARCHAR(255) NOT NULL, -- Haché avec password_hash
+CONSTRAINT Administrateur_PK PRIMARY KEY (idAdmin)
+)ENGINE=InnoDB;
+
+ALTER TABLE Client 
+ADD COLUMN nom VARCHAR(50),
+ADD COLUMN prenom VARCHAR(50),
+ADD COLUMN telephone VARCHAR(20);
+
+ALTER TABLE Client 
+ADD COLUMN email_confirme TINYINT(1) DEFAULT 0,
+ADD COLUMN token_confirmation VARCHAR(64) NULL,
+ADD COLUMN token_expires DATETIME NULL;
+
+INSERT INTO Origami (nom, description, photo, prixHorsTaxe) VALUES
+('La grue Élégante', 'Symbole de paix et de longévité, cette grue est pliée avec un papier washi traditionnel.', 'img/couple de sygnes.jpg', 24.00),
+('Fleur de Cerisier', 'Inspirée des sakura japonais, cette fleur délicate apporte une touche de printemps éternel.', 'img/flower.jpg', 18.00),
+('Dragon Majestueux', 'Une création complexe et impressionnante, symbole de puissance et de sagesse.', 'img/dragon.png', 45.00),
+('Éventail Traditionnel', 'Accessoire élégant et fonctionnel, plié avec un papier aux motifs traditionnels.', 'img/eventail.jpg', 32.00);
+
+INSERT INTO client (idClient, email, motDePasse, nom, prenom, telephone) 
+VALUES (1, 'client_anonyme@origamizen.fr', '', 'Anonyme', 'Client', '');
+
+ALTER TABLE Client 
+ADD COLUMN type ENUM('temporaire', 'permanent') DEFAULT 'temporaire',
+ADD COLUMN date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN session_id VARCHAR(128);
+
+-- Créer les indexes pour optimiser les performances
+CREATE INDEX idx_client_type ON Client(type);
+CREATE INDEX idx_client_session ON Client(session_id);
+CREATE INDEX idx_client_date ON Client(date_creation);
+
+CREATE TABLE CodeConfirmation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(8) NOT NULL,
+    date_creation DATETIME DEFAULT CURRENT_TIMESTAMP,
+    utilise TINYINT(1) DEFAULT 0
+);
+
+
+CREATE TABLE tokens_confirmation (
+id INT AUTO_INCREMENT PRIMARY KEY,
+token VARCHAR(64) UNIQUE NOT NULL,
+email VARCHAR(255) NOT NULL,
+expiration DATETIME NOT NULL,
+utilise TINYINT DEFAULT 0
+);
