@@ -146,3 +146,11 @@ email VARCHAR(255) NOT NULL,
 expiration DATETIME NOT NULL,
 utilise TINYINT DEFAULT 0
 );
+
+
+ALTER TABLE tokens_confirmation 
+ADD COLUMN id_client BIGINT NULL AFTER email;
+
+-- Optionnel : ajouter une clé étrangère
+ALTER TABLE tokens_confirmation 
+ADD FOREIGN KEY (id_client) REFERENCES Client(idClient);

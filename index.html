@@ -1283,13 +1283,28 @@
               Cliquez sur le lien reçu par email pour confirmer votre identité.
             </p>
 
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0; color: #666; font-size: 14px;">
-                <strong>Important :</strong> Le lien est valable pendant 15 minutes
+            <div
+              style="
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+              "
+            >
+              <p style="margin: 0; color: #666; font-size: 14px">
+                <strong>Important :</strong> Le lien est valable pendant 15
+                minutes
               </p>
             </div>
 
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px">
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                margin-top: 20px;
+              "
+            >
               <button
                 onclick="retourSaisieEmail()"
                 style="
@@ -1417,7 +1432,7 @@
               <label
                 style="display: block; margin-bottom: 5px; font-weight: bold"
                 >Téléphone</label
-                >
+              >
               <input
                 type="tel"
                 id="telephone"
@@ -1527,8 +1542,7 @@
               <label
                 style="display: block; margin-bottom: 5px; font-weight: bold"
                 >Nom sur la carte</label
-              >
-              <input
+                             <input
                 type="text"
                 id="nom-carte"
                 placeholder="M DUPONT"
@@ -1576,244 +1590,261 @@
       </div>
     </div>
 
-   <script>
-    // Variables globales
-    let panierData = null;
-    let emailEnCours = "";
-    let typeProcessus = "";
+    <script>
+      // Variables globales
+      let panierData = null;
+      let emailEnCours = "";
+      let typeProcessus = "";
 
-    class OrigamiAPI {
+      class OrigamiAPI {
         constructor() {
-            this.baseUrl = "acheter.php";
+          this.baseUrl = "acheter.php";
         }
 
         async envoyerLienConfirmation(email, nom) {
-            try {
-                const response = await fetch(this.baseUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: "envoyer_lien_confirmation",
-                        email: email,
-                        nom: nom
-                    }),
-                });
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur envoi lien:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "envoyer_lien_confirmation",
+                email: email,
+                nom: nom,
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur envoi lien:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
 
         async ajouterAuPanier(idOrigami, quantite = 1) {
-            try {
-                const response = await fetch(this.baseUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: "ajouter_au_panier",
-                        idOrigami: parseInt(idOrigami),
-                        quantite: parseInt(quantite),
-                    }),
-                });
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "ajouter_au_panier",
+                idOrigami: parseInt(idOrigami),
+                quantite: parseInt(quantite),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
 
         async getPanier() {
-            try {
-                const response = await fetch(`${this.baseUrl}?action=get_panier`);
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(`${this.baseUrl}?action=get_panier`);
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
 
         async modifierQuantite(idLignePanier, quantite) {
-            try {
-                const response = await fetch(this.baseUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: "modifier_quantite",
-                        idLignePanier: parseInt(idLignePanier),
-                        quantite: parseInt(quantite),
-                    }),
-                });
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "modifier_quantite",
+                idLignePanier: parseInt(idLignePanier),
+                quantite: parseInt(quantite),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
 
         async supprimerDuPanier(idLignePanier) {
-            try {
-                const response = await fetch(this.baseUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: "supprimer_du_panier",
-                        idLignePanier: parseInt(idLignePanier),
-                    }),
-                });
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "supprimer_du_panier",
+                idLignePanier: parseInt(idLignePanier),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
 
         async viderPanier() {
-            try {
-                const response = await fetch(this.baseUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: "vider_panier",
-                    }),
-                });
-                return await response.json();
-            } catch (error) {
-                console.error("Erreur:", error);
-                return { status: 500, error: "Erreur réseau" };
-            }
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "vider_panier",
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { success: false, error: "Erreur réseau" };
+          }
         }
-    }
+      }
 
-    // Initialisation de l'API
-    const origamiAPI = new OrigamiAPI();
+      // Initialisation de l'API
+      const origamiAPI = new OrigamiAPI();
 
-    // FONCTIONS POUR L'ENVOI D'EMAIL RÉEL
-    async function envoyerEmailConfirmation(email, nom) {
+      // FONCTIONS POUR L'ENVOI D'EMAIL RÉEL
+      async function envoyerEmailConfirmation(email, nom) {
         try {
-            console.log("Envoi email confirmation à:", email, nom);
+          console.log("Envoi email confirmation à:", email, nom);
 
-            const result = await origamiAPI.envoyerLienConfirmation(email, nom);
-            console.log("Réponse envoi email:", result);
+          const result = await origamiAPI.envoyerLienConfirmation(email, nom);
+          console.log("Réponse envoi email:", result);
 
-            if (result.status === 200) {
-                showNotification(
-                    `Lien de confirmation envoyé à ${email}` +
-                        (result.data.client_existant
-                            ? " (client existant)"
-                            : " (nouveau client)"),
-                    "success"
-                );
-                return { success: true, client_existant: result.data.client_existant };
-            } else {
-                showNotification("Erreur: " + result.error, "error");
-                return { success: false, message: result.error };
-            }
-        } catch (error) {
-            console.error("Erreur envoi email:", error);
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (result.success) {
             showNotification(
-                "Erreur de connexion au serveur: " + error.message,
-                "error"
+              `Lien de confirmation envoyé à ${email}` +
+                (result.client_existant ? " (client existant)" : " (nouveau client)"),
+              "success"
             );
             return {
-                success: false,
-                message: "Erreur de connexion: " + error.message,
+              success: true,
+              client_existant: result.client_existant,
             };
+          } else {
+            showNotification("Erreur: " + result.error, "error");
+            return { success: false, message: result.error };
+          }
+        } catch (error) {
+          console.error("Erreur envoi email:", error);
+          showNotification(
+            "Erreur de connexion au serveur: " + error.message,
+            "error"
+          );
+          return {
+            success: false,
+            message: "Erreur de connexion: " + error.message,
+          };
         }
-    }
+      }
 
-    // FONCTION POUR LES BOUTONS COMMANDER
-    function setupBoutonsCommander() {
+      // FONCTION POUR LES BOUTONS COMMANDER
+      function setupBoutonsCommander() {
         console.log("Initialisation des boutons commander...");
 
         document.querySelectorAll(".product-card .btn").forEach((bouton) => {
-            bouton.replaceWith(bouton.cloneNode(true));
+          bouton.replaceWith(bouton.cloneNode(true));
         });
 
         document.querySelectorAll(".product-card .btn").forEach((bouton) => {
-            bouton.addEventListener("click", async function (e) {
-                e.preventDefault();
-                e.stopPropagation();
+          bouton.addEventListener("click", async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
 
-                const carteProduit = this.closest(".product-card");
-                const idProduit = carteProduit.getAttribute("data-id");
-                const nomProduit = carteProduit.querySelector(".product-info h3").textContent;
+            const carteProduit = this.closest(".product-card");
+            const idProduit = carteProduit.getAttribute("data-id");
+            const nomProduit =
+              carteProduit.querySelector(".product-info h3").textContent;
 
-                console.log("Bouton cliqué - ID produit:", idProduit, "Nom:", nomProduit);
+            console.log(
+              "Bouton cliqué - ID produit:",
+              idProduit,
+              "Nom:",
+              nomProduit
+            );
 
-                if (!idProduit) {
-                    console.error("ID produit non trouvé");
-                    showNotification("Erreur: Produit non reconnu", "error");
-                    return;
-                }
-
-                const originalText = this.textContent;
-                this.textContent = "Ajout...";
-                this.disabled = true;
-
-                try {
-                    const result = await origamiAPI.ajouterAuPanier(idProduit);
-
-                    if (result.status === 200) {
-                        this.textContent = "✓ Ajouté !";
-                        this.style.backgroundColor = "#28a745";
-
-                        setTimeout(() => {
-                            this.textContent = originalText;
-                            this.style.backgroundColor = "";
-                            this.disabled = false;
-                        }, 1500);
-
-                        updateAffichagePanier();
-                        showNotification(`"${nomProduit}" ajouté au panier !`, "success");
-                    } else {
-                        this.textContent = originalText;
-                        this.disabled = false;
-                        showNotification("Erreur: " + (result.error || "Impossible d'ajouter au panier"), "error");
-                    }
-                } catch (error) {
-                    console.error("Erreur:", error);
-                    this.textContent = originalText;
-                    this.disabled = false;
-                    showNotification("Erreur réseau", "error");
-                }
-            });
-        });
-    }
-
-    // FONCTION POUR METTRE À JOUR L'AFFICHAGE DU PANIER
-    async function updateAffichagePanier() {
-        try {
-            const panier = await origamiAPI.getPanier();
-            panierData = panier;
-            console.log("Panier mis à jour:", panier);
-
-            if (panier.status === 200) {
-                const compteurPanier = document.getElementById("compteur-panier");
-                if (compteurPanier) {
-                    compteurPanier.textContent = panier.data.totalQuantites || 0;
-                }
+            if (!idProduit) {
+              console.error("ID produit non trouvé");
+              showNotification("Erreur: Produit non reconnu", "error");
+              return;
             }
 
-            updateEtatBoutonCommande();
-            updateEtatBoutonVider();
-        } catch (error) {
-            console.error("Erreur mise à jour panier:", error);
-        }
-    }
+            const originalText = this.textContent;
+            this.textContent = "Ajout...";
+            this.disabled = true;
 
-    // FONCTION POUR AFFICHER LES NOTIFICATIONS
-    function showNotification(message, type = "info", duree = 3000) {
+            try {
+              const result = await origamiAPI.ajouterAuPanier(idProduit);
+
+              // CORRECTION : Utiliser result.success au lieu de result.status
+              if (result.success) {
+                this.textContent = "✓ Ajouté !";
+                this.style.backgroundColor = "#28a745";
+
+                setTimeout(() => {
+                  this.textContent = originalText;
+                  this.style.backgroundColor = "";
+                  this.disabled = false;
+                }, 1500);
+
+                updateAffichagePanier();
+                showNotification(
+                  `"${nomProduit}" ajouté au panier !`,
+                  "success"
+                );
+              } else {
+                this.textContent = originalText;
+                this.disabled = false;
+                showNotification(
+                  "Erreur: " +
+                    (result.error || "Impossible d'ajouter au panier"),
+                  "error"
+                );
+              }
+            } catch (error) {
+              console.error("Erreur:", error);
+              this.textContent = originalText;
+              this.disabled = false;
+              showNotification("Erreur réseau", "error");
+            }
+          });
+        });
+      }
+
+      // FONCTION POUR METTRE À JOUR L'AFFICHAGE DU PANIER
+      async function updateAffichagePanier() {
+        try {
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+          console.log("Panier mis à jour:", panier);
+
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (panier.success) {
+            const compteurPanier = document.getElementById("compteur-panier");
+            if (compteurPanier) {
+              compteurPanier.textContent = panier.data.totalQuantites || 0;
+            }
+          }
+
+          updateEtatBoutonCommande();
+          updateEtatBoutonVider();
+        } catch (error) {
+          console.error("Erreur mise à jour panier:", error);
+        }
+      }
+
+      // FONCTION POUR AFFICHER LES NOTIFICATIONS
+      function showNotification(message, type = "info", duree = 3000) {
         const notification = document.createElement("div");
         notification.className = `notification ${type}`;
         notification.innerHTML = `
@@ -1824,99 +1855,109 @@
         `;
 
         if (message.includes("panier") || message.includes("vide")) {
-            notification.style.background = "#ffc107";
-            notification.style.color = "#856404";
+          notification.style.background = "#ffc107";
+          notification.style.color = "#856404";
         }
 
         document.body.appendChild(notification);
 
         setTimeout(() => {
-            notification.style.transform = "translateX(0)";
+          notification.style.transform = "translateX(0)";
         }, 100);
 
         setTimeout(() => {
-            notification.style.transform = "translateX(400px)";
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
+          notification.style.transform = "translateX(400px)";
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
         }, duree);
-    }
+      }
 
-    function getIconeType(type) {
+      function getIconeType(type) {
         const icones = {
-            success: "✅",
-            error: "❌",
-            info: "ℹ️",
-            warning: "⚠️",
+          success: "✅",
+          error: "❌",
+          info: "ℹ️",
+          warning: "⚠️",
         };
         return icones[type] || "ℹ️";
-    }
+      }
 
-    // FONCTIONS POUR LA GESTION DU PANIER
-    async function updateEtatBoutonCommande() {
+      // FONCTIONS POUR LA GESTION DU PANIER
+      async function updateEtatBoutonCommande() {
         const bouton = document.getElementById("btn-passer-commande");
         if (!bouton) return;
 
         try {
-            const panier = await origamiAPI.getPanier();
-            panierData = panier;
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
 
-            if (panier.status === 200 && panier.data.articles && panier.data.articles.length > 0) {
-                bouton.disabled = false;
-                bouton.style.backgroundColor = "#d40000";
-                bouton.style.cursor = "pointer";
-                bouton.style.opacity = "1";
-                bouton.title = "Cliquer pour passer commande";
-            } else {
-                bouton.disabled = true;
-                bouton.style.backgroundColor = "#cccccc";
-                bouton.style.cursor = "not-allowed";
-                bouton.style.opacity = "0.6";
-                bouton.title = "Votre panier est vide";
-            }
-        } catch (error) {
-            console.error("Erreur mise à jour bouton:", error);
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (
+            panier.success &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            bouton.disabled = false;
+            bouton.style.backgroundColor = "#d40000";
+            bouton.style.cursor = "pointer";
+            bouton.style.opacity = "1";
+            bouton.title = "Cliquer pour passer commande";
+          } else {
             bouton.disabled = true;
             bouton.style.backgroundColor = "#cccccc";
             bouton.style.cursor = "not-allowed";
             bouton.style.opacity = "0.6";
+            bouton.title = "Votre panier est vide";
+          }
+        } catch (error) {
+          console.error("Erreur mise à jour bouton:", error);
+          bouton.disabled = true;
+          bouton.style.backgroundColor = "#cccccc";
+          bouton.style.cursor = "not-allowed";
+          bouton.style.opacity = "0.6";
         }
-    }
+      }
 
-    async function updateEtatBoutonVider() {
+      async function updateEtatBoutonVider() {
         const btnVider = document.getElementById("btn-vider-panier");
         if (!btnVider) return;
 
         try {
-            const panier = await origamiAPI.getPanier();
-            panierData = panier;
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
 
-            if (panier.status === 200 && panier.data.articles && panier.data.articles.length > 0) {
-                btnVider.disabled = false;
-                btnVider.style.background = "#6c757d";
-                btnVider.style.cursor = "pointer";
-            } else {
-                btnVider.disabled = true;
-                btnVider.style.background = "#cccccc";
-                btnVider.style.cursor = "not-allowed";
-            }
-        } catch (error) {
-            console.error("Erreur mise à jour bouton vider:", error);
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (
+            panier.success &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            btnVider.disabled = false;
+            btnVider.style.background = "#6c757d";
+            btnVider.style.cursor = "pointer";
+          } else {
             btnVider.disabled = true;
             btnVider.style.background = "#cccccc";
             btnVider.style.cursor = "not-allowed";
+          }
+        } catch (error) {
+          console.error("Erreur mise à jour bouton vider:", error);
+          btnVider.disabled = true;
+          btnVider.style.background = "#cccccc";
+          btnVider.style.cursor = "not-allowed";
         }
-    }
+      }
 
-    // FONCTION POUR AFFICHER LA MODAL PANIER
-    function afficherPanierModal() {
+      // FONCTION POUR AFFICHER LA MODAL PANIER
+      function afficherPanierModal() {
         let modal = document.getElementById("panier-modal");
         if (!modal) {
-            modal = document.createElement("div");
-            modal.id = "panier-modal";
-            modal.style.cssText = `
+          modal = document.createElement("div");
+          modal.id = "panier-modal";
+          modal.style.cssText = `
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -1929,7 +1970,7 @@
                 z-index: 2000;
             `;
 
-            modal.innerHTML = `
+          modal.innerHTML = `
                 <div style="background: white; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 style="margin: 0; color: #333;">Votre Panier</h2>
@@ -1942,27 +1983,32 @@
                     </div>
                 </div>
             `;
-            document.body.appendChild(modal);
+          document.body.appendChild(modal);
         }
 
         modal.style.display = "flex";
         chargerContenuPanier();
-    }
+      }
 
-    // FONCTION CORRIGÉE POUR CHARGER LE CONTENU DU PANIER
-    async function chargerContenuPanier() {
+      // FONCTION CORRIGÉE POUR CHARGER LE CONTENU DU PANIER
+      async function chargerContenuPanier() {
         try {
-            const panier = await origamiAPI.getPanier();
-            panierData = panier;
-            const content = document.getElementById("panier-content");
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+          const content = document.getElementById("panier-content");
 
-            console.log("Chargement contenu panier:", panier);
+          console.log("Chargement contenu panier:", panier);
 
-            updateEtatBoutonCommande();
-            updateEtatBoutonVider();
+          updateEtatBoutonCommande();
+          updateEtatBoutonVider();
 
-            if (panier.status === 200 && panier.data.articles && panier.data.articles.length > 0) {
-                let html = `
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (
+            panier.success &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            let html = `
                     <div style="max-height: 400px; overflow-y: auto;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
@@ -1977,37 +2023,62 @@
                             <tbody>
                 `;
 
-                panier.data.articles.forEach((article) => {
-                    html += `
+            panier.data.articles.forEach((article) => {
+              html += `
                         <tr style="border-bottom: 1px solid #f0f0f0;">
                             <td style="padding: 15px 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                        <img src="${article.photo}" alt="${article.nom}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+                                        <img src="${article.photo}" alt="${
+                article.nom
+              }" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
                                     </div>
                                     <div>
                                         <strong>${article.nom}</strong><br>
-                                        <small style="color: #666;">${article.description ? article.description.substring(0, 50) + "..." : "Description non disponible"}</small>
+                                        <small style="color: #666;">${
+                                          article.description
+                                            ? article.description.substring(
+                                                0,
+                                                50
+                                              ) + "..."
+                                            : "Description non disponible"
+                                        }</small>
                                     </div>
                                 </div>
                             </td>
-                            <td style="text-align: center; padding: 10px;">${article.prixUnitaire}€</td>
+                            <td style="text-align: center; padding: 10px;">${
+                              article.prixUnitaire
+                            }€</td>
                             <td style="text-align: center; padding: 10px;">
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite - 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
-                                    <span style="min-width: 30px; display: inline-block;">${article.quantite}</span>
-                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite + 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
+                                    <button onclick="modifierQuantite(${
+                                      article.idLignePanier
+                                    }, ${
+                article.quantite - 1
+              })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
+                                    <span style="min-width: 30px; display: inline-block;">${
+                                      article.quantite
+                                    }</span>
+                                    <button onclick="modifierQuantite(${
+                                      article.idLignePanier
+                                    }, ${
+                article.quantite + 1
+              })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
                                 </div>
                             </td>
-                            <td style="text-align: center; padding: 10px; font-weight: bold;">${article.totalLigne}€</td>
+                            <td style="text-align: center; padding: 10px; font-weight: bold;">${
+                              article.totalLigne
+                            }€</td>
                             <td style="text-align: center; padding: 10px;">
-                                <button onclick="supprimerArticle(${article.idLignePanier})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
+                                <button onclick="supprimerArticle(${
+                                  article.idLignePanier
+                                })" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
                             </td>
                         </tr>
                     `;
-                });
+            });
 
-                html += `
+            html += `
                             </tbody>
                         </table>
                     </div>
@@ -2016,9 +2087,9 @@
                         <span>${panier.data.total}€</span>
                     </div>
                 `;
-                content.innerHTML = html;
-            } else {
-                content.innerHTML = `
+            content.innerHTML = html;
+          } else {
+            content.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #666;">
                         <div style="font-size: 48px; margin-bottom: 20px;">🛒</div>
                         <h3>Votre panier est vide</h3>
@@ -2028,11 +2099,11 @@
                         </button>
                     </div>
                 `;
-            }
+          }
         } catch (error) {
-            console.error("Erreur chargement panier:", error);
-            const content = document.getElementById("panier-content");
-            content.innerHTML = `
+          console.error("Erreur chargement panier:", error);
+          const content = document.getElementById("panier-content");
+          content.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #666;">
                     <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
                     <h3>Erreur de chargement</h3>
@@ -2043,262 +2114,315 @@
                 </div>
             `;
         }
-    }
+      }
 
-    function fermerPanierModal() {
+      function fermerPanierModal() {
         const modal = document.getElementById("panier-modal");
         if (modal) {
-            modal.style.display = "none";
+          modal.style.display = "none";
         }
-    }
+      }
 
-    async function modifierQuantite(idLignePanier, nouvelleQuantite) {
+      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
         if (nouvelleQuantite < 1) {
-            await supprimerArticle(idLignePanier);
-            return;
+          await supprimerArticle(idLignePanier);
+          return;
         }
 
         try {
-            const result = await origamiAPI.modifierQuantite(idLignePanier, nouvelleQuantite);
+          const result = await origamiAPI.modifierQuantite(
+            idLignePanier,
+            nouvelleQuantite
+          );
 
-            if (result.status === 200) {
-                await chargerContenuPanier();
-                await updateAffichagePanier();
-                showNotification("Quantité modifiée", "success");
-            } else {
-                showNotification("Erreur lors de la modification", "error");
-            }
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (result.success) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Quantité modifiée", "success");
+          } else {
+            showNotification("Erreur lors de la modification", "error");
+          }
         } catch (error) {
-            console.error("Erreur modification quantité:", error);
-            showNotification("Erreur réseau", "error");
+          console.error("Erreur modification quantité:", error);
+          showNotification("Erreur réseau", "error");
         }
-    }
+      }
 
-    async function supprimerArticle(idLignePanier) {
+      async function supprimerArticle(idLignePanier) {
         try {
-            const result = await origamiAPI.supprimerDuPanier(idLignePanier);
+          const result = await origamiAPI.supprimerDuPanier(idLignePanier);
 
-            if (result.status === 200) {
-                await chargerContenuPanier();
-                await updateAffichagePanier();
-                showNotification("Article supprimé du panier", "success");
-            } else {
-                showNotification("Erreur lors de la suppression", "error");
-            }
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (result.success) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Article supprimé du panier", "success");
+          } else {
+            showNotification("Erreur lors de la suppression", "error");
+          }
         } catch (error) {
-            console.error("Erreur suppression article:", error);
-            showNotification("Erreur réseau", "error");
+          console.error("Erreur suppression article:", error);
+          showNotification("Erreur réseau", "error");
         }
-    }
+      }
 
-    async function viderPanier() {
+      async function viderPanier() {
         if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
-            return;
+          return;
         }
 
         try {
-            const result = await origamiAPI.viderPanier();
+          const result = await origamiAPI.viderPanier();
 
-            if (result.status === 200) {
-                await chargerContenuPanier();
-                await updateAffichagePanier();
-                showNotification("Panier vidé", "success");
-            } else {
-                showNotification("Erreur lors du vidage du panier", "error");
-            }
+          // CORRECTION : Utiliser result.success au lieu de result.status
+          if (result.success) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Panier vidé", "success");
+          } else {
+            showNotification("Erreur lors du vidage du panier", "error");
+          }
         } catch (error) {
-            console.error("Erreur vidage panier:", error);
-            showNotification("Erreur réseau", "error");
+          console.error("Erreur vidage panier:", error);
+          showNotification("Erreur réseau", "error");
         }
-    }
+      }
 
-    function verifierEtPasserCommande() {
-        if (!panierData || !panierData.data.articles || panierData.data.articles.length === 0) {
-            showNotification("Votre panier est vide", "error");
-            return;
+      function verifierEtPasserCommande() {
+        if (
+          !panierData ||
+          !panierData.data.articles ||
+          panierData.data.articles.length === 0
+        ) {
+          showNotification("Votre panier est vide", "error");
+          return;
         }
 
         fermerPanierModal();
         afficherCommandeModal();
-    }
+      }
 
-    // FONCTIONS POUR LA MODAL DE COMMANDE
-    function afficherCommandeModal() {
+      // FONCTIONS POUR LA MODAL DE COMMANDE
+      function afficherCommandeModal() {
         const modal = document.getElementById("commande-modal");
         if (modal) {
-            modal.style.display = "flex";
-            resetCommandeModal();
+          modal.style.display = "flex";
+          resetCommandeModal();
         }
-    }
+      }
 
-    function fermerCommandeModal() {
+      function fermerCommandeModal() {
         const modal = document.getElementById("commande-modal");
         if (modal) {
-            modal.style.display = "none";
+          modal.style.display = "none";
         }
-    }
+      }
 
-    function resetCommandeModal() {
+      function resetCommandeModal() {
         document.getElementById("etape-choix-compte").style.display = "block";
         document.getElementById("etape-saisie-email").style.display = "none";
-        document.getElementById("etape-confirmation-lien").style.display = "none";
+        document.getElementById("etape-confirmation-lien").style.display =
+          "none";
         document.getElementById("etape-livraison").style.display = "none";
         document.getElementById("etape-paiement").style.display = "none";
-    }
+      }
 
-    function choisirEmailExistant() {
+      function choisirEmailExistant() {
         document.getElementById("etape-choix-compte").style.display = "none";
         document.getElementById("etape-saisie-email").style.display = "block";
         typeProcessus = "existant";
-    }
+      }
 
-    function choisirNouveauCompte() {
+      function choisirNouveauCompte() {
         document.getElementById("etape-choix-compte").style.display = "none";
         document.getElementById("etape-saisie-email").style.display = "block";
         typeProcessus = "nouveau";
-    }
+      }
 
-    function retourChoixCompte() {
+      function retourChoixCompte() {
         document.getElementById("etape-saisie-email").style.display = "none";
         document.getElementById("etape-choix-compte").style.display = "block";
-    }
+      }
 
-    function retourSaisieEmail() {
-        document.getElementById("etape-confirmation-lien").style.display = "none";
+      function retourSaisieEmail() {
+        document.getElementById("etape-confirmation-lien").style.display =
+          "none";
         document.getElementById("etape-saisie-email").style.display = "block";
-    }
+      }
 
-    function retourConfirmationLien() {
+      function retourConfirmationLien() {
         document.getElementById("etape-livraison").style.display = "none";
-        document.getElementById("etape-confirmation-lien").style.display = "block";
-    }
+        document.getElementById("etape-confirmation-lien").style.display =
+          "block";
+      }
 
-    // Gestion de la soumission de l'email
-    function soumettreEmail() {
+      // Gestion de la soumission de l'email
+      function soumettreEmail() {
         const email = document.getElementById("email-saisi").value;
         const nom = document.getElementById("nom-saisi").value || "Client";
 
         if (!email || !email.includes("@")) {
-            showNotification("Veuillez saisir un email valide", "error");
-            return;
+          showNotification("Veuillez saisir un email valide", "error");
+          return;
         }
 
-        const btn = document.querySelector('#etape-saisie-email button[type="submit"]');
+        // Stocker l'email pour la confirmation
+        localStorage.setItem("email_confirmation", email);
+        sessionStorage.setItem("email_confirmation", email);
+
+        const btn = document.querySelector(
+          '#etape-saisie-email button[type="submit"]'
+        );
         const texteOriginal = btn.textContent;
         btn.textContent = "Envoi en cours...";
         btn.disabled = true;
 
         envoyerEmailConfirmation(email, nom).then((result) => {
-            btn.textContent = texteOriginal;
-            btn.disabled = false;
+          btn.textContent = texteOriginal;
+          btn.disabled = false;
 
-            if (result.success) {
-                emailEnCours = email;
-                document.getElementById("etape-saisie-email").style.display = "none";
-                document.getElementById("etape-confirmation-lien").style.display = "block";
-                document.getElementById("email-a-verifier").textContent = email;
-            }
+          if (result.success) {
+            emailEnCours = email;
+            document.getElementById("etape-saisie-email").style.display =
+              "none";
+            document.getElementById("etape-confirmation-lien").style.display =
+              "block";
+            document.getElementById("email-a-verifier").textContent = email;
+
+            // Mettre à jour le message avec le vrai processus
+            document.querySelector(
+              "#etape-confirmation-lien p"
+            ).innerHTML = `Nous avons envoyé un lien de confirmation à<br>
+                 <strong>${email}</strong><br><br>
+                 <em>Cliquez sur le lien reçu par email pour finaliser votre commande.</em>`;
+          }
         });
-    }
+      }
 
-    function renvoyerLienConfirmation() {
+      function renvoyerLienConfirmation() {
         const nom = document.getElementById("nom-saisi").value || "Client";
         envoyerEmailConfirmation(emailEnCours, nom).then((result) => {
-            if (result.success) {
-                showNotification("Lien de confirmation renvoyé", "success");
-            }
+          if (result.success) {
+            showNotification("Lien de confirmation renvoyé", "success");
+          }
         });
-    }
+      }
 
-    // Gestion du formulaire de livraison
-    document.getElementById("form-livraison").addEventListener("submit", function (e) {
-        e.preventDefault();
+      // Gestion du formulaire de livraison
+      document
+        .getElementById("form-livraison")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
 
-        const prenom = document.getElementById("prenom").value;
-        const nom = document.getElementById("nom").value;
-        const adresse = document.getElementById("adresse").value;
-        const codePostal = document.getElementById("code-postal").value;
-        const ville = document.getElementById("ville").value;
-        const telephone = document.getElementById("telephone").value;
+          const prenom = document.getElementById("prenom").value;
+          const nom = document.getElementById("nom").value;
+          const adresse = document.getElementById("adresse").value;
+          const codePostal = document.getElementById("code-postal").value;
+          const ville = document.getElementById("ville").value;
+          const telephone = document.getElementById("telephone").value;
 
-        if (!prenom || !nom || !adresse || !codePostal || !ville || !telephone) {
+          if (
+            !prenom ||
+            !nom ||
+            !adresse ||
+            !codePostal ||
+            !ville ||
+            !telephone
+          ) {
             showNotification("Veuillez remplir tous les champs", "error");
             return;
-        }
+          }
 
-        document.getElementById("etape-livraison").style.display = "none";
-        document.getElementById("etape-paiement").style.display = "block";
-    });
+          document.getElementById("etape-livraison").style.display = "none";
+          document.getElementById("etape-paiement").style.display = "block";
+        });
 
-    function retourEtapeLivraison() {
+      function retourEtapeLivraison() {
         document.getElementById("etape-paiement").style.display = "none";
         document.getElementById("etape-livraison").style.display = "block";
-    }
+      }
 
-    // Gestion du formulaire de paiement
-    document.getElementById("form-paiement").addEventListener("submit", function (e) {
-        e.preventDefault();
+      // Gestion du formulaire de paiement
+      document
+        .getElementById("form-paiement")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
 
-        const numeroCarte = document.getElementById("numero-carte").value;
-        const expiration = document.getElementById("expiration").value;
-        const cvv = document.getElementById("cvv").value;
-        const nomCarte = document.getElementById("nom-carte").value;
+          const numeroCarte = document.getElementById("numero-carte").value;
+          const expiration = document.getElementById("expiration").value;
+          const cvv = document.getElementById("cvv").value;
+          const nomCarte = document.getElementById("nom-carte").value;
 
-        if (!numeroCarte || !expiration || !cvv || !nomCarte) {
-            showNotification("Veuillez remplir tous les champs de paiement", "error");
+          if (!numeroCarte || !expiration || !cvv || !nomCarte) {
+            showNotification(
+              "Veuillez remplir tous les champs de paiement",
+              "error"
+            );
             return;
-        }
+          }
 
-        const boutonPaiement = document.querySelector('#form-paiement button[type="submit"]');
-        const texteOriginal = boutonPaiement.textContent;
-        boutonPaiement.textContent = "Traitement en cours...";
-        boutonPaiement.disabled = true;
+          const boutonPaiement = document.querySelector(
+            '#form-paiement button[type="submit"]'
+          );
+          const texteOriginal = boutonPaiement.textContent;
+          boutonPaiement.textContent = "Traitement en cours...";
+          boutonPaiement.disabled = true;
 
-        setTimeout(() => {
+          setTimeout(() => {
             fermerCommandeModal();
-            showNotification("Commande confirmée ! Merci pour votre achat.", "success");
+            showNotification(
+              "Commande confirmée ! Merci pour votre achat.",
+              "success"
+            );
 
             origamiAPI.viderPanier().then(() => {
-                updateAffichagePanier();
+              updateAffichagePanier();
             });
 
             boutonPaiement.textContent = texteOriginal;
             boutonPaiement.disabled = false;
-        }, 2000);
-    });
+          }, 2000);
+        });
 
-    // Fermer les modals en cliquant à l'extérieur
-    document.addEventListener("click", function (e) {
+      // Fermer les modals en cliquant à l'extérieur
+      document.addEventListener("click", function (e) {
         const panierModal = document.getElementById("panier-modal");
         const commandeModal = document.getElementById("commande-modal");
 
         if (panierModal && e.target === panierModal) {
-            fermerPanierModal();
+          fermerPanierModal();
         }
 
         if (commandeModal && e.target === commandeModal) {
-            fermerCommandeModal();
+          fermerCommandeModal();
         }
-    });
+      });
 
-    // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
-    document.querySelectorAll("#panier-modal > div, #commande-modal > div").forEach((modalContent) => {
-        modalContent.addEventListener("click", function (e) {
+      // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
+      document
+        .querySelectorAll("#panier-modal > div, #commande-modal > div")
+        .forEach((modalContent) => {
+          modalContent.addEventListener("click", function (e) {
             e.stopPropagation();
+          });
         });
-    });
 
-    // INITIALISATION
-    document.addEventListener("DOMContentLoaded", function () {
+      // INITIALISATION
+      document.addEventListener("DOMContentLoaded", function () {
         console.log("Page chargée - Initialisation...");
         setupBoutonsCommander();
         updateAffichagePanier();
 
-        document.getElementById("lien-panier").addEventListener("click", function (e) {
+        document
+          .getElementById("lien-panier")
+          .addEventListener("click", function (e) {
             e.preventDefault();
             afficherPanierModal();
-        });
+          });
 
         console.log("Initialisation terminée");
-    });
-</script>
+      });
+    </script>
+  </body>
+</html>
