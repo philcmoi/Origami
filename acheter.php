@@ -114,19 +114,116 @@ function nettoyerTokensExpires($pdo) {
     }
 }
 
-// Fonction pour nettoyer les clients temporaires anciens
-function nettoyerClientsTemporaires($pdo) {
+// FONCTION AMÉLIORÉE : Nettoyage complet des clients temporaires et zombies
+function nettoyerClientsTemporairesAmeliore($pdo) {
     try {
-        // Vérifier si la colonne type existe avant de nettoyer
-        $stmt = $pdo->prepare("DELETE FROM Client WHERE type = 'temporaire' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
-        $stmt->execute();
-        $count = $stmt->rowCount();
-        if ($count > 0) {
-            error_log("Nettoyage clients temporaires: " . $count . " clients supprimés");
+        error_log("🔍 Début du nettoyage des clients temporaires et zombies");
+        $countTotal = 0;
+
+        // 1. Nettoyage des clients temporaires anciens (avec ou sans colonne type)
+        try {
+            $stmt = $pdo->prepare("DELETE FROM Client WHERE (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmt->execute();
+            $countTemp = $stmt->rowCount();
+            $countTotal += $countTemp;
+            if ($countTemp > 0) {
+                error_log("🧹 Clients temporaires supprimés: " . $countTemp);
+            }
+        } catch (Exception $e) {
+            // Si colonne type manquante, nettoyer par email et date
+            error_log("Colonne type manquante, utilisation alternative");
+            try {
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+                $stmt->execute();
+                $countTemp = $stmt->rowCount();
+                $countTotal += $countTemp;
+                if ($countTemp > 0) {
+                    error_log("🧹 Clients temporaires (sans type) supprimés: " . $countTemp);
+                }
+            } catch (Exception $e2) {
+                // Si date_creation manquante, nettoyer seulement par email
+                error_log("Colonne date_creation manquante, nettoyage par email uniquement");
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr'");
+                $stmt->execute();
+                $countTemp = $stmt->rowCount();
+                $countTotal += $countTemp;
+                if ($countTemp > 0) {
+                    error_log("🧹 Clients temporaires (email uniquement) supprimés: " . $countTemp);
+                }
+            }
         }
+
+        // 2. Nettoyer les clients sans panier ni commande (zombis) - plus agressif (2 heures)
+        try {
+            $stmt = $pdo->prepare("
+                DELETE c FROM Client c 
+                LEFT JOIN Panier p ON c.idClient = p.idClient 
+                LEFT JOIN Commande cmd ON c.idClient = cmd.idClient 
+                WHERE p.idPanier IS NULL 
+                AND cmd.idCommande IS NULL 
+                AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr')
+            ");
+            $stmt->execute();
+            $countZombies = $stmt->rowCount();
+            $countTotal += $countZombies;
+            if ($countZombies > 0) {
+                error_log("🧟 Clients zombies supprimés: " . $countZombies);
+            }
+        } catch (Exception $e) {
+            error_log("Erreur nettoyage zombies: " . $e->getMessage());
+        }
+
+        // 3. Nettoyer les paniers orphelins (sans client)
+        try {
+            $stmt = $pdo->prepare("
+                DELETE p FROM Panier p 
+                LEFT JOIN Client c ON p.idClient = c.idClient 
+                WHERE c.idClient IS NULL
+            ");
+            $stmt->execute();
+            $countPaniers = $stmt->rowCount();
+            if ($countPaniers > 0) {
+                error_log("🛒 Paniers orphelins supprimés: " . $countPaniers);
+            }
+        } catch (Exception $e) {
+            error_log("Erreur nettoyage paniers orphelins: " . $e->getMessage());
+        }
+
+        // 4. Nettoyer les lignes de panier orphelines
+        try {
+            $stmt = $pdo->prepare("
+                DELETE lp FROM LignePanier lp 
+                LEFT JOIN Panier p ON lp.idPanier = p.idPanier 
+                WHERE p.idPanier IS NULL
+            ");
+            $stmt->execute();
+            $countLignes = $stmt->rowCount();
+            if ($countLignes > 0) {
+                error_log("📝 Lignes panier orphelines supprimées: " . $countLignes);
+            }
+        } catch (Exception $e) {
+            error_log("Erreur nettoyage lignes panier: " . $e->getMessage());
+        }
+
+        if ($countTotal > 0) {
+            error_log("✅ Nettoyage terminé: " . $countTotal . " éléments nettoyés");
+        }
+
+        return $countTotal;
+
     } catch (Exception $e) {
-        error_log("Erreur nettoyage clients temporaires (colonne type probablement manquante): " . $e->getMessage());
+        error_log("❌ Erreur lors du nettoyage: " . $e->getMessage());
+        return 0;
     }
+}
+
+// Fonction pour forcer un nettoyage (à appeler manuellement si besoin)
+function forcerNettoyageComplet($pdo) {
+    error_log("🚨 FORÇAGE DU NETTOYAGE COMPLET");
+    $result = nettoyerClientsTemporairesAmeliore($pdo);
+    error_log("🚨 Résultat nettoyage forcé: " . $result . " éléments supprimés");
+    return $result;
 }
 
 // Gestion des clients temporaires - VERSION COMPATIBLE (avec ou sans colonne type)
@@ -164,6 +261,14 @@ function getOrCreateClient($pdo) {
         return $clientExist['idClient'];
     }
     
+    // AVANT de créer un nouveau client, nettoyer les anciens clients temporaires pour cette session
+    try {
+        $stmt = $pdo->prepare("DELETE FROM Client WHERE session_id = ? AND (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr')");
+        $stmt->execute([$sessionId]);
+    } catch (Exception $e) {
+        error_log("Erreur nettoyage anciens clients session: " . $e->getMessage());
+    }
+    
     // Créer un nouveau client temporaire
     try {
         // Essayer d'insérer avec la colonne type
@@ -189,6 +294,8 @@ function getOrCreateClient($pdo) {
     
     $clientId = $pdo->lastInsertId();
     $_SESSION['client_id'] = $clientId;
+    
+    error_log("🆕 Nouveau client temporaire créé: ID " . $clientId . " pour session " . $sessionId);
     return $clientId;
 }
 
@@ -215,6 +322,13 @@ if ($action == 'saisir_adresse' && isset($_GET['token'])) {
     header('Content-Type: text/html; charset=UTF-8');
 }
 
+// ACTION SPÉCIALE : Nettoyage manuel
+if ($action == 'nettoyer_clients_zombies') {
+    $result = forcerNettoyageComplet($pdo);
+    echo json_encode(['status' => 200, 'message' => 'Nettoyage exécuté', 'elements_supprimes' => $result]);
+    exit;
+}
+
 if (!$action) {
     if ($is_html_response) {
         echo "Action non spécifiée";
@@ -226,14 +340,15 @@ if (!$action) {
 }
 
 try {
-    // Nettoyer les tokens expirés périodiquement (1 chance sur 10)
-    if (rand(1, 10) === 1) {
+    // NETTOYAGE AMÉLIORÉ : Plus fréquent et plus agressif
+    // Nettoyer les tokens expirés périodiquement (1 chance sur 5)
+    if (rand(1, 5) === 1) {
         nettoyerTokensExpires($pdo);
     }
     
-    // Nettoyer les clients temporaires anciens périodiquement (1 chance sur 20)
-    if (rand(1, 20) === 1) {
-        nettoyerClientsTemporaires($pdo);
+    // NETTOYAGE RENFORCÉ : Clients temporaires (1 chance sur 8 au lieu de 20)
+    if (rand(1, 8) === 1) {
+        nettoyerClientsTemporairesAmeliore($pdo);
     }
 
     // CORRECTION CRITIQUE : Seulement créer un client pour les actions qui en ont vraiment besoin
@@ -264,21 +379,21 @@ try {
 
         // Vérifier si l'email existe déjà - VERSION COMPATIBLE
         try {
-        $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ? AND type = 'permanent'");
-        $stmt->execute([$email]);
-        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ? AND type = 'permanent'");
+            $stmt->execute([$email]);
+            $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-    // Attraper spécifiquement PDOException
-    if (strpos($e->getMessage(), "Column not found") !== false || strpos($e->getMessage(), "Unknown column") !== false) {
-        error_log("Colonne type manquante, recherche par email uniquement");
-        $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ?");
-        $stmt->execute([$email]);
-        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
-    } else {
-        // Relancer l'exception si c'est une autre erreur
-        throw $e;
-    }
-    }
+            // Attraper spécifiquement PDOException
+            if (strpos($e->getMessage(), "Column not found") !== false || strpos($e->getMessage(), "Unknown column") !== false) {
+                error_log("Colonne type manquante, recherche par email uniquement");
+                $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ?");
+                $stmt->execute([$email]);
+                $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+            } else {
+                // Relancer l'exception si c'est une autre erreur
+                throw $e;
+            }
+        }
 
         $clientExistant = ($clientExist !== false);
         
@@ -348,14 +463,18 @@ try {
                         }
                     }
                     
-                    // Supprimer le panier temporaire
+                    // Supprimer le panier temporaire et le client temporaire
                     $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier IN (SELECT idPanier FROM Panier WHERE idClient = ?)");
                     $stmt->execute([$idClientTemporaire]);
                     
                     $stmt = $pdo->prepare("DELETE FROM Panier WHERE idClient = ?");
                     $stmt->execute([$idClientTemporaire]);
                     
-                    error_log("Articles transférés du client temporaire " . $idClientTemporaire . " vers le client permanent " . $idClient);
+                    // NETTOYAGE IMMÉDIAT : Supprimer le client temporaire après transfert
+                    $stmt = $pdo->prepare("DELETE FROM Client WHERE idClient = ? AND (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr')");
+                    $stmt->execute([$idClientTemporaire]);
+                    
+                    error_log("🔄 Articles transférés du client temporaire " . $idClientTemporaire . " vers le client permanent " . $idClient . " et client temporaire supprimé");
                 }
                 
                 // Mettre à jour la session
@@ -367,7 +486,6 @@ try {
         }
 
         $tokenConfirmation = genererTokenConfirmation();
-        //$expiration = date('Y-m-d H:i:s', time() + 900); // 15 minutes
 
         // Stocker le token avec vérification
         try {
