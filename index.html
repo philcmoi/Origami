@@ -1542,7 +1542,8 @@
               <label
                 style="display: block; margin-bottom: 5px; font-weight: bold"
                 >Nom sur la carte</label
-                             <input
+              >
+              <input
                 type="text"
                 id="nom-carte"
                 placeholder="M DUPONT"
@@ -1617,7 +1618,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur envoi lien:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
 
@@ -1637,7 +1638,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
 
@@ -1647,7 +1648,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
 
@@ -1667,7 +1668,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
 
@@ -1686,7 +1687,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
 
@@ -1704,7 +1705,7 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
-            return { success: false, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau" };
           }
         }
       }
@@ -1720,16 +1721,17 @@
           const result = await origamiAPI.envoyerLienConfirmation(email, nom);
           console.log("Réponse envoi email:", result);
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
-          if (result.success) {
+          if (result.status === 200) {
             showNotification(
               `Lien de confirmation envoyé à ${email}` +
-                (result.client_existant ? " (client existant)" : " (nouveau client)"),
+                (result.data.client_existant
+                  ? " (client existant)"
+                  : " (nouveau client)"),
               "success"
             );
             return {
               success: true,
-              client_existant: result.client_existant,
+              client_existant: result.data.client_existant,
             };
           } else {
             showNotification("Erreur: " + result.error, "error");
@@ -1786,8 +1788,7 @@
             try {
               const result = await origamiAPI.ajouterAuPanier(idProduit);
 
-              // CORRECTION : Utiliser result.success au lieu de result.status
-              if (result.success) {
+              if (result.status === 200) {
                 this.textContent = "✓ Ajouté !";
                 this.style.backgroundColor = "#28a745";
 
@@ -1828,8 +1829,7 @@
           panierData = panier;
           console.log("Panier mis à jour:", panier);
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
-          if (panier.success) {
+          if (panier.status === 200) {
             const compteurPanier = document.getElementById("compteur-panier");
             if (compteurPanier) {
               compteurPanier.textContent = panier.data.totalQuantites || 0;
@@ -1894,9 +1894,8 @@
           const panier = await origamiAPI.getPanier();
           panierData = panier;
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
           if (
-            panier.success &&
+            panier.status === 200 &&
             panier.data.articles &&
             panier.data.articles.length > 0
           ) {
@@ -1929,9 +1928,8 @@
           const panier = await origamiAPI.getPanier();
           panierData = panier;
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
           if (
-            panier.success &&
+            panier.status === 200 &&
             panier.data.articles &&
             panier.data.articles.length > 0
           ) {
@@ -2002,9 +2000,8 @@
           updateEtatBoutonCommande();
           updateEtatBoutonVider();
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
           if (
-            panier.success &&
+            panier.status === 200 &&
             panier.data.articles &&
             panier.data.articles.length > 0
           ) {
@@ -2135,8 +2132,7 @@
             nouvelleQuantite
           );
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
-          if (result.success) {
+          if (result.status === 200) {
             await chargerContenuPanier();
             await updateAffichagePanier();
             showNotification("Quantité modifiée", "success");
@@ -2153,8 +2149,7 @@
         try {
           const result = await origamiAPI.supprimerDuPanier(idLignePanier);
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
-          if (result.success) {
+          if (result.status === 200) {
             await chargerContenuPanier();
             await updateAffichagePanier();
             showNotification("Article supprimé du panier", "success");
@@ -2175,8 +2170,7 @@
         try {
           const result = await origamiAPI.viderPanier();
 
-          // CORRECTION : Utiliser result.success au lieu de result.status
-          if (result.success) {
+          if (result.status === 200) {
             await chargerContenuPanier();
             await updateAffichagePanier();
             showNotification("Panier vidé", "success");

@@ -154,3 +154,7 @@ ADD COLUMN id_client BIGINT NULL AFTER email;
 -- Optionnel : ajouter une clé étrangère
 ALTER TABLE tokens_confirmation 
 ADD FOREIGN KEY (id_client) REFERENCES Client(idClient);
+
+ALTER TABLE Adresse 
+ADD COLUMN type VARCHAR(20) DEFAULT 'livraison',
+ADD COLUMN dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP;

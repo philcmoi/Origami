@@ -46,7 +46,7 @@ try {
         echo "Erreur de connexion à la base de données";
         exit;
     } else {
-        echo json_encode(['success' => false, 'error' => 'Erreur de connexion à la base de données: ' . $e->getMessage()]);
+        echo json_encode(['status' => 500, 'error' => 'Erreur de connexion à la base de données: ' . $e->getMessage()]);
         exit;
     }
 }
@@ -220,7 +220,7 @@ if (!$action) {
         echo "Action non spécifiée";
         exit;
     } else {
-        echo json_encode(['success' => false, 'error' => 'Action non spécifiée']);
+        echo json_encode(['status' => 400, 'error' => 'Action non spécifiée']);
         exit;
     }
 }
@@ -258,22 +258,27 @@ try {
         $telephone = $data['telephone'] ?? '';
 
         if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            echo json_encode(['success' => false, 'error' => 'Email invalide']);
+            echo json_encode(['status' => 400, 'error' => 'Email invalide']);
             exit;
         }
 
         // Vérifier si l'email existe déjà - VERSION COMPATIBLE
         try {
-            $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ? AND type = 'permanent'");
-            $stmt->execute([$email]);
-            $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            // Si colonne type manquante, chercher simplement par email
-            error_log("Colonne type manquante, recherche par email uniquement");
-            $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ?");
-            $stmt->execute([$email]);
-            $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
-        }
+        $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ? AND type = 'permanent'");
+        $stmt->execute([$email]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+    // Attraper spécifiquement PDOException
+    if (strpos($e->getMessage(), "Column not found") !== false || strpos($e->getMessage(), "Unknown column") !== false) {
+        error_log("Colonne type manquante, recherche par email uniquement");
+        $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ?");
+        $stmt->execute([$email]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+    } else {
+        // Relancer l'exception si c'est une autre erreur
+        throw $e;
+    }
+    }
 
         $clientExistant = ($clientExist !== false);
         
@@ -362,13 +367,12 @@ try {
         }
 
         $tokenConfirmation = genererTokenConfirmation();
-        $expiration = date('Y-m-d H:i:s', time() + 900); // 15 minutes
+        //$expiration = date('Y-m-d H:i:s', time() + 900); // 15 minutes
 
         // Stocker le token avec vérification
         try {
-            $stmt = $pdo->prepare("INSERT INTO tokens_confirmation (token, email, id_client, expiration, utilise) VALUES (?, ?, ?, ?, 0)");
-            $stmt->execute([$tokenConfirmation, $email, $idClient, $expiration]);
-            
+            $stmt = $pdo->prepare("INSERT INTO tokens_confirmation (token, email, id_client, expiration, utilise) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), 0)");
+            $stmt->execute([$tokenConfirmation, $email, $idClient]);
             // Vérifier que l'insertion a réussi
             if ($stmt->rowCount() === 0) {
                 throw new Exception("Échec de l'insertion du token");
@@ -378,7 +382,7 @@ try {
             
         } catch (Exception $e) {
             error_log("ERREUR insertion token: " . $e->getMessage());
-            echo json_encode(['success' => false, 'error' => 'Erreur technique lors de la création du lien de confirmation']);
+            echo json_encode(['status' => 500, 'error' => 'Erreur technique lors de la création du lien de confirmation']);
             exit;
         }
 
@@ -507,15 +511,17 @@ try {
 
         if ($resultatEmail['success']) {
             echo json_encode([
-                'success' => true,
-                'message' => 'Lien de confirmation envoyé',
-                'client_existant' => $clientExistant,
-                'id_client' => $idClient
+                'status' => 200,
+                'data' => [
+                    'message' => 'Lien de confirmation envoyé',
+                    'client_existant' => $clientExistant,
+                    'id_client' => $idClient
+                ]
             ]);
         } else {
             error_log("Échec envoi email à: " . $email . " - Erreur: " . $resultatEmail['error']);
             echo json_encode([
-                'success' => false, 
+                'status' => 500, 
                 'error' => 'Erreur lors de l\'envoi de l\'email. Veuillez réessayer.',
                 'debug' => $resultatEmail['error'] // À retirer en production
             ]);
@@ -636,7 +642,7 @@ try {
                     
                     <div class="form-group">
                         <label for="rue">Adresse <span class="required">*</span></label>
-                        <input type="text" id="rue" name="rue" placeholder="Numéro et nom de rue" required>
+                        <input type="text" id="adresse" name="adresse" placeholder="Numéro et nom de rue" required>
                     </div>
                     
                     <div class="form-group">
@@ -686,8 +692,7 @@ try {
                         
                         const result = await response.json();
                         
-                        // CORRECTION CRITIQUE : Utiliser result.success au lieu de result.status
-                        if (result.success) {
+                        if (result.status === 200) {
                             // Rediriger vers la page de confirmation
                             window.location.href = 'acheter.php?action=confirmer_commande&token=' + data.token;
                         } else {
@@ -708,14 +713,14 @@ try {
         $token = $data['token'] ?? '';
         $nom = $data['nom'] ?? '';
         $prenom = $data['prenom'] ?? '';
-        $rue = $data['rue'] ?? '';
+        $adresse = $data['adresse'] ?? '';
         $codePostal = $data['codePostal'] ?? '';
         $ville = $data['ville'] ?? '';
         $pays = $data['pays'] ?? 'France';
         $telephone = $data['telephone'] ?? '';
 
         if (!$token || !$nom || !$prenom || !$rue || !$codePostal || !$ville) {
-            echo json_encode(['success' => false, 'error' => 'Tous les champs obligatoires doivent être remplis']);
+            echo json_encode(['status' => 400, 'error' => 'Tous les champs obligatoires doivent être remplis']);
             exit;
         }
 
@@ -726,19 +731,19 @@ try {
 
         if (!$tokenData) {
             error_log("Token non trouvé lors de sauvegarde adresse: " . $token);
-            echo json_encode(['success' => false, 'error' => 'Token invalide']);
+            echo json_encode(['status' => 400, 'error' => 'Token invalide']);
             exit;
         }
 
         if ($tokenData['utilise'] == 1) {
             error_log("Token déjà utilisé lors de sauvegarde adresse: " . $token);
-            echo json_encode(['success' => false, 'error' => 'Ce lien a déjà été utilisé']);
+            echo json_encode(['status' => 400, 'error' => 'Ce lien a déjà été utilisé']);
             exit;
         }
 
         if (strtotime($tokenData['expiration']) < time()) {
             error_log("Token expiré lors de sauvegarde adresse: " . $token . ", expiration: " . $tokenData['expiration']);
-            echo json_encode(['success' => false, 'error' => 'Lien expiré. Veuillez demander un nouveau lien.']);
+            echo json_encode(['status' => 400, 'error' => 'Lien expiré. Veuillez demander un nouveau lien.']);
             exit;
         }
 
@@ -747,12 +752,12 @@ try {
         // Créer l'adresse
         $stmt = $pdo->prepare("
             INSERT INTO Adresse 
-            (idClient, type, nom, prenom, rue, codePostal, ville, pays, telephone, dateCreation) 
+            (idClient, type, nom, prenom, adresse, codePostal, ville, pays, telephone, dateCreation) 
             VALUES (?, 'livraison', ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->execute([$idClient, $nom, $prenom, $rue, $codePostal, $ville, $pays, $telephone]);
 
-        echo json_encode(['success' => true, 'message' => 'Adresse sauvegardée']);
+        echo json_encode(['status' => 200, 'message' => 'Adresse sauvegardée']);
 
     } elseif ($action == 'confirmer_commande') {
         // Forcer le type HTML si c'est une confirmation directe
@@ -799,7 +804,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Token manquant']);
+                echo json_encode(['status' => 400, 'error' => 'Token manquant']);
                 exit;
             }
         }
@@ -845,7 +850,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Token invalide']);
+                echo json_encode(['status' => 400, 'error' => 'Token invalide']);
                 exit;
             }
         }
@@ -886,7 +891,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Token déjà utilisé']);
+                echo json_encode(['status' => 400, 'error' => 'Token déjà utilisé']);
                 exit;
             }
         }
@@ -927,7 +932,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Lien expiré. Veuillez demander un nouveau lien.']);
+                echo json_encode(['status' => 400, 'error' => 'Lien expiré. Veuillez demander un nouveau lien.']);
                 exit;
             }
         }
@@ -984,7 +989,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Panier non trouvé']);
+                echo json_encode(['status' => 404, 'error' => 'Panier non trouvé']);
                 exit;
             }
         }
@@ -1036,7 +1041,7 @@ try {
                 <?php
                 exit;
             } else {
-                echo json_encode(['success' => false, 'error' => 'Panier vide']);
+                echo json_encode(['status' => 400, 'error' => 'Panier vide']);
                 exit;
             }
         }
@@ -1069,7 +1074,7 @@ try {
                 exit;
             } else {
                 echo json_encode([
-                    'success' => false, 
+                    'status' => 400, 
                     'error' => 'Adresse manquante',
                     'redirect' => 'acheter.php?action=saisir_adresse&token=' . $token
                 ]);
@@ -1188,12 +1193,14 @@ try {
         } else {
             // Réponse JSON pour les appels AJAX
             echo json_encode([
-                'success' => true,
-                'message' => 'Commande confirmée avec succès',
-                'email' => $emailStocke,
-                'idCommande' => $idCommande,
-                'montantTotal' => $montantTotal,
-                'delaiLivraison' => $delaiLivraison
+                'status' => 200,
+                'data' => [
+                    'message' => 'Commande confirmée avec succès',
+                    'email' => $emailStocke,
+                    'idCommande' => $idCommande,
+                    'montantTotal' => $montantTotal,
+                    'delaiLivraison' => $delaiLivraison
+                ]
             ]);
         }
         
@@ -1206,7 +1213,7 @@ try {
         $motDePasse = $data['motDePasse'] ?? '';
 
         if (!$email || !$nom || !$prenom || !$motDePasse) {
-            echo json_encode(['success' => false, 'error' => 'Tous les champs obligatoires doivent être remplis']);
+            echo json_encode(['status' => 400, 'error' => 'Tous les champs obligatoires doivent être remplis']);
             exit;
         }
 
@@ -1216,7 +1223,7 @@ try {
         $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($clientExist) {
-            echo json_encode(['success' => false, 'error' => 'Un compte avec cet email existe déjà']);
+            echo json_encode(['status' => 409, 'error' => 'Un compte avec cet email existe déjà']);
             exit;
         }
 
@@ -1286,15 +1293,17 @@ try {
         }
 
         echo json_encode([
-            'success' => true, 
-            'idClient' => $idClient,
-            'message' => 'Compte créé avec succès'
+            'status' => 201, 
+            'data' => [
+                'idClient' => $idClient,
+                'message' => 'Compte créé avec succès'
+            ]
         ]);
 
     } elseif ($action == 'ajouter_au_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
-            echo json_encode(['success' => false, 'error' => 'Client non initialisé']);
+            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
             exit;
         }
 
@@ -1302,7 +1311,7 @@ try {
         $quantite = $data['quantite'] ?? 1;
 
         if (!$idOrigami) {
-            echo json_encode(['success' => false, 'error' => 'ID origami manquant']);
+            echo json_encode(['status' => 400, 'error' => 'ID origami manquant']);
             exit;
         }
 
@@ -1325,7 +1334,7 @@ try {
         $origami = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$origami) {
-            echo json_encode(['success' => false, 'error' => 'Origami non trouvé']);
+            echo json_encode(['status' => 404, 'error' => 'Origami non trouvé']);
             exit;
         }
 
@@ -1351,14 +1360,14 @@ try {
         $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
         $stmt->execute([$idPanier]);
 
-        echo json_encode(['success' => true, 'message' => 'Article ajouté au panier']);
+        echo json_encode(['status' => 200, 'message' => 'Article ajouté au panier']);
 
     } elseif ($action == 'get_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
             // Retourner un panier vide si pas de client
             echo json_encode([
-                'success' => true, 
+                'status' => 200, 
                 'data' => [
                     'articles' => [], 
                     'total' => 0, 
@@ -1380,7 +1389,7 @@ try {
         // Si le panier n'existe pas, retourner un panier vide
         if (!$panier) {
             echo json_encode([
-                'success' => true, 
+                'status' => 200, 
                 'data' => [
                     'articles' => [], 
                     'total' => 0, 
@@ -1417,7 +1426,7 @@ try {
         }
 
         echo json_encode([
-            'success' => true,
+            'status' => 200,
             'data' => [
                 'articles' => $articles,
                 'total' => $total,
@@ -1428,7 +1437,7 @@ try {
     } elseif ($action == 'modifier_quantite') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
-            echo json_encode(['success' => false, 'error' => 'Client non initialisé']);
+            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
             exit;
         }
 
@@ -1436,12 +1445,12 @@ try {
         $quantite = $data['quantite'] ?? null;
 
         if (!$idLignePanier || !$quantite) {
-            echo json_encode(['success' => false, 'error' => 'ID ligne panier ou quantité manquant']);
+            echo json_encode(['status' => 400, 'error' => 'ID ligne panier ou quantité manquant']);
             exit;
         }
 
         if ($quantite < 1) {
-            echo json_encode(['success' => false, 'error' => 'La quantité doit être au moins 1']);
+            echo json_encode(['status' => 400, 'error' => 'La quantité doit être au moins 1']);
             exit;
         }
 
@@ -1456,31 +1465,31 @@ try {
         ");
         $stmt->execute([$idLignePanier]);
 
-        echo json_encode(['success' => true, 'message' => 'Quantité modifiée']);
+        echo json_encode(['status' => 200, 'message' => 'Quantité modifiée']);
 
     } elseif ($action == 'supprimer_du_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
-            echo json_encode(['success' => false, 'error' => 'Client non initialisé']);
+            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
             exit;
         }
 
         $idLignePanier = $data['idLignePanier'] ?? null;
 
         if (!$idLignePanier) {
-            echo json_encode(['success' => false, 'error' => 'ID ligne panier manquant']);
+            echo json_encode(['status' => 400, 'error' => 'ID ligne panier manquant']);
             exit;
         }
 
         $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idLignePanier = ?");
         $stmt->execute([$idLignePanier]);
 
-        echo json_encode(['success' => true, 'message' => 'Article supprimé du panier']);
+        echo json_encode(['status' => 200, 'message' => 'Article supprimé du panier']);
 
     } elseif ($action == 'vider_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
-            echo json_encode(['success' => false, 'error' => 'Client non initialisé']);
+            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
             exit;
         }
 
@@ -1498,7 +1507,7 @@ try {
             $stmt->execute([$panier['idPanier']]);
         }
 
-        echo json_encode(['success' => true, 'message' => 'Panier vidé']);
+        echo json_encode(['status' => 200, 'message' => 'Panier vidé']);
 
     } elseif ($action == 'creer_ou_maj_client') {
         // CODE POUR CREER_OU_MAJ_CLIENT - VERSION COMPATIBLE
@@ -1508,7 +1517,7 @@ try {
         $telephone = $data['telephone'] ?? '';
 
         if (!$email || !$nom || !$prenom) {
-            echo json_encode(['success' => false, 'error' => 'Champs obligatoires manquants']);
+            echo json_encode(['status' => 400, 'error' => 'Champs obligatoires manquants']);
             exit;
         }
 
@@ -1537,10 +1546,12 @@ try {
             }
             
             echo json_encode([
-                'success' => true, 
-                'idClient' => $clientExist['idClient'], 
-                'action' => 'updated',
-                'message' => 'Client mis à jour'
+                'status' => 200, 
+                'data' => [
+                    'idClient' => $clientExist['idClient'], 
+                    'action' => 'updated',
+                    'message' => 'Client mis à jour'
+                ]
             ]);
         } else {
             // Créer un nouveau client permanent - VERSION COMPATIBLE
@@ -1568,28 +1579,30 @@ try {
             }
             
             echo json_encode([
-                'success' => true, 
-                'idClient' => $nouveauClientId, 
-                'action' => 'created',
-                'message' => 'Client créé'
+                'status' => 201, 
+                'data' => [
+                    'idClient' => $nouveauClientId, 
+                    'action' => 'created',
+                    'message' => 'Client créé'
+                ]
             ]);
         }
 
     } else {
-        echo json_encode(['success' => false, 'error' => 'Action non reconnue: ' . $action]);
+        echo json_encode(['status' => 400, 'error' => 'Action non reconnue: ' . $action]);
     }
 
 } catch (PDOException $e) {
     if ($is_html_response) {
         echo "Erreur base de données: " . $e->getMessage();
     } else {
-        echo json_encode(['success' => false, 'error' => 'Erreur base de données: ' . $e->getMessage()]);
+        echo json_encode(['status' => 500, 'error' => 'Erreur base de données: ' . $e->getMessage()]);
     }
 } catch (Exception $e) {
     if ($is_html_response) {
         echo "Erreur: " . $e->getMessage();
     } else {
-        echo json_encode(['success' => false, 'error' => 'Erreur: ' . $e->getMessage()]);
+        echo json_encode(['status' => 500, 'error' => 'Erreur: ' . $e->getMessage()]);
     }
 }
 ?>
