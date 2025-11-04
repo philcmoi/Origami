@@ -117,6 +117,7 @@ function nettoyerTokensExpires($pdo) {
 // Fonction pour nettoyer les clients temporaires anciens
 function nettoyerClientsTemporaires($pdo) {
     try {
+        // Vérifier si la colonne type existe avant de nettoyer
         $stmt = $pdo->prepare("DELETE FROM Client WHERE type = 'temporaire' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
         $stmt->execute();
         $count = $stmt->rowCount();
@@ -124,11 +125,11 @@ function nettoyerClientsTemporaires($pdo) {
             error_log("Nettoyage clients temporaires: " . $count . " clients supprimés");
         }
     } catch (Exception $e) {
-        error_log("Erreur nettoyage clients temporaires: " . $e->getMessage());
+        error_log("Erreur nettoyage clients temporaires (colonne type probablement manquante): " . $e->getMessage());
     }
 }
 
-// Gestion des clients temporaires - CORRIGÉE
+// Gestion des clients temporaires - VERSION COMPATIBLE (avec ou sans colonne type)
 function getOrCreateClient($pdo) {
     // Vérifier d'abord si on a déjà un client_id en session valide
     if (isset($_SESSION['client_id'])) {
@@ -144,21 +145,49 @@ function getOrCreateClient($pdo) {
     
     // Vérifier s'il existe un client temporaire avec cette session
     $sessionId = session_id();
-    $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE session_id = ? AND type = 'temporaire'");
-    $stmt->execute([$sessionId]);
-    $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    try {
+        // Essayer de chercher avec la colonne type
+        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE session_id = ? AND type = 'temporaire'");
+        $stmt->execute([$sessionId]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Si échec (colonne type manquante), chercher simplement par session_id
+        error_log("Colonne type non trouvée, utilisation de session_id uniquement");
+        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE session_id = ?");
+        $stmt->execute([$sessionId]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     
     if ($clientExist) {
         $_SESSION['client_id'] = $clientExist['idClient'];
         return $clientExist['idClient'];
     }
     
-    // Seulement alors créer un nouveau client temporaire
-    $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, type, date_creation, session_id) VALUES (?, 'Invité', 'Client', 'temporaire', NOW(), ?)");
-    $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
-    $stmt->execute([$emailTemp, $sessionId]);
-    $clientId = $pdo->lastInsertId();
+    // Créer un nouveau client temporaire
+    try {
+        // Essayer d'insérer avec la colonne type
+        $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, type, date_creation, session_id) VALUES (?, 'Invité', 'Client', 'temporaire', NOW(), ?)");
+        $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+        $stmt->execute([$emailTemp, $sessionId]);
+    } catch (Exception $e) {
+        // Si échec (colonne type manquante), insérer sans type
+        error_log("Insertion sans colonne type: " . $e->getMessage());
+        try {
+            // Essayer avec date_creation
+            $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, date_creation, session_id) VALUES (?, 'Invité', 'Client', NOW(), ?)");
+            $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+            $stmt->execute([$emailTemp, $sessionId]);
+        } catch (Exception $e2) {
+            // Si échec (date_creation manquante), insérer avec les colonnes minimales
+            error_log("Insertion avec colonnes minimales: " . $e2->getMessage());
+            $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, session_id) VALUES (?, 'Invité', 'Client', ?)");
+            $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+            $stmt->execute([$emailTemp, $sessionId]);
+        }
+    }
     
+    $clientId = $pdo->lastInsertId();
     $_SESSION['client_id'] = $clientId;
     return $clientId;
 }
@@ -233,25 +262,45 @@ try {
             exit;
         }
 
-        // Vérifier si l'email existe déjà
+        // Vérifier si l'email existe déjà - VERSION COMPATIBLE
+        try {
         $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ? AND type = 'permanent'");
         $stmt->execute([$email]);
         $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+    // Attraper spécifiquement PDOException
+    if (strpos($e->getMessage(), "Column not found") !== false || strpos($e->getMessage(), "Unknown column") !== false) {
+        error_log("Colonne type manquante, recherche par email uniquement");
+        $stmt = $pdo->prepare("SELECT idClient, nom, prenom FROM Client WHERE email = ?");
+        $stmt->execute([$email]);
+        $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
+    } else {
+        // Relancer l'exception si c'est une autre erreur
+        throw $e;
+    }
+    }
 
         $clientExistant = ($clientExist !== false);
         
-        // SI LE CLIENT N'EXISTE PAS, LE CRÉER MAINTENANT
+        // SI LE CLIENT N'EXISTE PAS, LE CRÉER MAINTENANT - VERSION COMPATIBLE
         if (!$clientExistant) {
-            // Créer le client permanent
+            // Créer le client permanent - VERSION COMPATIBLE
             $motDePasse = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
-            $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            try {
+                $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
+                $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            } catch (Exception $e) {
+                // Si colonne type manquante, insérer sans type
+                error_log("Insertion client sans colonne type");
+                $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            }
             $idClient = $pdo->lastInsertId();
         } else {
             $idClient = $clientExist['idClient'];
         }
 
-        // ⚠️ CORRECTION CRITIQUE : GESTION DU PANIER SANS DOUBLONS
+        // GESTION DU PANIER SANS DOUBLONS
         $idClientTemporaire = $_SESSION['client_id'] ?? null;
         
         // Vérifier si le client permanent a déjà un panier
@@ -318,11 +367,24 @@ try {
         }
 
         $tokenConfirmation = genererTokenConfirmation();
-        $expiration = date('Y-m-d H:i:s', time() + 900); // 15 minutes
+        //$expiration = date('Y-m-d H:i:s', time() + 900); // 15 minutes
 
-        // Stocker le token dans la BASE DE DONNÉES avec l'ID client
-        $stmt = $pdo->prepare("INSERT INTO tokens_confirmation (token, email, id_client, expiration, utilise) VALUES (?, ?, ?, ?, 0)");
-        $stmt->execute([$tokenConfirmation, $email, $idClient, $expiration]);
+        // Stocker le token avec vérification
+        try {
+            $stmt = $pdo->prepare("INSERT INTO tokens_confirmation (token, email, id_client, expiration, utilise) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), 0)");
+            $stmt->execute([$tokenConfirmation, $email, $idClient]);
+            // Vérifier que l'insertion a réussi
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("Échec de l'insertion du token");
+            }
+            
+            error_log("Token créé pour client ID: " . $idClient . ", email: " . $email);
+            
+        } catch (Exception $e) {
+            error_log("ERREUR insertion token: " . $e->getMessage());
+            echo json_encode(['status' => 500, 'error' => 'Erreur technique lors de la création du lien de confirmation']);
+            exit;
+        }
 
         // URL de confirmation pointant vers acheter.php
         $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
@@ -469,13 +531,23 @@ try {
         // Afficher le formulaire de saisie d'adresse
         $token = $_GET['token'];
         
-        // Vérifier la validité du token
+        // Vérifier la validité du token avec plus de détails
         $stmt = $pdo->prepare("SELECT email, id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
         $stmt->execute([$token]);
         $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
-            echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
+        if (!$tokenData) {
+            echo "<script>alert('Lien invalide'); window.location.href = 'index.html';</script>";
+            exit;
+        }
+
+        if ($tokenData['utilise'] == 1) {
+            echo "<script>alert('Ce lien a déjà été utilisé'); window.location.href = 'index.html';</script>";
+            exit;
+        }
+
+        if (strtotime($tokenData['expiration']) < time()) {
+            echo "<script>alert('Lien expiré'); window.location.href = 'index.html';</script>";
             exit;
         }
 
@@ -569,8 +641,8 @@ try {
                     </div>
                     
                     <div class="form-group">
-                        <label for="rue">Adresse <span class="required">*</span></label>
-                        <input type="text" id="rue" name="rue" placeholder="Numéro et nom de rue" required>
+                        <label for="adresse">Adresse <span class="required">*</span></label>
+                        <input type="text" id="adresse" name="adresse" placeholder="Numéro et nom de rue" required>
                     </div>
                     
                     <div class="form-group">
@@ -594,7 +666,7 @@ try {
                     </div>
                     
                     <div class="form-group">
-                        <label for="telephone">Téléphone</label>
+                        <label for="telephone">Téléphone <span class="required">*</span></label>
                         <input type="tel" id="telephone" name="telephone" placeholder="+33 1 23 45 67 89">
                     </div>
                     
@@ -641,24 +713,37 @@ try {
         $token = $data['token'] ?? '';
         $nom = $data['nom'] ?? '';
         $prenom = $data['prenom'] ?? '';
-        $rue = $data['rue'] ?? '';
+        $adresse = $data['adresse'] ?? '';
         $codePostal = $data['codePostal'] ?? '';
         $ville = $data['ville'] ?? '';
         $pays = $data['pays'] ?? 'France';
         $telephone = $data['telephone'] ?? '';
 
-        if (!$token || !$nom || !$prenom || !$rue || !$codePostal || !$ville) {
+        if (!$token || !$nom || !$prenom || !$adresse || !$codePostal || !$ville) {
             echo json_encode(['status' => 400, 'error' => 'Tous les champs obligatoires doivent être remplis']);
             exit;
         }
 
-        // Vérifier le token et récupérer l'ID client
-        $stmt = $pdo->prepare("SELECT id_client FROM tokens_confirmation WHERE token = ? AND utilise = 0 AND expiration > NOW()");
+        // Vérifier le token avec plus de détails
+        $stmt = $pdo->prepare("SELECT id_client, email, expiration, utilise FROM tokens_confirmation WHERE token = ?");
         $stmt->execute([$token]);
         $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$tokenData) {
-            echo json_encode(['status' => 400, 'error' => 'Token invalide ou expiré']);
+            error_log("Token non trouvé lors de sauvegarde adresse: " . $token);
+            echo json_encode(['status' => 400, 'error' => 'Token invalide']);
+            exit;
+        }
+
+        if ($tokenData['utilise'] == 1) {
+            error_log("Token déjà utilisé lors de sauvegarde adresse: " . $token);
+            echo json_encode(['status' => 400, 'error' => 'Ce lien a déjà été utilisé']);
+            exit;
+        }
+
+        if (strtotime($tokenData['expiration']) < time()) {
+            error_log("Token expiré lors de sauvegarde adresse: " . $token . ", expiration: " . $tokenData['expiration']);
+            echo json_encode(['status' => 400, 'error' => 'Lien expiré. Veuillez demander un nouveau lien.']);
             exit;
         }
 
@@ -667,10 +752,10 @@ try {
         // Créer l'adresse
         $stmt = $pdo->prepare("
             INSERT INTO Adresse 
-            (idClient, type, nom, prenom, rue, codePostal, ville, pays, telephone, dateCreation) 
+            (idClient, type, nom, prenom, adresse, codePostal, ville, pays, telephone, dateCreation) 
             VALUES (?, 'livraison', ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$idClient, $nom, $prenom, $rue, $codePostal, $ville, $pays, $telephone]);
+        $stmt->execute([$idClient, $nom, $prenom, $adresse, $codePostal, $ville, $pays, $telephone]);
 
         echo json_encode(['status' => 200, 'message' => 'Adresse sauvegardée']);
 
@@ -724,13 +809,14 @@ try {
             }
         }
 
-        // Vérifier le token dans la BASE DE DONNÉES
+        // Vérifier le token avec plus de détails
         $stmt = $pdo->prepare("SELECT email, id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
         $stmt->execute([$token]);
         $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$tokenData) {
             // Token non trouvé
+            error_log("Token non trouvé: " . $token);
             if (isset($_GET['token'])) {
                 ?>
                 <!DOCTYPE html>
@@ -771,6 +857,7 @@ try {
 
         // Vérifier si le token a déjà été utilisé
         if ($tokenData['utilise'] == 1) {
+            error_log("Token déjà utilisé: " . $token);
             if (isset($_GET['token'])) {
                 ?>
                 <!DOCTYPE html>
@@ -811,6 +898,7 @@ try {
 
         // Vérifier l'expiration
         if (strtotime($tokenData['expiration']) < time()) {
+            error_log("Token expiré: " . $token . ", expiration: " . $tokenData['expiration']);
             if (isset($_GET['token'])) {
                 ?>
                 <!DOCTYPE html>
@@ -1117,7 +1205,7 @@ try {
         }
         
     } elseif ($action == 'creer_client') {
-        // [CODE EXISTANT POUR creer_client - INCHANGÉ]
+        // CODE POUR CREER_CLIENT - VERSION COMPATIBLE
         $email = $data['email'] ?? '';
         $nom = $data['nom'] ?? '';
         $prenom = $data['prenom'] ?? '';
@@ -1139,10 +1227,17 @@ try {
             exit;
         }
 
-        // Créer le nouveau client
+        // Créer le nouveau client - VERSION COMPATIBLE
         $motDePasseHash = password_hash($motDePasse, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
-        $stmt->execute([$email, $motDePasseHash, $nom, $prenom, $telephone]);
+        try {
+            $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
+            $stmt->execute([$email, $motDePasseHash, $nom, $prenom, $telephone]);
+        } catch (Exception $e) {
+            // Si colonne type manquante, insérer sans type
+            error_log("Insertion client sans colonne type");
+            $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$email, $motDePasseHash, $nom, $prenom, $telephone]);
+        }
         $idClient = $pdo->lastInsertId();
 
         // Créer un panier pour le nouveau client
@@ -1415,7 +1510,7 @@ try {
         echo json_encode(['status' => 200, 'message' => 'Panier vidé']);
 
     } elseif ($action == 'creer_ou_maj_client') {
-        // [CODE EXISTANT POUR creer_ou_maj_client - INCHANGÉ]
+        // CODE POUR CREER_OU_MAJ_CLIENT - VERSION COMPATIBLE
         $email = $data['email'] ?? '';
         $nom = $data['nom'] ?? '';
         $prenom = $data['prenom'] ?? '';
@@ -1432,9 +1527,16 @@ try {
         $clientExist = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($clientExist) {
-            // Mettre à jour le client existant
-            $stmt = $pdo->prepare("UPDATE Client SET nom = ?, prenom = ?, telephone = ?, type = 'permanent' WHERE idClient = ?");
-            $stmt->execute([$nom, $prenom, $telephone, $clientExist['idClient']]);
+            // Mettre à jour le client existant - VERSION COMPATIBLE
+            try {
+                $stmt = $pdo->prepare("UPDATE Client SET nom = ?, prenom = ?, telephone = ?, type = 'permanent' WHERE idClient = ?");
+                $stmt->execute([$nom, $prenom, $telephone, $clientExist['idClient']]);
+            } catch (Exception $e) {
+                // Si colonne type manquante, mettre à jour sans type
+                error_log("Mise à jour client sans colonne type");
+                $stmt = $pdo->prepare("UPDATE Client SET nom = ?, prenom = ?, telephone = ? WHERE idClient = ?");
+                $stmt->execute([$nom, $prenom, $telephone, $clientExist['idClient']]);
+            }
             
             // Si l'utilisateur actuel a un panier temporaire, le transférer vers le client permanent
             if (isset($_SESSION['client_id'])) {
@@ -1452,10 +1554,17 @@ try {
                 ]
             ]);
         } else {
-            // Créer un nouveau client permanent
+            // Créer un nouveau client permanent - VERSION COMPATIBLE
             $motDePasse = password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
-            $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            try {
+                $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone, type) VALUES (?, ?, ?, ?, ?, 'permanent')");
+                $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            } catch (Exception $e) {
+                // Si colonne type manquante, insérer sans type
+                error_log("Insertion client sans colonne type");
+                $stmt = $pdo->prepare("INSERT INTO Client (email, motDePasse, nom, prenom, telephone) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$email, $motDePasse, $nom, $prenom, $telephone]);
+            }
             $nouveauClientId = $pdo->lastInsertId();
             
             // Si l'utilisateur actuel a un panier temporaire, le transférer vers le nouveau client
