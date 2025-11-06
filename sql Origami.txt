@@ -154,3 +154,21 @@ ADD COLUMN id_client BIGINT NULL AFTER email;
 -- Optionnel : ajouter une clé étrangère
 ALTER TABLE tokens_confirmation 
 ADD FOREIGN KEY (id_client) REFERENCES Client(idClient);
+
+ALTER TABLE Adresse 
+ADD COLUMN type VARCHAR(20) DEFAULT 'livraison',
+ADD COLUMN dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+
+-- Ajouter une colonne pour lier l'adresse de facturation
+ALTER TABLE Commande 
+ADD COLUMN idAdresseFacturation BIGINT NULL AFTER idAdresseLivraison,
+ADD FOREIGN KEY (idAdresseFacturation) REFERENCES Adresse(idAdresse);
+
+-- Ajouter un type pour distinguer livraison/facturation
+/*ALTER TABLE Adresse 
+MODIFY COLUMN type ENUM(livraison, facturation, les_deux) DEFAULT livraison;*/
+
+ALTER TABLE Adresse ADD instructions VARCHAR(255) NOT NULL AFTER telephone;
+
+ALTER TABLE Adresse CHANGE instructions instructions VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL;
