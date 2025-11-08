@@ -158,3 +158,36 @@ ADD FOREIGN KEY (id_client) REFERENCES Client(idClient);
 ALTER TABLE Adresse 
 ADD COLUMN type VARCHAR(20) DEFAULT 'livraison',
 ADD COLUMN dateCreation DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+
+-- Ajouter une colonne pour lier l'adresse de facturation
+ALTER TABLE Commande 
+ADD COLUMN idAdresseFacturation BIGINT NULL AFTER idAdresseLivraison,
+ADD FOREIGN KEY (idAdresseFacturation) REFERENCES Adresse(idAdresse);
+
+-- Ajouter un type pour distinguer livraison/facturation
+/*ALTER TABLE Adresse 
+MODIFY COLUMN type ENUM(livraison, facturation, les_deux) DEFAULT livraison;*/
+
+ALTER TABLE Adresse ADD instructions VARCHAR(255) NOT NULL AFTER telephone;
+
+ALTER TABLE Adresse CHANGE instructions instructions VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL;
+
+-- Ajout de la table Paiement si elle n'existe pas
+CREATE TABLE IF NOT EXISTS `paiement` (
+  `idPaiement` int NOT NULL AUTO_INCREMENT,
+  `idCommande` int NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `currency` varchar(3) DEFAULT 'EUR',
+  `statut` varchar(20) DEFAULT 'en_attente',
+  `methode_paiement` varchar(50) DEFAULT 'carte',
+  `reference` varchar(100) DEFAULT NULL,
+  `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
+  `date_maj` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`idPaiement`),
+  KEY `idCommande` (`idCommande`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Mise à jour de la table Commande pour le statut de paiement
+ALTER TABLE `commande` 
+MODIFY COLUMN `statut_paiement` ENUM('en_attente','payee','echec','annulee','rembourse') DEFAULT 'en_attente';
