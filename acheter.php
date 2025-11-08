@@ -894,7 +894,7 @@ try {
         }
         
         // Ajouter les frais de port
-        $fraisDePort = 5.90;
+        $fraisDePort = 0.0;
         $montantTotal = $totalPanier + $fraisDePort;
 
         $tokenConfirmation = genererTokenConfirmation();
