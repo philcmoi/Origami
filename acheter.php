@@ -51,6 +51,127 @@ try {
     }
 }
 
+// Configuration PayPal
+$paypal_config = [
+    'client_id' => 'sb-vyvj047419601@business.example.com', // À remplacer par votre Client ID
+    'client_secret' => '2dqtySq.', // À remplacer par votre Client Secret
+    'environment' => 'sandbox', // 'sandbox' pour test, 'live' pour production
+    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
+];
+
+// Fonction pour obtenir l'access token PayPal
+function getPayPalAccessToken($client_id, $client_secret, $environment) {
+    $url = $environment === 'live' 
+        ? 'https://api.paypal.com/v1/oauth2/token'
+        : 'https://api.sandbox.paypal.com/v1/oauth2/token';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, $client_id . ":" . $client_secret);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code == 200) {
+        $json = json_decode($result);
+        return $json->access_token;
+    } else {
+        error_log("Erreur PayPal Access Token: " . $result);
+        return false;
+    }
+}
+
+// Fonction pour créer une commande PayPal
+function createPayPalOrder($access_token, $amount, $currency, $environment, $return_url, $cancel_url, $custom_data = null) {
+    $url = $environment === 'live' 
+        ? 'https://api.paypal.com/v2/checkout/orders'
+        : 'https://api.sandbox.paypal.com/v2/checkout/orders';
+    
+    $data = [
+        'intent' => 'CAPTURE',
+        'purchase_units' => [
+            [
+                'amount' => [
+                    'currency_code' => $currency,
+                    'value' => number_format($amount, 2, '.', '')
+                ]
+            ]
+        ],
+        'application_context' => [
+            'return_url' => $return_url,
+            'cancel_url' => $cancel_url,
+            'brand_name' => 'Origami Zen',
+            'user_action' => 'PAY_NOW'
+        ]
+    ];
+    
+    // Ajouter les données personnalisées si fournies
+    if ($custom_data) {
+        $data['purchase_units'][0]['custom_id'] = $custom_data;
+    }
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $access_token
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code == 201) {
+        $json = json_decode($result, true);
+        return $json;
+    } else {
+        error_log("Erreur création commande PayPal: " . $result);
+        return false;
+    }
+}
+
+// Fonction pour capturer le paiement PayPal
+function capturePayPalPayment($access_token, $order_id, $environment) {
+    $url = $environment === 'live' 
+        ? 'https://api.paypal.com/v2/checkout/orders/' . $order_id . '/capture'
+        : 'https://api.sandbox.paypal.com/v2/checkout/orders/' . $order_id . '/capture';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $access_token
+    ]);
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code == 201) {
+        $json = json_decode($result, true);
+        return $json;
+    } else {
+        error_log("Erreur capture PayPal: " . $result);
+        return false;
+    }
+}
+
 // Fonction pour envoyer un email avec PHPMailer
 function envoyerEmail($destinataire, $sujet, $message) {
     $mail = new PHPMailer(true);
@@ -330,6 +451,266 @@ if ($action == 'nettoyer_clients_zombies') {
     exit;
 }
 
+// ACTIONS PAYPAL
+if ($action == 'creer_commande_paypal') {
+    $montant = $data['montant'] ?? 0;
+    $idCommande = $data['id_commande'] ?? null;
+    
+    if ($montant <= 0) {
+        echo json_encode(['status' => 400, 'error' => 'Montant invalide']);
+        exit;
+    }
+    
+    // Obtenir l'access token PayPal
+    $access_token = getPayPalAccessToken(
+        $paypal_config['client_id'],
+        $paypal_config['client_secret'],
+        $paypal_config['environment']
+    );
+    
+    if (!$access_token) {
+        echo json_encode(['status' => 500, 'error' => 'Erreur de connexion à PayPal']);
+        exit;
+    }
+    
+    // Créer la commande PayPal
+    $custom_data = $idCommande ? "commande_$idCommande" : null;
+    $order = createPayPalOrder(
+        $access_token,
+        $montant,
+        'EUR',
+        $paypal_config['environment'],
+        $paypal_config['return_url'],
+        $paypal_config['cancel_url'],
+        $custom_data
+    );
+    
+    if ($order && isset($order['id'])) {
+        // Stocker l'ID de commande PayPal en session pour validation ultérieure
+        $_SESSION['paypal_order_id'] = $order['id'];
+        if ($idCommande) {
+            $_SESSION['paypal_commande_id'] = $idCommande;
+        }
+        
+        // Retourner les liens d'approbation
+        $approve_link = '';
+        foreach ($order['links'] as $link) {
+            if ($link['rel'] === 'approve') {
+                $approve_link = $link['href'];
+                break;
+            }
+        }
+        
+        echo json_encode([
+            'status' => 200,
+            'data' => [
+                'order_id' => $order['id'],
+                'approve_url' => $approve_link,
+                'montant' => $montant
+            ]
+        ]);
+    } else {
+        echo json_encode(['status' => 500, 'error' => 'Erreur lors de la création de la commande PayPal']);
+    }
+    exit;
+}
+
+if ($action == 'paypal_success') {
+    $is_html_response = true;
+    header('Content-Type: text/html; charset=UTF-8');
+    
+    $order_id = $_GET['token'] ?? $_SESSION['paypal_order_id'] ?? '';
+    $commande_id = $_SESSION['paypal_commande_id'] ?? '';
+    
+    if (!$order_id) {
+        echo "<script>alert('Données de commande manquantes'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    // Capturer le paiement PayPal
+    $access_token = getPayPalAccessToken(
+        $paypal_config['client_id'],
+        $paypal_config['client_secret'],
+        $paypal_config['environment']
+    );
+    
+    if (!$access_token) {
+        echo "<script>alert('Erreur de connexion à PayPal'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    $capture = capturePayPalPayment($access_token, $order_id, $paypal_config['environment']);
+    
+    if ($capture && isset($capture['status']) && $capture['status'] === 'COMPLETED') {
+        // Paiement réussi
+        $montant = $capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0;
+        
+        // Mettre à jour le statut de la commande dans la base de données
+        if ($commande_id) {
+            try {
+                $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee', modeReglement = 'PayPal' WHERE idCommande = ?");
+                $stmt->execute([$commande_id]);
+                
+                // Enregistrer le paiement
+                $stmt = $pdo->prepare("
+                    INSERT INTO Paiement 
+                    (idCommande, montant, currency, statut, mode_paiement, date_creation) 
+                    VALUES (?, ?, 'EUR', 'payee', 'PayPal', NOW())
+                ");
+                $stmt->execute([$commande_id, $montant]);
+                
+                // Récupérer les infos de la commande pour l'email
+                $stmt = $pdo->prepare("
+                    SELECT c.idCommande, c.montantTotal, cl.email, cl.prenom, cl.nom
+                    FROM Commande c
+                    JOIN Client cl ON c.idClient = cl.idClient
+                    WHERE c.idCommande = ?
+                ");
+                $stmt->execute([$commande_id]);
+                $commande_info = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                // Envoyer email de confirmation
+                if ($commande_info) {
+                    $sujet = "Confirmation de paiement - Commande #" . $commande_info['idCommande'];
+                    $message = "
+                    <html>
+                    <body>
+                        <h2>Paiement confirmé</h2>
+                        <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
+                        <p>Votre paiement PayPal pour la commande #" . $commande_info['idCommande'] . " a été traité avec succès.</p>
+                        <p><strong>Montant :</strong> " . number_format($montant, 2, ',', ' ') . " €</p>
+                        <p>Merci pour votre confiance !</p>
+                    </body>
+                    </html>
+                    ";
+                    
+                    envoyerEmail($commande_info['email'], $sujet, $message);
+                }
+                
+            } catch (Exception $e) {
+                error_log("Erreur mise à jour commande PayPal: " . $e->getMessage());
+            }
+        }
+        
+        // Nettoyer la session
+        unset($_SESSION['paypal_order_id']);
+        unset($_SESSION['paypal_commande_id']);
+        
+        // Afficher confirmation
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Paiement Réussi - Origami Zen</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+                .success { color: #28a745; }
+                .btn { 
+                    display: inline-block;
+                    background-color: #d40000; 
+                    color: white; 
+                    padding: 12px 30px; 
+                    text-decoration: none; 
+                    border-radius: 2px; 
+                    margin-top: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="success">✅ Paiement Réussi !</h1>
+                <p>Votre paiement PayPal a été traité avec succès.</p>
+                <?php if ($commande_id): ?>
+                <p><strong>Numéro de commande :</strong> #<?= $commande_id ?></p>
+                <p><strong>Montant payé :</strong> <?= number_format($montant, 2, ',', ' ') ?> €</p>
+                <?php endif; ?>
+                <p>Vous recevrez un email de confirmation sous peu.</p>
+                <a href="index.html" class="btn">Retour à l'accueil</a>
+            </div>
+        </body>
+        </html>
+        <?php
+        
+    } else {
+        // Paiement échoué
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Erreur de Paiement - Origami Zen</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+                .error { color: #dc3545; }
+                .btn { 
+                    display: inline-block;
+                    background-color: #d40000; 
+                    color: white; 
+                    padding: 12px 30px; 
+                    text-decoration: none; 
+                    border-radius: 2px; 
+                    margin-top: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="error">❌ Erreur de Paiement</h1>
+                <p>Une erreur est survenue lors du traitement de votre paiement PayPal.</p>
+                <p>Veuillez réessayer ou contacter notre service client.</p>
+                <a href="index.html" class="btn">Retour à l'accueil</a>
+            </div>
+        </body>
+        </html>
+        <?php
+    }
+    exit;
+}
+
+if ($action == 'paypal_cancel') {
+    $is_html_response = true;
+    header('Content-Type: text/html; charset=UTF-8');
+    
+    // Nettoyer la session
+    unset($_SESSION['paypal_order_id']);
+    unset($_SESSION['paypal_commande_id']);
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Paiement Annulé - Origami Zen</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+            .warning { color: #856404; }
+            .btn { 
+                display: inline-block;
+                background-color: #d40000; 
+                color: white; 
+                padding: 12px 30px; 
+                text-decoration: none; 
+                border-radius: 2px; 
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="warning">⚠️ Paiement Annulé</h1>
+            <p>Vous avez annulé votre paiement PayPal.</p>
+            <p>Votre panier a été conservé. Vous pouvez finaliser votre commande ultérieurement.</p>
+            <a href="index.html" class="btn">Retour à l'accueil</a>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 if (!$action) {
     if ($is_html_response) {
         echo "Action non spécifiée";
@@ -486,6 +867,36 @@ try {
             }
         }
 
+        // RÉCUPÉRER LE RÉCAPITULATIF DU PANIER AVANT DE CRÉER LE TOKEN
+        $stmt = $pdo->prepare("
+            SELECT 
+                lp.idLignePanier,
+                lp.idOrigami,
+                lp.quantite,
+                lp.prixUnitaire,
+                o.nom,
+                o.description,
+                o.photo,
+                (lp.quantite * lp.prixUnitaire) as totalLigne
+            FROM LignePanier lp
+            JOIN Origami o ON lp.idOrigami = o.idOrigami
+            WHERE lp.idPanier = ?
+        ");
+        $stmt->execute([$panierPermanent['idPanier']]);
+        $articlesPanier = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Calculer le total du panier
+        $totalPanier = 0;
+        $totalQuantites = 0;
+        foreach ($articlesPanier as $article) {
+            $totalPanier += $article['totalLigne'];
+            $totalQuantites += $article['quantite'];
+        }
+        
+        // Ajouter les frais de port
+        $fraisDePort = 5.90;
+        $montantTotal = $totalPanier + $fraisDePort;
+
         $tokenConfirmation = genererTokenConfirmation();
 
         // Stocker le token avec vérification
@@ -508,7 +919,72 @@ try {
         // URL de confirmation pointant vers acheter.php
         $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
-        // Préparer l'email HTML avec le lien de confirmation
+        // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
+        $recapAchatsHTML = "";
+        if (!empty($articlesPanier)) {
+            $recapAchatsHTML = "
+            <div style='margin: 25px 0; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;'>
+                <h3 style='color: #d40000; margin-top: 0; margin-bottom: 20px; text-align: center;'>📦 Récapitulatif de votre panier</h3>
+                
+                <table style='width: 100%; border-collapse: collapse; margin-bottom: 20px;'>
+                    <thead>
+                        <tr style='background: #e9ecef;'>
+                            <th style='padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;'>Produit</th>
+                            <th style='padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;'>Quantité</th>
+                            <th style='padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;'>Prix unitaire</th>
+                            <th style='padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;'>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            ";
+            
+            foreach ($articlesPanier as $article) {
+                $recapAchatsHTML .= "
+                        <tr style='border-bottom: 1px solid #dee2e6;'>
+                            <td style='padding: 12px;'>
+                                <strong>" . htmlspecialchars($article['nom']) . "</strong><br>
+                                <small style='color: #666;'>" . htmlspecialchars(substr($article['description'], 0, 80)) . "...</small>
+                            </td>
+                            <td style='padding: 12px; text-align: center;'>" . $article['quantite'] . "</td>
+                            <td style='padding: 12px; text-align: right;'>" . number_format($article['prixUnitaire'], 2, ',', ' ') . " €</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold;'>" . number_format($article['totalLigne'], 2, ',', ' ') . " €</td>
+                        </tr>
+                ";
+            }
+            
+            $recapAchatsHTML .= "
+                    </tbody>
+                    <tfoot style='background: #f8f9fa;'>
+                        <tr>
+                            <td colspan='3' style='padding: 12px; text-align: right; font-weight: bold;'>Sous-total :</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold;'>" . number_format($totalPanier, 2, ',', ' ') . " €</td>
+                        </tr>
+                        <tr>
+                            <td colspan='3' style='padding: 12px; text-align: right;'>Frais de port :</td>
+                            <td style='padding: 12px; text-align: right;'>" . number_format($fraisDePort, 2, ',', ' ') . " €</td>
+                        </tr>
+                        <tr style='border-top: 2px solid #d40000;'>
+                            <td colspan='3' style='padding: 12px; text-align: right; font-weight: bold; font-size: 1.1em; color: #d40000;'>Total à payer :</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold; font-size: 1.1em; color: #d40000;'>" . number_format($montantTotal, 2, ',', ' ') . " €</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style='text-align: center; margin-top: 15px; padding: 15px; background: #e7f3ff; border-radius: 4px;'>
+                    <strong>🛒 " . $totalQuantites . " article(s) dans votre panier</strong>
+                </div>
+            </div>
+            ";
+        } else {
+            $recapAchatsHTML = "
+            <div style='margin: 25px 0; background: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeaa7; text-align: center;'>
+                <p style='margin: 0; color: #856404;'><strong>⚠️ Votre panier est vide</strong><br>
+                Ajoutez des articles avant de finaliser votre commande.</p>
+            </div>
+            ";
+        }
+
+        // Préparer l'email HTML avec le lien de confirmation ET le récapitulatif
         $sujet = "Confirmez votre commande - Origami Zen";
         $messageHTML = "
         <!DOCTYPE html>
@@ -525,7 +1001,7 @@ try {
                     color: #333;
                 }
                 .container { 
-                    max-width: 600px; 
+                    max-width: 700px; 
                     margin: 0 auto; 
                     background: white; 
                     padding: 40px; 
@@ -546,7 +1022,7 @@ try {
                 }
                 .btn-confirmation { 
                     display: block; 
-                    width: 250px; 
+                    width: 280px; 
                     margin: 30px auto; 
                     padding: 15px 30px; 
                     background-color: #d40000; 
@@ -580,12 +1056,26 @@ try {
                     margin: 20px 0; 
                     color: #856404;
                 }
-                .url-backup {
-                    word-break: break-all;
-                    font-size: 14px;
-                    color: #666;
-                    text-align: center;
+                .url-backup { 
+                    word-break: break-all; 
+                    font-size: 14px; 
+                    color: #666; 
+                    text-align: center; 
                     margin-top: 10px;
+                }
+                .recap-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .recap-table th {
+                    background: #f8f9fa;
+                    padding: 12px;
+                    text-align: left;
+                    border-bottom: 2px solid #dee2e6;
+                }
+                .recap-table td {
+                    padding: 12px;
+                    border-bottom: 1px solid #dee2e6;
                 }
             </style>
         </head>
@@ -601,7 +1091,12 @@ try {
                     
                     <p>Pour finaliser votre commande sur Origami Zen, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
                     
-                    <a href='" . $urlConfirmation . "' class='btn-confirmation'>Confirmer ma commande</a>
+                    " . $recapAchatsHTML . "
+                    
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <p><strong>Étape suivante :</strong> Après confirmation, vous serez redirigé vers le paiement sécurisé.</p>
+                        <a href='" . $urlConfirmation . "' class='btn-confirmation'>Confirmer ma commande</a>
+                    </div>
                     
                     <div class='url-backup'>
                         Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
@@ -634,7 +1129,14 @@ try {
                 'data' => [
                     'message' => 'Lien de confirmation envoyé',
                     'client_existant' => $clientExistant,
-                    'id_client' => $idClient
+                    'id_client' => $idClient,
+                    'recap_panier' => [
+                        'articles' => $articlesPanier,
+                        'total' => $totalPanier,
+                        'frais_port' => $fraisDePort,
+                        'total_general' => $montantTotal,
+                        'quantite_total' => $totalQuantites
+                    ]
                 ]
             ]);
         } else {
@@ -670,9 +1172,32 @@ try {
             exit;
         }
 
+        $idClient = $tokenData['id_client'];
+
+        // NOUVEAU : Vérifier si le client a déjà des adresses enregistrées
+        $stmt = $pdo->prepare("
+            SELECT * FROM Adresse 
+            WHERE idClient = ? AND type = 'livraison' 
+            ORDER BY dateCreation DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([$idClient]);
+        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Si le client a une adresse existante, passer directement au paiement
+        if ($adresseExistante) {
+            // Marquer le token comme utilisé
+            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+            $stmt->execute([$token]);
+            
+            // Créer directement la commande avec l'adresse existante
+            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+            exit;
+        }
+
         // Récupérer les infos du client pour pré-remplir le formulaire
         $stmt = $pdo->prepare("SELECT nom, prenom, email FROM Client WHERE idClient = ?");
-        $stmt->execute([$tokenData['id_client']]);
+        $stmt->execute([$idClient]);
         $clientInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 
         ?>
@@ -956,7 +1481,7 @@ try {
         $idClient = $tokenData['id_client'];
 
         // Validation des données requises pour la livraison
-        if (!$nomLivraison || !$prenomLivraison || !$adresseLivraison || !$codePostalLivraison || !$villeLivraison || !$telephoneLivraison) {
+        if (!$nomLivraison || !$prenomLivraison || !$adresseLivraison || !$codePostalLivraison || !$villeLivraison) {
             echo "<script>alert('Tous les champs obligatoires de livraison doivent être remplis'); history.back();</script>";
             exit;
         }
@@ -1003,200 +1528,7 @@ try {
         $stmt->execute([$token]);
 
         // FINALISER LA COMMANDE
-        // 1. Récupérer le panier du client
-        $stmt = $pdo->prepare("
-            SELECT p.idPanier 
-            FROM Panier p 
-            WHERE p.idClient = ?
-        ");
-        $stmt->execute([$idClient]);
-        $panier = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$panier) {
-            echo "<script>alert('Panier non trouvé'); window.location.href = 'index.html';</script>";
-            exit;
-        }
-        
-        // 2. Récupérer les articles du panier
-        $stmt = $pdo->prepare("
-            SELECT 
-                lp.idOrigami,
-                lp.quantite,
-                lp.prixUnitaire,
-                (lp.quantite * lp.prixUnitaire) as totalLigne
-            FROM LignePanier lp
-            WHERE lp.idPanier = ?
-        ");
-        $stmt->execute([$panier['idPanier']]);
-        $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (empty($articles)) {
-            echo "<script>alert('Panier vide'); window.location.href = 'index.html';</script>";
-            exit;
-        }
-        
-        // 3. Calculer le total de la commande
-        $total = 0;
-        foreach ($articles as $article) {
-            $total += $article['totalLigne'];
-        }
-        
-        // 4. Définir les paramètres de la commande
-        $fraisDePort = 5.90; // Frais de port fixes
-        $delaiLivraison = date('Y-m-d', strtotime('+5 days')); // Délai de 5 jours
-        $montantTotal = $total + $fraisDePort;
-        
-        // 5. Créer la commande
-        $stmt = $pdo->prepare("
-            INSERT INTO Commande 
-            (idClient, idAdresseLivraison, idAdresseFacturation, dateCommande, modeReglement, delaiLivraison, fraisDePort, montantTotal, statut) 
-            VALUES (?, ?, ?, NOW(), 'CB', ?, ?, ?, 'confirmee')
-        ");
-        $stmt->execute([$idClient, $idAdresseLivraison, $idAdresseFacturation, $delaiLivraison, $fraisDePort, $montantTotal]);
-        $idCommande = $pdo->lastInsertId();
-        
-        // 6. Créer les lignes de commande
-        $stmtLigne = $pdo->prepare("
-            INSERT INTO LigneCommande 
-            (idCommande, idOrigami, quantite, prixUnitaire) 
-            VALUES (?, ?, ?, ?)
-        ");
-        
-        foreach ($articles as $article) {
-            $stmtLigne->execute([
-                $idCommande, 
-                $article['idOrigami'], 
-                $article['quantite'], 
-                $article['prixUnitaire']
-            ]);
-        }
-        
-        // 7. Vider le panier
-        $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ?");
-        $stmt->execute([$panier['idPanier']]);
-        
-        // 8. Mettre à jour la date de modification du panier
-        $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
-        $stmt->execute([$panier['idPanier']]);
-
-        // Envoyer un email de confirmation de commande
-        $sujetConfirmation = "Confirmation de votre commande #" . $idCommande . " - Origami Zen";
-        $messageConfirmation = "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <title>Confirmation de commande</title>
-            <style>
-                body { font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 20px; }
-                .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-                .header { text-align: center; color: #d40000; margin-bottom: 30px; }
-                .details { background: #f8f9fa; padding: 20px; border-radius: 4px; margin: 20px 0; }
-                .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; text-align: center; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>
-                    <h1>Origami Zen</h1>
-                    <h2>Merci pour votre commande !</h2>
-                </div>
-                
-                <p>Bonjour " . htmlspecialchars($prenomLivraison) . ",</p>
-                
-                <p>Votre commande a été confirmée avec succès. Voici le récapitulatif :</p>
-                
-                <div class='details'>
-                    <p><strong>Numéro de commande :</strong> #" . $idCommande . "</p>
-                    <p><strong>Montant total :</strong> " . number_format($montantTotal, 2, ',', ' ') . "€</p>
-                    <p><strong>Livraison prévue :</strong> " . date('d/m/Y', strtotime($delaiLivraison)) . "</p>
-                    <p><strong>Adresse de livraison :</strong><br>" . 
-                    htmlspecialchars($adresseLivraison) . "<br>" . 
-                    htmlspecialchars($codePostalLivraison) . " " . htmlspecialchars($villeLivraison) . "<br>" . 
-                    htmlspecialchars($paysLivraison) . "</p>
-                </div>
-                
-                <p>Vous recevrez un email de suivi lorsque votre colis sera expédié.</p>
-                
-                <div class='footer'>
-                    <p>Cordialement,<br>L'équipe Origami Zen</p>
-                    <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
-
-        $resultatEmail = envoyerEmail($tokenData['email'], $sujetConfirmation, $messageConfirmation);
-        if (!$resultatEmail['success']) {
-            error_log("Échec envoi email de confirmation à: " . $tokenData['email']);
-        }
-
-        // Afficher la page de confirmation
-        ?>
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Commande Confirmée - Origami Zen</title>
-            <style>
-                body { 
-                    font-family: 'Helvetica Neue', Arial, sans-serif; 
-                    background-color: #f9f9f9; 
-                    margin: 0; 
-                    padding: 20px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                }
-                .container { 
-                    max-width: 600px; 
-                    background: white; 
-                    padding: 40px; 
-                    border-radius: 8px; 
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                    text-align: center;
-                }
-                .success { color: #28a745; }
-                .btn { 
-                    display: inline-block;
-                    background-color: #d40000; 
-                    color: white; 
-                    padding: 12px 30px; 
-                    text-decoration: none; 
-                    border-radius: 2px; 
-                    margin-top: 20px;
-                }
-                .details {
-                    text-align: left;
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 4px;
-                    margin: 20px 0;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1 class="success">✅ Commande Confirmée !</h1>
-                <p>Votre commande a été confirmée avec succès.</p>
-                
-                <div class="details">
-                    <p><strong>Numéro de commande :</strong> #<?= $idCommande ?></p>
-                    <p><strong>Montant total :</strong> <?= number_format($montantTotal, 2, ',', ' ') ?>€</p>
-                    <p><strong>Livraison prévue :</strong> <?= date('d/m/Y', strtotime($delaiLivraison)) ?></p>
-                    <p><strong>Email :</strong> <?= htmlspecialchars($tokenData['email']) ?></p>
-                </div>
-                
-                <p>Vous recevrez un email de confirmation sous peu.</p>
-                <a href="index.html" class="btn">Retour à l'accueil</a>
-            </div>
-        </body>
-        </html>
-        <?php
-        exit;
+        finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFacturation);
 
     } elseif ($action == 'confirmer_commande') {
         // Rediriger vers le formulaire d'adresse si le token est valide
@@ -1289,8 +1621,6 @@ try {
                 <title>Lien Déjà Utilisé</title>
                 <style>
                     body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                    .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px
-                    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                     .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
                     .warning { color: #856404; }
                     .btn { 
@@ -1350,7 +1680,30 @@ try {
             exit;
         }
 
-        // Token valide - rediriger vers le formulaire d'adresse
+        $idClient = $tokenData['id_client'];
+
+        // NOUVEAU : Vérifier si le client a déjà des adresses enregistrées
+        $stmt = $pdo->prepare("
+            SELECT * FROM Adresse 
+            WHERE idClient = ? AND type = 'livraison' 
+            ORDER BY dateCreation DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([$idClient]);
+        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Si le client a une adresse existante, créer directement la commande
+        if ($adresseExistante) {
+            // Marquer le token comme utilisé
+            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+            $stmt->execute([$token]);
+            
+            // Créer directement la commande avec l'adresse existante
+            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+            exit;
+        }
+
+        // Sinon, rediriger vers le formulaire d'adresse
         header("Location: acheter.php?action=saisir_adresse&token=" . $token);
         exit;
 
@@ -1579,5 +1932,250 @@ try {
     } else {
         echo json_encode(['status' => 500, 'error' => 'Erreur: ' . $e->getMessage()]);
     }
+}
+
+// NOUVELLE FONCTION : Créer une commande avec une adresse existante
+function creerCommandeAvecAdresseExistante($pdo, $idClient, $idAdresseLivraison) {
+    try {
+        // Marquer le token comme utilisé (s'il est encore valide)
+        if (isset($_GET['token'])) {
+            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+            $stmt->execute([$_GET['token']]);
+        }
+
+        // Utiliser la même adresse pour la facturation
+        $idAdresseFacturation = $idAdresseLivraison;
+
+        // Finaliser la commande
+        finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFacturation);
+        
+    } catch (Exception $e) {
+        error_log("Erreur création commande avec adresse existante: " . $e->getMessage());
+        echo "<script>alert('Erreur lors de la création de la commande'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+}
+
+// FONCTION : Finaliser la commande (extraite pour réutilisation)
+function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFacturation) {
+    // 1. Récupérer le panier du client
+    $stmt = $pdo->prepare("
+        SELECT p.idPanier 
+        FROM Panier p 
+        WHERE p.idClient = ?
+    ");
+    $stmt->execute([$idClient]);
+    $panier = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$panier) {
+        echo "<script>alert('Panier non trouvé'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    // 2. Récupérer les articles du panier
+    $stmt = $pdo->prepare("
+        SELECT 
+            lp.idOrigami,
+            lp.quantite,
+            lp.prixUnitaire,
+            (lp.quantite * lp.prixUnitaire) as totalLigne
+        FROM LignePanier lp
+        WHERE lp.idPanier = ?
+    ");
+    $stmt->execute([$panier['idPanier']]);
+    $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($articles)) {
+        echo "<script>alert('Panier vide'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    // 3. Calculer le total de la commande
+    $total = 0;
+    foreach ($articles as $article) {
+        $total += $article['totalLigne'];
+    }
+    
+    // 4. Définir les paramètres de la commande
+    $fraisDePort = 5.90; // Frais de port fixes
+    $delaiLivraison = date('Y-m-d', strtotime('+5 days')); // Délai de 5 jours
+    $montantTotal = $total + $fraisDePort;
+    
+    // 5. Créer la commande
+    $stmt = $pdo->prepare("
+        INSERT INTO Commande 
+        (idClient, idAdresseLivraison, idAdresseFacturation, dateCommande, modeReglement, delaiLivraison, fraisDePort, montantTotal, statut) 
+        VALUES (?, ?, ?, NOW(), 'PayPal', ?, ?, ?, 'en_attente_paiement')
+    ");
+    $stmt->execute([$idClient, $idAdresseLivraison, $idAdresseFacturation, $delaiLivraison, $fraisDePort, $montantTotal]);
+    $idCommande = $pdo->lastInsertId();
+    
+    // 6. Créer les lignes de commande
+    $stmtLigne = $pdo->prepare("
+        INSERT INTO LigneCommande 
+        (idCommande, idOrigami, quantite, prixUnitaire) 
+        VALUES (?, ?, ?, ?)
+    ");
+    
+    foreach ($articles as $article) {
+        $stmtLigne->execute([
+            $idCommande, 
+            $article['idOrigami'], 
+            $article['quantite'], 
+            $article['prixUnitaire']
+        ]);
+    }
+    
+    // 7. Vider le panier
+    $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ?");
+    $stmt->execute([$panier['idPanier']]);
+    
+    // 8. Mettre à jour la date de modification du panier
+    $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
+    $stmt->execute([$panier['idPanier']]);
+
+    // PROPOSER LE PAIEMENT PAYPAL
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Paiement - Origami Zen</title>
+        <style>
+            body { 
+                font-family: 'Helvetica Neue', Arial, sans-serif; 
+                background-color: #f9f9f9; 
+                margin: 0; 
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }
+            .container { 
+                max-width: 600px; 
+                background: white; 
+                padding: 40px; 
+                border-radius: 8px; 
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            .btn-paypal { 
+                background-color: #0070ba; 
+                color: white; 
+                padding: 15px 40px; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-size: 18px;
+                margin: 10px;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .btn-cb { 
+                background-color: #d40000; 
+                color: white; 
+                padding: 15px 40px; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-size: 18px;
+                margin: 10px;
+            }
+            .details {
+                text-align: left;
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 4px;
+                margin: 20px 0;
+            }
+            .info-message {
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                padding: 15px;
+                border-radius: 4px;
+                margin: 20px 0;
+                text-align: left;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>💳 Finaliser le Paiement</h1>
+            <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p>
+            
+            <div class="info-message">
+                <strong>🔄 Adresse réutilisée</strong><br>
+                Nous avons utilisé votre adresse de livraison précédemment enregistrée.
+            </div>
+            
+            <div class="details">
+                <p><strong>Montant total :</strong> <?= number_format($montantTotal, 2, ',', ' ') ?> €</p>
+                <p><strong>Livraison prévue :</strong> <?= date('d/m/Y', strtotime($delaiLivraison)) ?></p>
+            </div>
+            
+            <p>Choisissez votre méthode de paiement :</p>
+            
+            <div>
+                <button class="btn-paypal" onclick="initierPaiementPayPal()">
+                    <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/PP_logo_h_100x26.png" alt="PayPal" height="26">
+                    Payer avec PayPal
+                </button>
+                
+                <button class="btn-cb" onclick="paiementCB()">
+                    💳 Payer par Carte Bancaire
+                </button>
+            </div>
+            
+            <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                <strong>PayPal</strong> : Paiement sécurisé - Pas de frais supplémentaires<br>
+                <strong>Carte Bancaire</strong> : Paiement sécurisé via notre système
+            </p>
+        </div>
+
+        <script>
+            function initierPaiementPayPal() {
+                // Désactiver les boutons pendant le traitement
+                document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+                
+                fetch('acheter.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'creer_commande_paypal',
+                        montant: <?= $montantTotal ?>,
+                        id_commande: <?= $idCommande ?>
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 200) {
+                        // Rediriger vers PayPal
+                        window.location.href = data.data.approve_url;
+                    } else {
+                        alert('Erreur: ' + data.error);
+                        document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue');
+                    document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                });
+            }
+
+            function paiementCB() {
+                // Rediriger vers le traitement CB classique
+                window.location.href = 'paiement_cb.php?commande=<?= $idCommande ?>';
+            }
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 ?>

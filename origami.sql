@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1:3306
--- Généré le : jeu. 06 nov. 2025 à 04:03
+-- Généré le : sam. 08 nov. 2025 à 04:13
 -- Version du serveur : 8.2.0
 -- Version de PHP : 8.2.13
 
@@ -33,7 +33,14 @@ CREATE TABLE IF NOT EXISTS `administrateur` (
   `email` varchar(50) NOT NULL,
   `motDePasse` varchar(255) NOT NULL,
   PRIMARY KEY (`idAdmin`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Déchargement des données de la table `administrateur`
+--
+
+INSERT INTO `administrateur` (`idAdmin`, `email`, `motDePasse`) VALUES
+(1, 'lhpp.philippe@gmail.com', '$2y$10$3xC95pryxvZKeGjJ4FbYVO6VI.PJtRaLWeO7fE.jdxJ0tYC8IqR6S');
 
 -- --------------------------------------------------------
 
@@ -58,16 +65,21 @@ CREATE TABLE IF NOT EXISTS `adresse` (
   `dateCreation` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`idAdresse`),
   KEY `Adresse_idClient_FK` (`idClient`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `adresse`
 --
 
-/*INSERT INTO `adresse` (`idAdresse`, `idClient`, `nom`, `prenom`, `adresse`, `codePostal`, `ville`, `pays`, `telephone`, `instructions`, `societe`, `type`, `dateCreation`) VALUES
-(1, 3, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-06 05:01:08'),
-(2, 3, 'LOR', 'Philippe', 'azerty', '75015', 'PARIS', 'France', '', NULL, NULL, 'facturation', '2025-11-06 05:01:08');
-*/
+INSERT INTO `adresse` (`idAdresse`, `idClient`, `nom`, `prenom`, `adresse`, `codePostal`, `ville`, `pays`, `telephone`, `instructions`, `societe`, `type`, `dateCreation`) VALUES
+(3, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-06 05:31:20'),
+(4, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-06 05:33:38'),
+(5, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-06 05:42:48'),
+(6, 6, 'LOR', 'Philippe', 'azerty', '75015', 'PARIS', 'France', '', NULL, NULL, 'facturation', '2025-11-06 05:42:48'),
+(7, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-07 18:12:04'),
+(8, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-08 03:39:39'),
+(9, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-08 05:12:21');
+
 -- --------------------------------------------------------
 
 --
@@ -110,16 +122,15 @@ CREATE TABLE IF NOT EXISTS `client` (
   KEY `idx_client_type` (`type`),
   KEY `idx_client_session` (`session_id`),
   KEY `idx_client_date` (`date_creation`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `client`
 --
 
-/*ùINSERT INTO `client` (`idClient`, `email`, `motDePasse`, `nom`, `prenom`, `telephone`, `email_confirme`, `token_confirmation`, `token_expires`, `type`, `date_creation`, `session_id`) VALUES
-(1, 'client_anonyme@origamizen.fr', '', 'Anonyme', 'Client', '', 0, NULL, NULL, 'temporaire', '2025-11-06 04:59:03', NULL),
-(3, 'lhpp.philippe@gmail.com', '$2y$10$D6OFci2AjwQz2jmDLQfOluJbWzE5NsEn2GWP1ijhLD/onF3ctiwSC', 'LOR', '', '', 0, NULL, NULL, 'permanent', '2025-11-06 05:00:30', NULL);
-*/
+INSERT INTO `client` (`idClient`, `email`, `motDePasse`, `nom`, `prenom`, `telephone`, `email_confirme`, `token_confirmation`, `token_expires`, `type`, `date_creation`, `session_id`) VALUES
+(6, 'lhpp.philippe@gmail.com', '$2y$10$iELbJHKwtp08wyLujSc/N.sk3QRYneFIJcC430aBK.dbRRzDrqQPm', 'LOR', '', '', 0, NULL, NULL, 'permanent', '2025-11-06 05:30:33', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -154,18 +165,25 @@ CREATE TABLE IF NOT EXISTS `commande` (
   `fraisDePort` double NOT NULL,
   `montantTotal` double NOT NULL,
   `statut` varchar(20) NOT NULL DEFAULT 'en_attente',
+  `statut_paiement` enum('en_attente','payee','echec','annulee','rembourse') DEFAULT 'en_attente',
+  `idPaiement` int DEFAULT NULL,
   PRIMARY KEY (`idCommande`),
   KEY `Commande_idClient_FK` (`idClient`),
   KEY `Commande_idAdresseLivraison_FK` (`idAdresseLivraison`),
   KEY `idAdresseFacturation` (`idAdresseFacturation`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `commande`
 --
 
-INSERT INTO `commande` (`idCommande`, `idClient`, `idAdresseLivraison`, `idAdresseFacturation`, `dateCommande`, `modeReglement`, `delaiLivraison`, `fraisDePort`, `montantTotal`, `statut`) VALUES
-(1, 3, 1, 2, '2025-11-06 05:01:08', 'CB', '2025-11-11', 5.9, 68.9, 'confirmee');
+INSERT INTO `commande` (`idCommande`, `idClient`, `idAdresseLivraison`, `idAdresseFacturation`, `dateCommande`, `modeReglement`, `delaiLivraison`, `fraisDePort`, `montantTotal`, `statut`, `statut_paiement`, `idPaiement`) VALUES
+(2, 6, 3, 3, '2025-11-06 05:31:20', 'CB', '2025-11-11', 5.9, 47.9, 'confirmee', 'en_attente', NULL),
+(3, 6, 4, 4, '2025-11-06 05:33:38', 'CB', '2025-11-11', 5.9, 50.9, 'confirmee', 'en_attente', NULL),
+(4, 6, 5, 6, '2025-11-06 05:42:48', 'CB', '2025-11-11', 5.9, 37.9, 'confirmee', 'en_attente', NULL),
+(5, 6, 7, 7, '2025-11-07 18:12:04', 'CB', '2025-11-12', 5.9, 23.9, 'confirmee', 'en_attente', NULL),
+(6, 6, 8, 8, '2025-11-08 03:39:39', 'CB', '2025-11-13', 5.9, 23.9, 'confirmee', 'en_attente', NULL),
+(7, 6, 9, 9, '2025-11-08 05:12:21', 'CB', '2025-11-13', 5.9, 23.9, 'confirmee', 'en_attente', NULL);
 
 -- --------------------------------------------------------
 
@@ -183,15 +201,20 @@ CREATE TABLE IF NOT EXISTS `lignecommande` (
   PRIMARY KEY (`idLigneCommande`),
   KEY `LigneCommande_idCommande_FK` (`idCommande`),
   KEY `LigneCommande_idOrigami_FK` (`idOrigami`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `lignecommande`
 --
 
 INSERT INTO `lignecommande` (`idLigneCommande`, `idCommande`, `idOrigami`, `quantite`, `prixUnitaire`) VALUES
-(1, 1, 3, 1, 45),
-(2, 1, 2, 1, 18);
+(3, 2, 1, 1, 24),
+(4, 2, 2, 1, 18),
+(5, 3, 3, 1, 45),
+(6, 4, 4, 1, 32),
+(7, 5, 2, 1, 18),
+(8, 6, 2, 1, 18),
+(9, 7, 2, 1, 18);
 
 -- --------------------------------------------------------
 
@@ -209,7 +232,7 @@ CREATE TABLE IF NOT EXISTS `lignepanier` (
   PRIMARY KEY (`idLignePanier`),
   KEY `LignePanier_idPanier_FK` (`idPanier`),
   KEY `LignePanier_idOrigami_FK` (`idOrigami`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -240,6 +263,27 @@ INSERT INTO `origami` (`idOrigami`, `nom`, `description`, `photo`, `prixHorsTaxe
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `paiement`
+--
+
+DROP TABLE IF EXISTS `paiement`;
+CREATE TABLE IF NOT EXISTS `paiement` (
+  `idPaiement` int NOT NULL AUTO_INCREMENT,
+  `idCommande` int NOT NULL,
+  `montant` decimal(10,2) NOT NULL,
+  `currency` varchar(3) DEFAULT 'EUR',
+  `statut` varchar(20) DEFAULT 'en_attente',
+  `methode_paiement` varchar(50) DEFAULT 'carte',
+  `reference` varchar(100) DEFAULT NULL,
+  `date_creation` datetime DEFAULT CURRENT_TIMESTAMP,
+  `date_maj` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`idPaiement`),
+  KEY `idCommande` (`idCommande`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `panier`
 --
 
@@ -250,14 +294,14 @@ CREATE TABLE IF NOT EXISTS `panier` (
   `dateModification` datetime NOT NULL,
   PRIMARY KEY (`idPanier`),
   UNIQUE KEY `idClient` (`idClient`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `panier`
 --
 
 INSERT INTO `panier` (`idPanier`, `idClient`, `dateModification`) VALUES
-(2, 3, '2025-11-06 05:01:08');
+(9, 6, '2025-11-08 05:12:21');
 
 -- --------------------------------------------------------
 
@@ -276,14 +320,7 @@ CREATE TABLE IF NOT EXISTS `tokens_confirmation` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `token` (`token`),
   KEY `id_client` (`id_client`)
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Déchargement des données de la table `tokens_confirmation`
---
-
-INSERT INTO `tokens_confirmation` (`id`, `token`, `email`, `id_client`, `expiration`, `utilise`) VALUES
-(1, 'bb827d4ad65918ef49b07baff4fd9cf609376a5e4af92f6ea54c65dc8b70db11', 'lhpp.philippe@gmail.com', 3, '2025-11-06 05:15:30', 1);
+) ENGINE=MyISAM AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Contraintes pour les tables déchargées

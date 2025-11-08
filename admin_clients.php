@@ -119,7 +119,7 @@ try {
             </div>
             
             <div class="section">
-                <h2>Clients Permanents</h2>
+                <h2>Clients</h2>
                 <table>
                     <thead>
                         <tr>

@@ -46,6 +46,18 @@ try {
     $stmt_adresses->execute([$client_id]);
     $adresses = $stmt_adresses->fetchAll(PDO::FETCH_ASSOC);
 
+    // Séparer les adresses de livraison et facturation
+    $adresse_livraison = null;
+    $adresse_facturation = null;
+    
+    foreach ($adresses as $adresse) {
+        if ($adresse['type'] == 'livraison') {
+            $adresse_livraison = $adresse;
+        } elseif ($adresse['type'] == 'facturation') {
+            $adresse_facturation = $adresse;
+        }
+    }
+
     // Récupérer les commandes du client
     $stmt_commandes = $pdo->prepare("
         SELECT c.*, COUNT(lc.idLigneCommande) as nb_articles
@@ -358,6 +370,42 @@ try {
             font-size: 10px;
             margin-bottom: 5px;
         }
+        
+        .addresses-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .address-column {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .address-title {
+            font-weight: bold;
+            color: #d40000;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .same-address-notice {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .addresses-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -459,30 +507,107 @@ try {
             </div>
             
             <!-- Adresses -->
-            <div class="section">
-                <h3>Adresses</h3>
-                <?php if (count($adresses) > 0): ?>
-                    <div class="info-grid">
-                        <?php foreach ($adresses as $adresse): ?>
-                            <div class="address-card">
-                                <span class="address-type"><?= $adresse['type'] ?? 'livraison' ?></span>
-                                <div class="info-value">
-                                    <strong><?= htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']) ?></strong><br>
-                                    <?= htmlspecialchars($adresse['adresse']) ?><br>
-                                    <?= htmlspecialchars($adresse['codePostal'] . ' ' . $adresse['ville']) ?><br>
-                                    <?= htmlspecialchars($adresse['pays']) ?><br>
-                                    <?= htmlspecialchars($adresse['telephone']) ?>
-                                    <?php if (!empty($adresse['societe'])): ?>
-                                        <br>Société: <?= htmlspecialchars($adresse['societe']) ?>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+<div class="section">
+    <h3>Adresses</h3>
+    <?php if (count($adresses) > 0): ?>
+        <?php 
+        $has_livraison = !is_null($adresse_livraison);
+        $has_facturation = !is_null($adresse_facturation);
+        $same_address = $has_livraison && $has_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse'];
+        ?>
+        
+        <!-- Affichage côte à côte pour montrer les deux adresses séparément -->
+        <div class="addresses-comparison">
+            <!-- Colonne Livraison -->
+            <div class="address-column">
+                <div class="address-title">
+                    📍 Adresse de Livraison 
+                    <?php if ($same_address): ?>
+                        <span style="font-size: 12px; color: #28a745;">(identique à la facturation)</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($has_livraison): ?>
+                    <div class="info-value">
+                        <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
+                        <?= htmlspecialchars($adresse_livraison['adresse']) ?><br>
+                        <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?><br>
+                        <?= htmlspecialchars($adresse_livraison['pays']) ?><br>
+                        <?= htmlspecialchars($adresse_livraison['telephone']) ?>
+                        <?php if (!empty($adresse_livraison['societe'])): ?>
+                            <br>Société: <?= htmlspecialchars($adresse_livraison['societe']) ?>
+                        <?php endif; ?>
+                        <?php if (!empty($adresse_livraison['instructions'])): ?>
+                            <br>Instructions: <?= htmlspecialchars($adresse_livraison['instructions']) ?>
+                        <?php endif; ?>
                     </div>
                 <?php else: ?>
-                    <p>Aucune adresse enregistrée pour ce client.</p>
+                    <p style="color: #666; font-style: italic;">Aucune adresse de livraison enregistrée</p>
                 <?php endif; ?>
             </div>
+            
+            <!-- Colonne Facturation -->
+            <div class="address-column">
+                <div class="address-title">
+                    📄 Adresse de Facturation
+                    <?php if ($same_address): ?>
+                        <span style="font-size: 12px; color: #28a745;">(identique à la livraison)</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($has_facturation): ?>
+                    <div class="info-value">
+                        <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
+                        <?= htmlspecialchars($adresse_facturation['adresse']) ?><br>
+                        <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?><br>
+                        <?= htmlspecialchars($adresse_facturation['pays']) ?><br>
+                        <?= htmlspecialchars($adresse_facturation['telephone']) ?>
+                        <?php if (!empty($adresse_facturation['societe'])): ?>
+                            <br>Société: <?= htmlspecialchars($adresse_facturation['societe']) ?>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <p style="color: #666; font-style: italic;">Aucune adresse de facturation enregistrée</p>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <!-- Affichage des adresses supplémentaires s'il y en a -->
+        <?php 
+        $adresses_supplementaires = array_filter($adresses, function($adresse) use ($adresse_livraison, $adresse_facturation) {
+            return $adresse['idAdresse'] != ($adresse_livraison['idAdresse'] ?? null) && 
+                   $adresse['idAdresse'] != ($adresse_facturation['idAdresse'] ?? null);
+        });
+        ?>
+        
+        <?php if (count($adresses_supplementaires) > 0): ?>
+            <div style="margin-top: 30px;">
+                <h4 style="margin-bottom: 15px; color: #666;">Adresses supplémentaires</h4>
+                <div class="info-grid">
+                    <?php foreach ($adresses_supplementaires as $adresse): ?>
+                        <div class="address-card">
+                            <span class="address-type"><?= $adresse['type'] ?? 'livraison' ?></span>
+                            <div class="info-value">
+                                <strong><?= htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']) ?></strong><br>
+                                <?= htmlspecialchars($adresse['adresse']) ?><br>
+                                <?= htmlspecialchars($adresse['codePostal'] . ' ' . $adresse['ville']) ?><br>
+                                <?= htmlspecialchars($adresse['pays']) ?><br>
+                                <?= htmlspecialchars($adresse['telephone']) ?>
+                                <?php if (!empty($adresse['societe'])): ?>
+                                    <br>Société: <?= htmlspecialchars($adresse['societe']) ?>
+                                <?php endif; ?>
+                                <?php if (!empty($adresse['instructions']) && $adresse['type'] == 'livraison'): ?>
+                                    <br>Instructions: <?= htmlspecialchars($adresse['instructions']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+        
+    <?php else: ?>
+        <p>Aucune adresse enregistrée pour ce client.</p>
+    <?php endif; ?>
+</div>
             
             <!-- Historique des commandes -->
             <div class="section">
