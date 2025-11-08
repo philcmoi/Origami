@@ -71,14 +71,6 @@ CREATE TABLE IF NOT EXISTS `adresse` (
 -- Déchargement des données de la table `adresse`
 --
 
-INSERT INTO `adresse` (`idAdresse`, `idClient`, `nom`, `prenom`, `adresse`, `codePostal`, `ville`, `pays`, `telephone`, `instructions`, `societe`, `type`, `dateCreation`) VALUES
-(3, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-06 05:31:20'),
-(4, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-06 05:33:38'),
-(5, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-06 05:42:48'),
-(6, 6, 'LOR', 'Philippe', 'azerty', '75015', 'PARIS', 'France', '', NULL, NULL, 'facturation', '2025-11-06 05:42:48'),
-(7, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-07 18:12:04'),
-(8, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '0644982807', '', NULL, 'livraison', '2025-11-08 03:39:39'),
-(9, 6, 'LOR', 'Philippe', '116 rue de Javel', '75015', 'Paris', 'France', '', '', NULL, 'livraison', '2025-11-08 05:12:21');
 
 -- --------------------------------------------------------
 
@@ -177,13 +169,6 @@ CREATE TABLE IF NOT EXISTS `commande` (
 -- Déchargement des données de la table `commande`
 --
 
-INSERT INTO `commande` (`idCommande`, `idClient`, `idAdresseLivraison`, `idAdresseFacturation`, `dateCommande`, `modeReglement`, `delaiLivraison`, `fraisDePort`, `montantTotal`, `statut`, `statut_paiement`, `idPaiement`) VALUES
-(2, 6, 3, 3, '2025-11-06 05:31:20', 'CB', '2025-11-11', 5.9, 47.9, 'confirmee', 'en_attente', NULL),
-(3, 6, 4, 4, '2025-11-06 05:33:38', 'CB', '2025-11-11', 5.9, 50.9, 'confirmee', 'en_attente', NULL),
-(4, 6, 5, 6, '2025-11-06 05:42:48', 'CB', '2025-11-11', 5.9, 37.9, 'confirmee', 'en_attente', NULL),
-(5, 6, 7, 7, '2025-11-07 18:12:04', 'CB', '2025-11-12', 5.9, 23.9, 'confirmee', 'en_attente', NULL),
-(6, 6, 8, 8, '2025-11-08 03:39:39', 'CB', '2025-11-13', 5.9, 23.9, 'confirmee', 'en_attente', NULL),
-(7, 6, 9, 9, '2025-11-08 05:12:21', 'CB', '2025-11-13', 5.9, 23.9, 'confirmee', 'en_attente', NULL);
 
 -- --------------------------------------------------------
 
@@ -207,14 +192,7 @@ CREATE TABLE IF NOT EXISTS `lignecommande` (
 -- Déchargement des données de la table `lignecommande`
 --
 
-INSERT INTO `lignecommande` (`idLigneCommande`, `idCommande`, `idOrigami`, `quantite`, `prixUnitaire`) VALUES
-(3, 2, 1, 1, 24),
-(4, 2, 2, 1, 18),
-(5, 3, 3, 1, 45),
-(6, 4, 4, 1, 32),
-(7, 5, 2, 1, 18),
-(8, 6, 2, 1, 18),
-(9, 7, 2, 1, 18);
+
 
 -- --------------------------------------------------------
 

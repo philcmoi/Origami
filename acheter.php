@@ -1997,7 +1997,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     }
     
     // 4. Définir les paramètres de la commande
-    $fraisDePort = 5.90; // Frais de port fixes
+    $fraisDePort = 0.0; // Frais de port fixes
     $delaiLivraison = date('Y-m-d', strtotime('+5 days')); // Délai de 5 jours
     $montantTotal = $total + $fraisDePort;
     

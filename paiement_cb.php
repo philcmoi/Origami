@@ -16,9 +16,9 @@ try {
 
 // Configuration PayPal
 $paypal_config = [
-    'client_id' => 'sb-vyvj047419601@business.example.com', // À remplacer par votre Client ID
-    'client_secret' => '2dqtySq.', // À remplacer par votre Client Secret
-    'environment' => 'sandbox', // 'sandbox' pour test, 'live' pour production
+    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX', // À remplacer par votre Client ID
+    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1', // À remplacer par votre Client Secret
+    'environment' => 'live', // 'sandbox' pour test, 'live' pour production
     'currency' => 'EUR'
 ];
 
