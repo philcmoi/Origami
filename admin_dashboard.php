@@ -252,7 +252,7 @@ if (isset($_GET['logout'])) {
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= $clientsPermanents ?></div>
-                    <div class="stat-label">Clients permanents</div>
+                    <div class="stat-label">Clients</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= number_format($chiffreAffaires, 2, ',', ' ') ?>€</div>

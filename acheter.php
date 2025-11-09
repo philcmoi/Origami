@@ -53,11 +53,13 @@ try {
 
 // Configuration PayPal
 $paypal_config = [
-    'client_id' => 'sb-vyvj047419601@business.example.com', // À remplacer par votre Client ID
-    'client_secret' => '2dqtySq.', // À remplacer par votre Client Secret
+    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX
+', // À remplacer par votre Client ID
+    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1', // À remplacer par votre Client Secret
     'environment' => 'sandbox', // 'sandbox' pour test, 'live' pour production
     'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
     'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
+    ,'business_email' => 'sb-vyvj047419601@business.example.com'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -867,6 +869,36 @@ try {
             }
         }
 
+        // RÉCUPÉRER LE RÉCAPITULATIF DU PANIER AVANT DE CRÉER LE TOKEN
+        $stmt = $pdo->prepare("
+            SELECT 
+                lp.idLignePanier,
+                lp.idOrigami,
+                lp.quantite,
+                lp.prixUnitaire,
+                o.nom,
+                o.description,
+                o.photo,
+                (lp.quantite * lp.prixUnitaire) as totalLigne
+            FROM LignePanier lp
+            JOIN Origami o ON lp.idOrigami = o.idOrigami
+            WHERE lp.idPanier = ?
+        ");
+        $stmt->execute([$panierPermanent['idPanier']]);
+        $articlesPanier = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Calculer le total du panier
+        $totalPanier = 0;
+        $totalQuantites = 0;
+        foreach ($articlesPanier as $article) {
+            $totalPanier += $article['totalLigne'];
+            $totalQuantites += $article['quantite'];
+        }
+        
+        // Ajouter les frais de port
+        $fraisDePort = 0.0;
+        $montantTotal = $totalPanier + $fraisDePort;
+
         $tokenConfirmation = genererTokenConfirmation();
 
         // Stocker le token avec vérification
@@ -889,7 +921,72 @@ try {
         // URL de confirmation pointant vers acheter.php
         $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
-        // Préparer l'email HTML avec le lien de confirmation
+        // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
+        $recapAchatsHTML = "";
+        if (!empty($articlesPanier)) {
+            $recapAchatsHTML = "
+            <div style='margin: 25px 0; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;'>
+                <h3 style='color: #d40000; margin-top: 0; margin-bottom: 20px; text-align: center;'>📦 Récapitulatif de votre panier</h3>
+                
+                <table style='width: 100%; border-collapse: collapse; margin-bottom: 20px;'>
+                    <thead>
+                        <tr style='background: #e9ecef;'>
+                            <th style='padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;'>Produit</th>
+                            <th style='padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;'>Quantité</th>
+                            <th style='padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;'>Prix unitaire</th>
+                            <th style='padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;'>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            ";
+            
+            foreach ($articlesPanier as $article) {
+                $recapAchatsHTML .= "
+                        <tr style='border-bottom: 1px solid #dee2e6;'>
+                            <td style='padding: 12px;'>
+                                <strong>" . htmlspecialchars($article['nom']) . "</strong><br>
+                                <small style='color: #666;'>" . htmlspecialchars(substr($article['description'], 0, 80)) . "...</small>
+                            </td>
+                            <td style='padding: 12px; text-align: center;'>" . $article['quantite'] . "</td>
+                            <td style='padding: 12px; text-align: right;'>" . number_format($article['prixUnitaire'], 2, ',', ' ') . " €</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold;'>" . number_format($article['totalLigne'], 2, ',', ' ') . " €</td>
+                        </tr>
+                ";
+            }
+            
+            $recapAchatsHTML .= "
+                    </tbody>
+                    <tfoot style='background: #f8f9fa;'>
+                        <tr>
+                            <td colspan='3' style='padding: 12px; text-align: right; font-weight: bold;'>Sous-total :</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold;'>" . number_format($totalPanier, 2, ',', ' ') . " €</td>
+                        </tr>
+                        <tr>
+                            <td colspan='3' style='padding: 12px; text-align: right;'>Frais de port :</td>
+                            <td style='padding: 12px; text-align: right;'>" . number_format($fraisDePort, 2, ',', ' ') . " €</td>
+                        </tr>
+                        <tr style='border-top: 2px solid #d40000;'>
+                            <td colspan='3' style='padding: 12px; text-align: right; font-weight: bold; font-size: 1.1em; color: #d40000;'>Total à payer :</td>
+                            <td style='padding: 12px; text-align: right; font-weight: bold; font-size: 1.1em; color: #d40000;'>" . number_format($montantTotal, 2, ',', ' ') . " €</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style='text-align: center; margin-top: 15px; padding: 15px; background: #e7f3ff; border-radius: 4px;'>
+                    <strong>🛒 " . $totalQuantites . " article(s) dans votre panier</strong>
+                </div>
+            </div>
+            ";
+        } else {
+            $recapAchatsHTML = "
+            <div style='margin: 25px 0; background: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeaa7; text-align: center;'>
+                <p style='margin: 0; color: #856404;'><strong>⚠️ Votre panier est vide</strong><br>
+                Ajoutez des articles avant de finaliser votre commande.</p>
+            </div>
+            ";
+        }
+
+        // Préparer l'email HTML avec le lien de confirmation ET le récapitulatif
         $sujet = "Confirmez votre commande - Origami Zen";
         $messageHTML = "
         <!DOCTYPE html>
@@ -906,7 +1003,7 @@ try {
                     color: #333;
                 }
                 .container { 
-                    max-width: 600px; 
+                    max-width: 700px; 
                     margin: 0 auto; 
                     background: white; 
                     padding: 40px; 
@@ -927,7 +1024,7 @@ try {
                 }
                 .btn-confirmation { 
                     display: block; 
-                    width: 250px; 
+                    width: 280px; 
                     margin: 30px auto; 
                     padding: 15px 30px; 
                     background-color: #d40000; 
@@ -968,6 +1065,20 @@ try {
                     text-align: center; 
                     margin-top: 10px;
                 }
+                .recap-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .recap-table th {
+                    background: #f8f9fa;
+                    padding: 12px;
+                    text-align: left;
+                    border-bottom: 2px solid #dee2e6;
+                }
+                .recap-table td {
+                    padding: 12px;
+                    border-bottom: 1px solid #dee2e6;
+                }
             </style>
         </head>
         <body>
@@ -982,7 +1093,12 @@ try {
                     
                     <p>Pour finaliser votre commande sur Origami Zen, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
                     
-                    <a href='" . $urlConfirmation . "' class='btn-confirmation'>Confirmer ma commande</a>
+                    " . $recapAchatsHTML . "
+                    
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <p><strong>Étape suivante :</strong> Après confirmation, vous serez redirigé vers le paiement sécurisé.</p>
+                        <a href='" . $urlConfirmation . "' class='btn-confirmation'>Confirmer ma commande</a>
+                    </div>
                     
                     <div class='url-backup'>
                         Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
@@ -1015,7 +1131,14 @@ try {
                 'data' => [
                     'message' => 'Lien de confirmation envoyé',
                     'client_existant' => $clientExistant,
-                    'id_client' => $idClient
+                    'id_client' => $idClient,
+                    'recap_panier' => [
+                        'articles' => $articlesPanier,
+                        'total' => $totalPanier,
+                        'frais_port' => $fraisDePort,
+                        'total_general' => $montantTotal,
+                        'quantite_total' => $totalQuantites
+                    ]
                 ]
             ]);
         } else {
@@ -1052,27 +1175,6 @@ try {
         }
 
         $idClient = $tokenData['id_client'];
-
-        // NOUVEAU : Vérifier si le client a déjà des adresses enregistrées
-        $stmt = $pdo->prepare("
-            SELECT * FROM Adresse 
-            WHERE idClient = ? AND type = 'livraison' 
-            ORDER BY dateCreation DESC 
-            LIMIT 1
-        ");
-        $stmt->execute([$idClient]);
-        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Si le client a une adresse existante, passer directement au paiement
-        if ($adresseExistante) {
-            // Marquer le token comme utilisé
-            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
-            $stmt->execute([$token]);
-            
-            // Créer directement la commande avec l'adresse existante
-            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
-            exit;
-        }
 
         // Récupérer les infos du client pour pré-remplir le formulaire
         $stmt = $pdo->prepare("SELECT nom, prenom, email FROM Client WHERE idClient = ?");
@@ -1410,7 +1512,7 @@ try {
         finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFacturation);
 
     } elseif ($action == 'confirmer_commande') {
-        // Rediriger vers le formulaire d'adresse si le token est valide
+        // NOUVELLE FONCTIONNALITÉ : Afficher le choix entre utiliser l'adresse existante ou en saisir une nouvelle
         $token = $data['token'] ?? ($_GET['token'] ?? '');
         
         if (!$token) {
@@ -1452,7 +1554,7 @@ try {
             }
         }
 
-        // Vérifier le token et rediriger vers le formulaire d'adresse
+        // Vérifier le token
         $stmt = $pdo->prepare("SELECT email, id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
         $stmt->execute([$token]);
         $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1561,7 +1663,7 @@ try {
 
         $idClient = $tokenData['id_client'];
 
-        // NOUVEAU : Vérifier si le client a déjà des adresses enregistrées
+        // Vérifier si le client a déjà des adresses enregistrées
         $stmt = $pdo->prepare("
             SELECT * FROM Adresse 
             WHERE idClient = ? AND type = 'livraison' 
@@ -1571,20 +1673,16 @@ try {
         $stmt->execute([$idClient]);
         $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Si le client a une adresse existante, créer directement la commande
+        // AFFICHER LE CHOIX ENTRE ADRESSE EXISTANTE ET NOUVELLE ADRESSE
         if ($adresseExistante) {
-            // Marquer le token comme utilisé
-            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
-            $stmt->execute([$token]);
-            
-            // Créer directement la commande avec l'adresse existante
-            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+            // Afficher la page de choix
+            afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient);
+            exit;
+        } else {
+            // Pas d'adresse existante, rediriger directement vers le formulaire
+            header("Location: acheter.php?action=saisir_adresse&token=" . $token);
             exit;
         }
-
-        // Sinon, rediriger vers le formulaire d'adresse
-        header("Location: acheter.php?action=saisir_adresse&token=" . $token);
-        exit;
 
     } elseif ($action == 'ajouter_au_panier') {
         // Vérifier qu'on a bien un client
@@ -1813,15 +1911,230 @@ try {
     }
 }
 
-// NOUVELLE FONCTION : Créer une commande avec une adresse existante
+// NOUVELLE FONCTION : Afficher le choix entre adresse existante et nouvelle adresse
+function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Choix de l'adresse - Origami Zen</title>
+        <style>
+            body { 
+                font-family: 'Helvetica Neue', Arial, sans-serif; 
+                background-color: #f9f9f9; 
+                margin: 0; 
+                padding: 20px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }
+            .container { 
+                max-width: 600px; 
+                background: white; 
+                padding: 40px; 
+                border-radius: 8px; 
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+            .header { 
+                text-align: center; 
+                color: #d40000; 
+                margin-bottom: 30px; 
+            }
+            .choice-card {
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 25px;
+                margin-bottom: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                background: #fafafa;
+            }
+            .choice-card:hover {
+                border-color: #d40000;
+                background: #fff5f5;
+                transform: translateY(-2px);
+            }
+            .choice-card.selected {
+                border-color: #d40000;
+                background: #fff5f5;
+            }
+            .choice-icon {
+                font-size: 24px;
+                margin-bottom: 10px;
+            }
+            .choice-title {
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #333;
+            }
+            .choice-description {
+                color: #666;
+                margin-bottom: 15px;
+            }
+            .address-details {
+                background: white;
+                padding: 15px;
+                border-radius: 4px;
+                border: 1px solid #e0e0e0;
+                margin-top: 10px;
+            }
+            .btn { 
+                background-color: #d40000; 
+                color: white; 
+                padding: 15px 30px; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                width: 100%; 
+                font-size: 16px;
+                margin-top: 20px;
+            }
+            .btn:hover {
+                background-color: #b30000;
+            }
+            .btn:disabled {
+                background-color: #cccccc;
+                cursor: not-allowed;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🏠 Choix de l'adresse de livraison</h1>
+                <p>Nous avons trouvé une adresse enregistrée pour votre compte</p>
+            </div>
+
+            <form id="choixAdresseForm" method="POST" action="acheter.php">
+                <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
+                <input type="hidden" name="action" value="utiliser_adresse_existante">
+                <input type="hidden" name="choix_adresse" id="choix_adresse" value="">
+
+                <!-- Option 1 : Utiliser l'adresse existante -->
+                <div class="choice-card" onclick="selectChoice('existante')" id="card_existante">
+                    <div class="choice-icon">🏠</div>
+                    <div class="choice-title">Utiliser mon adresse enregistrée</div>
+                    <div class="choice-description">
+                        Plus rapide - Utilisez l'adresse que vous avez déjà renseignée
+                    </div>
+                    <div class="address-details">
+                        <strong><?= htmlspecialchars($adresseExistante['prenom']) ?> <?= htmlspecialchars($adresseExistante['nom']) ?></strong><br>
+                        <?= htmlspecialchars($adresseExistante['adresse']) ?><br>
+                        <?= htmlspecialchars($adresseExistante['codePostal']) ?> <?= htmlspecialchars($adresseExistante['ville']) ?><br>
+                        <?= htmlspecialchars($adresseExistante['pays']) ?>
+                    </div>
+                </div>
+
+                <!-- Option 2 : Saisir une nouvelle adresse -->
+                <div class="choice-card" onclick="selectChoice('nouvelle')" id="card_nouvelle">
+                    <div class="choice-icon">📝</div>
+                    <div class="choice-title">Saisir une nouvelle adresse</div>
+                    <div class="choice-description">
+                        Utilisez une adresse différente pour cette commande
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" id="btnContinuer" disabled>Continuer vers le paiement</button>
+            </form>
+        </div>
+
+        <script>
+            let choixSelectionne = '';
+
+            function selectChoice(choix) {
+                choixSelectionne = choix;
+                
+                // Mettre à jour l'apparence des cartes
+                document.getElementById('card_existante').classList.remove('selected');
+                document.getElementById('card_nouvelle').classList.remove('selected');
+                document.getElementById('card_' + choix).classList.add('selected');
+                
+                // Activer le bouton
+                document.getElementById('btnContinuer').disabled = false;
+                document.getElementById('choix_adresse').value = choix;
+            }
+
+            // Gestion de la soumission du formulaire
+            document.getElementById('choixAdresseForm').addEventListener('submit', function(e) {
+                if (!choixSelectionne) {
+                    e.preventDefault();
+                    alert('Veuillez choisir une option');
+                    return;
+                }
+
+                if (choixSelectionne === 'nouvelle') {
+                    // Rediriger vers le formulaire de saisie d'adresse
+                    e.preventDefault();
+                    window.location.href = 'acheter.php?action=saisir_adresse&token=<?= $token ?>';
+                }
+                // Si choix est 'existante', le formulaire se soumet normalement
+            });
+        </script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// NOUVELLE ACTION : Utiliser l'adresse existante
+if ($action == 'utiliser_adresse_existante') {
+    $is_html_response = true;
+    header('Content-Type: text/html; charset=UTF-8');
+    
+    $token = $_POST['token'] ?? '';
+    $choixAdresse = $_POST['choix_adresse'] ?? '';
+    
+    if (!$token || !$choixAdresse) {
+        echo "<script>alert('Données manquantes'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    // Vérifier le token
+    $stmt = $pdo->prepare("SELECT id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
+    $stmt->execute([$token]);
+    $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
+        echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    $idClient = $tokenData['id_client'];
+    
+    if ($choixAdresse === 'existante') {
+        // Récupérer la dernière adresse de livraison du client
+        $stmt = $pdo->prepare("
+            SELECT idAdresse 
+            FROM Adresse 
+            WHERE idClient = ? AND type = 'livraison' 
+            ORDER BY dateCreation DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([$idClient]);
+        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($adresseExistante) {
+            // Marquer le token comme utilisé
+            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+            $stmt->execute([$token]);
+            
+            // Créer la commande avec l'adresse existante
+            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+            exit;
+        } else {
+            echo "<script>alert('Aucune adresse trouvée'); window.location.href = 'acheter.php?action=saisir_adresse&token=" . $token . "';</script>";
+            exit;
+        }
+    }
+}
+
+// FONCTION : Créer une commande avec une adresse existante
 function creerCommandeAvecAdresseExistante($pdo, $idClient, $idAdresseLivraison) {
     try {
-        // Marquer le token comme utilisé (s'il est encore valide)
-        if (isset($_GET['token'])) {
-            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
-            $stmt->execute([$_GET['token']]);
-        }
-
         // Utiliser la même adresse pour la facturation
         $idAdresseFacturation = $idAdresseLivraison;
 
@@ -1876,7 +2189,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     }
     
     // 4. Définir les paramètres de la commande
-    $fraisDePort = 5.90; // Frais de port fixes
+    $fraisDePort = 0.0; // Frais de port fixes
     $delaiLivraison = date('Y-m-d', strtotime('+5 days')); // Délai de 5 jours
     $montantTotal = $total + $fraisDePort;
     
@@ -1986,7 +2299,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p>
             
             <div class="info-message">
-                <strong>🔄 Adresse réutilisée</strong><br>
+                <strong>🏠 Adresse utilisée</strong><br>
                 Nous avons utilisé votre adresse de livraison précédemment enregistrée.
             </div>
             
