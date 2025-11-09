@@ -1,4 +1,8 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
 // Configuration de la base de données
@@ -14,12 +18,14 @@ try {
     die("Erreur de connexion à la base de données: " . $e->getMessage());
 }
 
-// Configuration PayPal
+// Configuration PayPal - MODE SANDBOX pour WAMP
 $paypal_config = [
-    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX', // À remplacer par votre Client ID
-    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1', // À remplacer par votre Client Secret
-    'environment' => 'live', // 'sandbox' pour test, 'live' pour production
+    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX',
+    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1',
+    'environment' => 'sandbox', // 'sandbox' pour test WAMP
     'currency' => 'EUR'
+    ,'business_email' => 'sb-vyvj047419601@business.example.com'
+
 ];
 
 // Vérifier si une commande est spécifiée
@@ -58,7 +64,35 @@ try {
     die("Erreur lors de la récupération de la commande: " . $e->getMessage());
 }
 
-// Fonction pour obtenir l'access token PayPal
+// Fonction pour obtenir l'access token PayPal - CORRIGÉE POUR WAMP
+
+// FONCTION DE DIAGNOSTIC PAYPAL - À AJOUTER
+function diagnostiquerPayPal($paypal_config) {
+    error_log("=== DIAGNOSTIC PAYPAL ===");
+    error_log("Environment: " . $paypal_config['environment']);
+    error_log("Client ID: " . substr($paypal_config['client_id'], 0, 10) . "...");
+    error_log("Client Secret: " . substr($paypal_config['client_secret'], 0, 10) . "...");
+    
+    // Test de connexion
+    $access_token = getPayPalAccessToken(
+        $paypal_config['client_id'],
+        $paypal_config['client_secret'], 
+        $paypal_config['environment']
+    );
+    
+    if ($access_token) {
+        error_log("✅ Connexion PayPal OK - Token obtenu");
+        return true;
+    } else {
+        error_log("❌ Échec connexion PayPal");
+        return false;
+    }
+}
+
+// Exécuter le diagnostic
+diagnostiquerPayPal($paypal_config);
+
+// Fonction pour obtenir l'access token PayPal - VERSION CORRIGÉE
 function getPayPalAccessToken($client_id, $client_secret, $environment) {
     $url = $environment === 'live' 
         ? 'https://api.paypal.com/v1/oauth2/token'
@@ -67,27 +101,89 @@ function getPayPalAccessToken($client_id, $client_secret, $environment) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_HEADER, false);
+    
+    // IMPORTANT: Désactiver la vérification SSL en local
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERPWD, $client_id . ":" . $client_secret);
     curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
     
+    // Augmenter le timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
+    // Debug détaillé
+    curl_setopt($ch, CURLOPT_VERBOSE, true);
+    $verbose = fopen('php://temp', 'w+');
+    curl_setopt($ch, CURLOPT_STDERR, $verbose);
+    
+
+/********************************************************************************************** */
+/********************************************************************************************* */
+// DEBUG TEMPORAIRE - À RETIRER EN PRODUCTION
+/*echo "<div style='background: #f8d7da; padding: 20px; margin: 20px;'>";
+echo "<h3>DEBUG PayPal Response:</h3>";
+echo "<pre>HTTP Code: " . $http_code . "</pre>";
+echo "<pre>Full Response: " . htmlspecialchars($result) . "</pre>";
+echo "</div>";
+/******************************************************************************************* */
+/******************************************************************************************* */
+
+
+
+
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    // Log des erreurs détaillé
+    if ($result === false) {
+        $error_msg = "cURL Error: " . curl_error($ch);
+        error_log("PAYPAL ACCESS TOKEN ERROR: " . $error_msg);
+        
+        // Debug verbose
+        rewind($verbose);
+        $verboseLog = stream_get_contents($verbose);
+        error_log("cURL Verbose: " . $verboseLog);
+        
+        curl_close($ch);
+        return false;
+    }
+    
     curl_close($ch);
     
     if ($http_code == 200) {
         $json = json_decode($result);
         return $json->access_token;
     } else {
-        error_log("Erreur PayPal Access Token: " . $result);
+        error_log("PAYPAL ACCESS TOKEN HTTP ERROR: $http_code - Response: " . $result);
+        
+        // Analyse détaillée de l'erreur
+        $error_response = json_decode($result, true);
+        if (isset($error_response['error_description'])) {
+            error_log("PayPal Error Description: " . $error_response['error_description']);
+        }
+        if (isset($error_response['error'])) {
+            error_log("PayPal Error: " . $error_response['error']);
+        }
+        
         return false;
     }
 }
 
-// Fonction pour traiter le paiement par carte via PayPal
+// Fonction pour traiter le paiement par carte via PayPal - AVEC SIMULATION WAMP
 function traiterPaiementPayPalCB($donnees, $paypal_config) {
+    // SIMULATION POUR WAMP - DÉCOMMENTER POUR TESTER
+    /*
+    sleep(2);
+    return [
+        'success' => true,
+        'reference' => 'SIMU_WAMP_' . time() . '_' . $donnees['commande']['idCommande'],
+        'response' => ['state' => 'approved', 'simulated' => true]
+    ];
+    */
+    
     try {
         // Obtenir l'access token
         $access_token = getPayPalAccessToken(
@@ -99,7 +195,7 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
         if (!$access_token) {
             return [
                 'success' => false,
-                'error' => 'Erreur de connexion à PayPal',
+                'error' => 'Erreur de connexion à PayPal - Vérifiez les identifiants',
                 'reference' => null
             ];
         }
@@ -158,11 +254,12 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             ]
         ];
         
-        // Exécuter la requête PayPal
+        // Exécuter la requête PayPal avec corrections WAMP
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -170,9 +267,16 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             'Authorization: Bearer ' . $access_token
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         
         $result = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        
+        // DEBUG WAMP
+        if ($result === false) {
+            error_log("cURL Error paiement: " . curl_error($ch));
+        }
+        
         curl_close($ch);
         
         if ($http_code == 201) {
@@ -203,8 +307,7 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             } else if (isset($error_response['message'])) {
                 $error_message .= $error_response['message'];
             } else {
-                $error_message .= 'Erreur inconnue';
-            }
+            $error_message .= 'Erreur inconnue - HTTP: ' . $http_code . ' - Full response: ' . $result;            }
             
             error_log("Erreur paiement PayPal CB: " . $result);
             
@@ -224,6 +327,7 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
         ];
     }
 }
+
 
 // Fonction pour détecter le type de carte
 function detecterTypeCarte($numero) {
@@ -656,6 +760,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             text-align: center;
             margin: 10px 0;
         }
+        .test-info {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            color: #155724;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -668,6 +781,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="details">
             <p><strong>Montant à payer :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
         </div>
+
+        <!-- INFO MODE TEST WAMP 
+        <div class="test-info">
+            <strong>🔧 MODE TEST WAMP ACTIVÉ</strong><br>
+            Paiements simulés - Sandbox PayPal
+        </div>-->
 
         <div class="paypal-badge">
             <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/cc-badges-ppmcvdam.png" alt="PayPal" style="height: 30px;">
@@ -725,6 +844,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             <div class="form-group">
                 <label for="titulaire_carte">Nom du titulaire <span style="color: #d40000;">*</span></label>
+                <input type="text" id="titulaire_carte" name="titulaire_carte" 
+                       placeholder="M. DUPONT Jean" 
+                       value="<?= htmlspecialchars($commande['nom'] . ' ' . $commande['nom']) ?>"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="titulaire_carte">Prenom du titulaire <span style="color: #d40000;">*</span></label>
                 <input type="text" id="titulaire_carte" name="titulaire_carte" 
                        placeholder="M. DUPONT Jean" 
                        value="<?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>"

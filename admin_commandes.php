@@ -48,12 +48,32 @@ try {
     
     // Récupérer les commandes avec filtres
     $statut = $_GET['statut'] ?? 'tous';
+    $date_debut = $_GET['date_debut'] ?? '';
+    $date_fin = $_GET['date_fin'] ?? '';
+    
     $where = "";
     $params = [];
+    $conditions = [];
     
     if ($statut !== 'tous') {
-        $where = "WHERE c.statut = ?";
+        $conditions[] = "c.statut = ?";
         $params[] = $statut;
+    }
+    
+    if (!empty($date_debut)) {
+        $conditions[] = "c.dateCommande >= ?";
+        $params[] = $date_debut;
+    }
+    
+    if (!empty($date_fin)) {
+        // Ajouter un jour pour inclure toute la journée de fin
+        $date_fin_limit = date('Y-m-d', strtotime($date_fin . ' +1 day'));
+        $conditions[] = "c.dateCommande < ?";
+        $params[] = $date_fin_limit;
+    }
+    
+    if (!empty($conditions)) {
+        $where = "WHERE " . implode(" AND ", $conditions);
     }
     
     $stmt = $pdo->prepare("
@@ -90,9 +110,22 @@ try {
             display: flex;
             gap: 15px;
             align-items: center;
+            flex-wrap: wrap;
         }
         
-        .filter-select {
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .filter-select, .filter-input {
             padding: 8px 15px;
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -105,6 +138,19 @@ try {
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            align-self: flex-end;
+        }
+        
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            align-self: flex-end;
+            text-decoration: none;
+            display: inline-block;
         }
         
         .order-actions {
@@ -179,6 +225,12 @@ try {
         .statut-form {
             display: none;
         }
+        
+        .date-filters {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -202,14 +254,32 @@ try {
         
         <div class="main-content">
             <div class="filters">
-                <form method="GET">
-                    <select name="statut" class="filter-select" onchange="this.form.submit()">
-                        <option value="tous" <?= $statut === 'tous' ? 'selected' : '' ?>>Tous les statuts</option>
-                        <option value="en_attente" <?= $statut === 'en_attente' ? 'selected' : '' ?>>En attente</option>
-                        <option value="confirmee" <?= $statut === 'confirmee' ? 'selected' : '' ?>>Confirmée</option>
-                        <option value="expediee" <?= $statut === 'expediee' ? 'selected' : '' ?>>Expédiée</option>
-                        <option value="annulee" <?= $statut === 'annulee' ? 'selected' : '' ?>>Annulée</option>
-                    </select>
+                <form method="GET" class="filter-form">
+                    <div class="filter-group">
+                        <label class="filter-label">Statut</label>
+                        <select name="statut" class="filter-select" onchange="this.form.submit()">
+                            <option value="tous" <?= $statut === 'tous' ? 'selected' : '' ?>>Tous les statuts</option>
+                            <option value="en_attente" <?= $statut === 'en_attente' ? 'selected' : '' ?>>En attente</option>
+                            <option value="confirmee" <?= $statut === 'confirmee' ? 'selected' : '' ?>>Confirmée</option>
+                            <option value="expediee" <?= $statut === 'expediee' ? 'selected' : '' ?>>Expédiée</option>
+                            <option value="annulee" <?= $statut === 'annulee' ? 'selected' : '' ?>>Annulée</option>
+                        </select>
+                    </div>
+                    
+                    <div class="date-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Date de début</label>
+                            <input type="date" name="date_debut" class="filter-input" value="<?= htmlspecialchars($date_debut) ?>">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">Date de fin</label>
+                            <input type="date" name="date_fin" class="filter-input" value="<?= htmlspecialchars($date_fin) ?>">
+                        </div>
+                        
+                        <button type="submit" class="btn-filter">Filtrer</button>
+                        <a href="admin_commandes.php" class="btn-clear">Effacer</a>
+                    </div>
                 </form>
             </div>
             
@@ -218,7 +288,7 @@ try {
                 
                 <?php if (empty($commandes)): ?>
                     <div class="no-orders">
-                        Aucune commande trouvée pour le statut sélectionné.
+                        Aucune commande trouvée pour les critères sélectionnés.
                     </div>
                 <?php else: ?>
                 <table>
