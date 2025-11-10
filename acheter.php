@@ -1510,7 +1510,55 @@ try {
 
         // FINALISER LA COMMANDE
         finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFacturation);
-
+        } elseif ($action == 'utiliser_adresse_existante') {
+    $is_html_response = true;
+    header('Content-Type: text/html; charset=UTF-8');
+    
+    $token = $_POST['token'] ?? '';
+    $choixAdresse = $_POST['choix_adresse'] ?? '';
+    
+    if (!$token || !$choixAdresse) {
+        echo "<script>alert('Données manquantes'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    // Vérifier le token
+    $stmt = $pdo->prepare("SELECT id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
+    $stmt->execute([$token]);
+    $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
+        echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
+        exit;
+    }
+    
+    $idClient = $tokenData['id_client'];
+    
+    if ($choixAdresse === 'existante') {
+        // Récupérer la dernière adresse de livraison du client
+        $stmt = $pdo->prepare("
+            SELECT idAdresse 
+            FROM Adresse 
+            WHERE idClient = ? AND type = 'livraison' 
+            ORDER BY dateCreation DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([$idClient]);
+        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($adresseExistante) {
+            // Marquer le token comme utilisé
+            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+            $stmt->execute([$token]);
+            
+            // Créer la commande avec l'adresse existante
+            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+            exit;
+        } else {
+            echo "<script>alert('Aucune adresse trouvée'); window.location.href = 'acheter.php?action=saisir_adresse&token=" . $token . "';</script>";
+            exit;
+        }
+    }
     } elseif ($action == 'confirmer_commande') {
         // NOUVELLE FONCTIONNALITÉ : Afficher le choix entre utiliser l'adresse existante ou en saisir une nouvelle
         $token = $data['token'] ?? ($_GET['token'] ?? '');
