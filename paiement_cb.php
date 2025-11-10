@@ -20,11 +20,11 @@ try {
 
 // Configuration PayPal - MODE SANDBOX pour WAMP
 $paypal_config = [
-    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX',
-    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1',
-    'environment' => 'sandbox', // 'sandbox' pour test WAMP
+    'client_id' => 'AWNlxAnV7jbLOxkrjtqCGttDgukBARMuO4fVB7CKhZJbSHUwuwGURIDzKfyCZ-gB62J2U7p2DjsYUHMx',
+    'client_secret' => 'EPMYNUokm_b4KViFtqGWGvDnhJ6jwl1YKl2VPhLm0eMhRvYg_WQjRn53MkhI7vFhZvKbEhQw4XwolZQi',
+    'environment' => 'live', // 'sandbox' pour test WAMP
     'currency' => 'EUR'
-    ,'business_email' => 'sb-vyvj047419601@business.example.com'
+    //,'business_email' => 'sb-vyvj047419601@business.example.com'
 
 ];
 
@@ -172,6 +172,41 @@ echo "</div>";
     }
 }
 
+
+function getPayPalAccessTokenGaranti($client_id, $client_secret, $environment) {
+    // FORÇAGE des identifiants qui fonctionnent (du test)
+    $client_id_garanti = 'AWNlxAnV7jbLOxkrjtqCGttDgukBARMuO4fVB7CKhZJbSHUwuwGURIDzKfyCZ-gB62J2U7p2DjsYUHMx';
+    $client_secret_garanti = 'EPMYNUokm_b4KViFtqGWGvDnhJ6jwl1YKl2VPhLm0eMhRvYg_WQjRn53MkhI7vFhZvKbEhQw4XwolZQi';
+    
+    $url = 'https://api.sandbox.paypal.com/v1/oauth2/token';
+    
+    error_log("🔧 UTILISATION IDENTIFIANTS GARANTIS");
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_HEADER => false,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD => $client_id_garanti . ":" . $client_secret_garanti,
+        CURLOPT_POSTFIELDS => "grant_type=client_credentials",
+        CURLOPT_TIMEOUT => 30
+    ]);
+    
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code == 200 && $result) {
+        $json = json_decode($result, true);
+        return $json['access_token'];
+    }
+    
+    return false;
+}
+
 // Fonction pour traiter le paiement par carte via PayPal - AVEC SIMULATION WAMP
 function traiterPaiementPayPalCB($donnees, $paypal_config) {
     // SIMULATION POUR WAMP - DÉCOMMENTER POUR TESTER
@@ -186,7 +221,7 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
     
     try {
         // Obtenir l'access token
-        $access_token = getPayPalAccessToken(
+        $access_token = getPayPalAccessTokenGaranti(
             $paypal_config['client_id'],
             $paypal_config['client_secret'],
             $paypal_config['environment']

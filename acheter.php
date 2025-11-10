@@ -53,13 +53,12 @@ try {
 
 // Configuration PayPal
 $paypal_config = [
-    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX
-', // À remplacer par votre Client ID
-    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1', // À remplacer par votre Client Secret
-    'environment' => 'sandbox', // 'sandbox' pour test, 'live' pour production
+    'client_id' => 'AWNlxAnV7jbLOxkrjtqCGttDgukBARMuO4fVB7CKhZJbSHUwuwGURIDzKfyCZ-gB62J2U7p2DjsYUHMx', // À remplacer par votre Client ID
+    'client_secret' => 'EPMYNUokm_b4KViFtqGWGvDnhJ6jwl1YKl2VPhLm0eMhRvYg_WQjRn53MkhI7vFhZvKbEhQw4XwolZQi', // À remplacer par votre Client Secret
+    'environment' => 'live', // 'sandbox' pour test, 'live' pour production
     'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
     'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
-    ,'business_email' => 'sb-vyvj047419601@business.example.com'
+    //,'business_email' => 'sb-vyvj047419601@business.example.com'
 ];
 
 // Fonction pour obtenir l'access token PayPal
