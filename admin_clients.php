@@ -108,7 +108,7 @@ try {
             <div class="client-stats">
                 <div class="stat-card">
                     <div class="stat-number"><?= count($clients) ?></div>
-                    <div>Clients permanents</div>
+                    <div>Clients</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">

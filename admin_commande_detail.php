@@ -23,7 +23,7 @@ try {
     // Gérer le changement de statut
     if (isset($_POST['action']) && $_POST['action'] === 'changer_statut') {
         $nouveauStatut = $_POST['nouveau_statut'] ?? null;
-        if ($nouveauStatut && in_array($nouveauStatut, ['en_attente', 'confirmee', 'expediee', 'annulee'])) {
+        if ($nouveauStatut && in_array($nouveauStatut, ['en_attente_paiement', 'payee', 'expediee', 'livree', 'annulee'])) {
             $stmt = $pdo->prepare("UPDATE Commande SET statut = ? WHERE idCommande = ?");
             $stmt->execute([$nouveauStatut, $idCommande]);
             
@@ -33,7 +33,7 @@ try {
         }
     }
     
-    // Récupérer les détails de la commande - CORRIGÉ avec jointure sur Adresse
+    // Récupérer les détails de la commande
     $stmt = $pdo->prepare("
         SELECT 
             c.*, 
@@ -57,7 +57,7 @@ try {
         die("Commande non trouvée");
     }
     
-    // Récupérer les articles de la commande - CORRIGÉ avec table Origami
+    // Récupérer les articles de la commande
     $stmt = $pdo->prepare("
         SELECT lc.*, o.nom as produit_nom, o.prixHorsTaxe as produit_prix
         FROM LigneCommande lc
@@ -205,12 +205,12 @@ if (isset($_GET['logout'])) {
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
-        .status-en_attente {
+        .status-en_attente_paiement {
             background: #fff3cd;
             color: #856404;
         }
         
-        .status-confirmee {
+        .status-payee {
             background: #d1ecf1;
             color: #0c5460;
         }
@@ -218,6 +218,11 @@ if (isset($_GET['logout'])) {
         .status-expediee {
             background: #d4edda;
             color: #155724;
+        }
+        
+        .status-livree {
+            background: #28a745;
+            color: white;
         }
         
         .status-annulee {
@@ -392,20 +397,23 @@ if (isset($_GET['logout'])) {
             // Déterminer le prochain statut dans le cycle
             let prochainStatut;
             switch(statutActuel) {
-                case 'en_attente':
-                    prochainStatut = 'confirmee';
+                case 'en_attente_paiement':
+                    prochainStatut = 'payee';
                     break;
-                case 'confirmee':
+                case 'payee':
                     prochainStatut = 'expediee';
                     break;
                 case 'expediee':
+                    prochainStatut = 'livree';
+                    break;
+                case 'livree':
                     prochainStatut = 'annulee';
                     break;
                 case 'annulee':
-                    prochainStatut = 'en_attente';
+                    prochainStatut = 'en_attente_paiement';
                     break;
                 default:
-                    prochainStatut = 'en_attente';
+                    prochainStatut = 'en_attente_paiement';
             }
             
             // Confirmer le changement
