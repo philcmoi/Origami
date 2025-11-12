@@ -154,40 +154,9 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
     }
 }
 
-// Traitement du retour PayPal
-if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token'])) {
-    $order_id = $_GET['token'];
-    
+// NOUVELLE FONCTION : Traitement du retour PayPal avec capture
+function traiterRetourPayPal($order_id, $payer_id, $paypal_config, $pdo, $idCommande) {
     try {
-        // Fonction pour capturer le paiement PayPal (identique à celle dans acheter.php)
-        function capturePayPalPayment($access_token, $order_id, $environment) {
-            $url = $environment === 'live' 
-                ? 'https://api.paypal.com/v2/checkout/orders/' . $order_id . '/capture'
-                : 'https://api.sandbox.paypal.com/v2/checkout/orders/' . $order_id . '/capture';
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_HEADER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $access_token
-            ]);
-            
-            $result = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($http_code == 201) {
-                return json_decode($result, true);
-            } else {
-                error_log("Erreur capture PayPal: " . $result);
-                return false;
-            }
-        }
-        
         // Fonction pour obtenir l'access token
         function getPayPalAccessToken($client_id, $client_secret, $environment) {
             $url = $environment === 'live' 
@@ -216,6 +185,35 @@ if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token
             }
         }
         
+        // Fonction pour capturer le paiement PayPal
+        function capturePayPalPayment($access_token, $order_id, $environment) {
+            $url = $environment === 'live' 
+                ? 'https://api.paypal.com/v2/checkout/orders/' . $order_id . '/capture'
+                : 'https://api.sandbox.paypal.com/v2/checkout/orders/' . $order_id . '/capture';
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_HEADER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $access_token
+            ]);
+            
+            $result = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($http_code == 201) {
+                return json_decode($result, true);
+            } else {
+                error_log("Erreur capture PayPal: " . $result);
+                return false;
+            }
+        }
+        
         // Capturer le paiement
         $access_token = getPayPalAccessToken(
             $paypal_config['client_id'],
@@ -231,6 +229,10 @@ if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token
         
         if ($capture && isset($capture['status']) && $capture['status'] === 'COMPLETED') {
             // Paiement réussi
+            $montant = $capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? $commande['montantTotal'];
+            $transaction_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? $order_id;
+            
+            // Démarrer une transaction base de données
             $pdo->beginTransaction();
             
             // Mettre à jour le statut de la commande
@@ -238,9 +240,6 @@ if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token
             $stmt->execute([$idCommande]);
             
             // Enregistrer le paiement
-            $montant = $capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? $commande['montantTotal'];
-            $transaction_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? $order_id;
-            
             $stmt = $pdo->prepare("
                 INSERT INTO Paiement 
                 (idCommande, montant, currency, statut, methode_paiement, reference, date_creation) 
@@ -248,6 +247,16 @@ if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token
             ");
             $stmt->execute([$idCommande, $montant, $transaction_id]);
             
+            // Vider le panier du client
+            $stmt = $pdo->prepare("
+                DELETE lp FROM LignePanier lp 
+                JOIN Panier p ON lp.idPanier = p.idPanier 
+                JOIN Commande c ON p.idClient = c.idClient 
+                WHERE c.idCommande = ?
+            ");
+            $stmt->execute([$idCommande]);
+            
+            // Valider la transaction
             $pdo->commit();
             
             // Envoyer email de confirmation
@@ -257,16 +266,38 @@ if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token
             unset($_SESSION['paypal_order_id']);
             unset($_SESSION['paypal_commande_id']);
             
-            // Afficher la confirmation
-            afficherConfirmationPayPal($commande, $transaction_id);
-            exit;
+            return [
+                'success' => true,
+                'transaction_id' => $transaction_id,
+                'montant' => $montant
+            ];
             
         } else {
             throw new Exception("Échec de la capture du paiement PayPal");
         }
         
     } catch (Exception $e) {
-        $erreur = "Erreur lors du traitement du paiement: " . $e->getMessage();
+        error_log("Erreur traitement retour PayPal: " . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+// TRAITEMENT DU RETOUR PAYPAL - VERSION AMÉLIORÉE
+if (isset($_GET['success']) && $_GET['success'] === 'true' && isset($_GET['token'])) {
+    $order_id = $_GET['token'];
+    $payer_id = $_GET['PayerID'] ?? '';
+    
+    $resultat = traiterRetourPayPal($order_id, $payer_id, $paypal_config, $pdo, $idCommande);
+    
+    if ($resultat['success']) {
+        // Afficher la confirmation de succès
+        afficherConfirmationPayPal($commande, $resultat['transaction_id']);
+        exit;
+    } else {
+        $erreur = "Erreur lors du traitement du paiement: " . $resultat['error'];
     }
 }
 
@@ -325,6 +356,13 @@ function afficherConfirmationPayPal($commande, $reference) {
             .btn:hover {
                 background-color: #b30000;
             }
+            .btn-secondary {
+                background-color: #007bff;
+                margin-left: 10px;
+            }
+            .btn-secondary:hover {
+                background-color: #0056b3;
+            }
         </style>
     </head>
     <body>
@@ -339,12 +377,18 @@ function afficherConfirmationPayPal($commande, $reference) {
                 <p><strong>Référence PayPal :</strong> <?= $reference ?></p>
                 <p><strong>Montant :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
                 <p><strong>Mode de paiement :</strong> PayPal</p>
+                <p><strong>Email :</strong> <?= htmlspecialchars($commande['email']) ?></p>
             </div>
             
             <p>Un email de confirmation a été envoyé à <strong><?= htmlspecialchars($commande['email']) ?></strong>.</p>
             <p>Votre commande est en cours de préparation.</p>
             
-            <a href="index.html" class="btn">Retour à l'accueil</a>
+            <div>
+                <a href="index.html" class="btn">Retour à l'accueil</a>
+                <a href="commande_details.php?id=<?= $commande['idCommande'] ?>" class="btn btn-secondary">
+                    Voir ma commande
+                </a>
+            </div>
         </div>
     </body>
     </html>
@@ -393,6 +437,7 @@ function afficherConfirmationPayPal($commande, $reference) {
             padding: 20px;
             border-radius: 4px;
             margin: 20px 0;
+            text-align: left;
         }
         #paypal-button-container {
             margin: 30px 0;
@@ -402,6 +447,9 @@ function afficherConfirmationPayPal($commande, $reference) {
             display: none;
             margin: 20px 0;
             color: #666;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
         }
         .error {
             background: #f8d7da;
@@ -409,6 +457,7 @@ function afficherConfirmationPayPal($commande, $reference) {
             padding: 15px;
             border-radius: 4px;
             margin-bottom: 20px;
+            text-align: left;
         }
         .security-notice {
             background: #fff3cd;
@@ -428,9 +477,25 @@ function afficherConfirmationPayPal($commande, $reference) {
             padding: 10px 20px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            transition: all 0.3s ease;
         }
         .btn-back:hover {
             background: #f8f9fa;
+            text-decoration: none;
+            color: #333;
+        }
+        .test-info {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            color: #155724;
+            font-size: 14px;
+            text-align: left;
+        }
+        .paypal-logo {
+            margin: 15px 0;
         }
     </style>
 </head>
@@ -444,11 +509,17 @@ function afficherConfirmationPayPal($commande, $reference) {
         <div class="details">
             <p><strong>Commande :</strong> #<?= $commande['idCommande'] ?></p>
             <p><strong>Montant :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
+            <p><strong>Client :</strong> <?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?></p>
         </div>
 
         <?php if (isset($erreur)): ?>
             <div class="error">
                 <strong>Erreur :</strong> <?= htmlspecialchars($erreur) ?>
+                <p style="margin: 10px 0 0 0; font-size: 12px;">
+                    <a href="acheter.php?action=paypal_cancel&commande=<?= $idCommande ?>" style="color: #721c24; text-decoration: underline;">
+                        Retourner aux options de paiement
+                    </a>
+                </p>
             </div>
         <?php endif; ?>
 
@@ -459,10 +530,24 @@ function afficherConfirmationPayPal($commande, $reference) {
             • Aucune information bancaire stockée sur nos serveurs
         </div>
 
+        <div class="test-info">
+            <strong>🧪 Mode Test Activé</strong><br>
+            • Utilisez un compte PayPal Sandbox pour tester<br>
+            • Ou utilisez les cartes de test PayPal<br>
+            • Aucun vrai paiement ne sera effectué
+        </div>
+
+        <div class="paypal-logo">
+            <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/PP_logo_h_100x26.png" alt="PayPal" style="height: 26px;">
+        </div>
+
         <div id="paypal-button-container"></div>
         
         <div class="loading" id="loading">
-            <p>Redirection vers PayPal...</p>
+            <p>🔄 Connexion à PayPal en cours...</p>
+            <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">
+                Veuillez patienter pendant la redirection
+            </p>
         </div>
 
         <a href="acheter.php?action=paypal_cancel&commande=<?= $idCommande ?>" class="btn-back">
@@ -478,7 +563,8 @@ function afficherConfirmationPayPal($commande, $reference) {
                 color:  'blue',
                 shape:  'rect',
                 label:  'paypal',
-                height: 55
+                height: 55,
+                tagline: false
             },
             
             // Créer la transaction
@@ -513,11 +599,11 @@ function afficherConfirmationPayPal($commande, $reference) {
                 });
             },
             
-            // Finaliser la transaction
+            // Finaliser la transaction - VERSION CORRIGÉE
             onApprove: function(data, actions) {
                 return actions.order.capture().then(function(details) {
-                    // Rediriger vers la page de succès avec l'ID de commande
-                    window.location.href = 'paiement_paypal.php?success=true&token=' + data.orderID + '&commande=<?= $idCommande ?>';
+                    // Rediriger vers la page de succès avec les paramètres
+                    window.location.href = 'paiement_paypal.php?success=true&token=' + data.orderID + '&PayerID=' + data.payerID + '&commande=<?= $idCommande ?>';
                 });
             },
             
@@ -541,10 +627,28 @@ function afficherConfirmationPayPal($commande, $reference) {
             
         }).render('#paypal-button-container');
 
-        // Cacher le loading si le bouton n'est pas rendu
+        // Cacher le loading si le bouton n'est pas rendu après 5 secondes
         setTimeout(function() {
-            document.getElementById('loading').style.display = 'none';
-        }, 3000);
+            const paypalContainer = document.getElementById('paypal-button-container');
+            if (paypalContainer.children.length === 0) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Le bouton PayPal n\'a pas pu être chargé. Vérifiez votre connexion internet.');
+            }
+        }, 5000);
+
+        // Cacher le loading quand le bouton est rendu
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes.length > 0) {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            });
+        });
+
+        observer.observe(document.getElementById('paypal-button-container'), {
+            childList: true,
+            subtree: true
+        });
     </script>
 </body>
 </html>

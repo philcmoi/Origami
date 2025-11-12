@@ -620,7 +620,7 @@ if ($action == 'paypal_success') {
                 // Enregistrer le paiement
                 $stmt = $pdo->prepare("
                     INSERT INTO Paiement 
-                    (idCommande, montant, currency, statut, mode_paiement, date_creation) 
+                    (idCommande, montant, currency, statut, methode_paiement, date_creation) 
                     VALUES (?, ?, 'EUR', 'payee', 'PayPal', NOW())
                 ");
                 $stmt->execute([$commande_id, $montant]);
