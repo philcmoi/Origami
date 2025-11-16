@@ -16,10 +16,10 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $client_id = intval($_GET['id']);
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
+$host = '217.182.198.20';
+$dbname = 'Origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
