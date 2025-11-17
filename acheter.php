@@ -34,7 +34,7 @@ use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
 $host = 'localhost';
-$dbname = 'origami';
+$dbname = 'Origami';
 $username = 'root';
 $password = '';
 
@@ -53,13 +53,11 @@ try {
 
 // Configuration PayPal
 $paypal_config = [
-    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX
-', // À remplacer par votre Client ID
-    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1', // À remplacer par votre Client Secret
-    'environment' => 'sandbox', // 'sandbox' pour test, 'live' pour production
-    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
-    ,'business_email' => 'sb-vyvj047419601@business.example.com'
+    'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
+    'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
+    'environment' => 'sandbox', // ← IMPORTANT : 'sandbox' et non 'live'
+    'return_url' => 'http://localhost/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://localhost/Origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -517,6 +515,72 @@ if ($action == 'creer_commande_paypal') {
     exit;
 }
 
+
+// Ajouter cette nouvelle action
+if ($action == 'capturer_paiement_paypal') {
+    $order_id = $data['order_id'] ?? '';
+    
+    if (!$order_id) {
+        echo json_encode(['status' => 400, 'error' => 'ID commande manquant']);
+        exit;
+    }
+    
+    // Capturer le paiement PayPal
+    $access_token = getPayPalAccessToken(
+        $paypal_config['client_id'],
+        $paypal_config['client_secret'],
+        $paypal_config['environment']
+    );
+    
+    if (!$access_token) {
+        echo json_encode(['status' => 500, 'error' => 'Erreur de connexion à PayPal']);
+        exit;
+    }
+    
+    $capture = capturePayPalPayment($access_token, $order_id, $paypal_config['environment']);
+    
+    if ($capture && isset($capture['status']) && $capture['status'] === 'COMPLETED') {
+        // Récupérer l'ID de commande depuis la session ou les données personnalisées
+        $commande_id = $_SESSION['paypal_commande_id'] ?? null;
+        
+        if ($commande_id) {
+            try {
+                // Mettre à jour le statut de la commande
+                $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee', modeReglement = 'PayPal' WHERE idCommande = ?");
+                $stmt->execute([$commande_id]);
+                
+                // Enregistrer le paiement
+                $montant = $capture['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0;
+                $stmt = $pdo->prepare("
+                    INSERT INTO Paiement 
+                    (idCommande, montant, currency, statut, methode_paiement, reference, date_creation) 
+                    VALUES (?, ?, 'EUR', 'payee', 'PayPal', ?, NOW())
+                ");
+                $transaction_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? $order_id;
+                $stmt->execute([$commande_id, $montant, $transaction_id]);
+                
+                // Nettoyer la session
+                unset($_SESSION['paypal_order_id']);
+                unset($_SESSION['paypal_commande_id']);
+                
+            } catch (Exception $e) {
+                error_log("Erreur mise à jour commande PayPal: " . $e->getMessage());
+            }
+        }
+        
+        echo json_encode([
+            'status' => 200, 
+            'message' => 'Paiement capturé avec succès',
+            'order_id' => $order_id
+        ]);
+    } else {
+        echo json_encode(['status' => 500, 'error' => 'Erreur lors de la capture du paiement PayPal']);
+    }
+    exit;
+}
+
+
+
 if ($action == 'paypal_success') {
     $is_html_response = true;
     header('Content-Type: text/html; charset=UTF-8');
@@ -556,7 +620,7 @@ if ($action == 'paypal_success') {
                 // Enregistrer le paiement
                 $stmt = $pdo->prepare("
                     INSERT INTO Paiement 
-                    (idCommande, montant, currency, statut, mode_paiement, date_creation) 
+                    (idCommande, montant, currency, statut, methode_paiement, date_creation) 
                     VALUES (?, ?, 'EUR', 'payee', 'PayPal', NOW())
                 ");
                 $stmt->execute([$commande_id, $montant]);
@@ -1517,37 +1581,70 @@ try {
         
         if (!$token) {
             if (isset($_GET['token'])) {
-                ?>
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Erreur de Confirmation</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-                        .error { color: #dc3545; }
-                        .btn { 
-                            display: inline-block;
-                            background-color: #d40000; 
-                            color: white; 
-                            padding: 12px 30px; 
-                            text-decoration: none; 
-                            border-radius: 2px; 
-                            margin-top: 20px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1 class="error">❌ Lien Invalide</h1>
-                        <p>Le lien de confirmation est incomplet ou invalide.</p>
-                        <a href="index.html" class="btn">Retour à l'accueil</a>
-                    </div>
-                </body>
-                </html>
-                <?php
-                exit;
+                // PROPOSER LE PAIEMENT PAYPAL AVEC OPTION COMPTE
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement - Origami Zen</title>
+    <style>
+        .btn-paypal-account { 
+            background-color: #0070ba; 
+            color: white; 
+            padding: 15px 40px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 18px;
+            margin: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            width: 280px;
+        }
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💳 Finaliser le Paiement</h1>
+        <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p>
+        
+        <div class="payment-options">
+            <!-- Option 1 : Compte PayPal -->
+            <button class="btn-paypal-account" onclick="paiementPayPalCompte()">
+                <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/PP_logo_h_100x26.png" alt="PayPal" height="26">
+                Payer avec compte PayPal
+            </button>
+            
+            <!-- Option 2 : Carte via PayPal -->
+            <button class="btn-cb" onclick="paiementCarte()">
+                💳 Payer par Carte Bancaire
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function paiementPayPalCompte() {
+            window.location.href = 'paiement_paypal.php?commande=<?= $idCommande ?>';
+        }
+
+        function paiementCarte() {
+            window.location.href = 'paiement_cb.php?commande=<?= $idCommande ?>';
+        }
+    </script>
+</body>
+</html>
+<?php
+            exit;
             } else {
                 echo json_encode(['status' => 400, 'error' => 'Token manquant']);
                 exit;

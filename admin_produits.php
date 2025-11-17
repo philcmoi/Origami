@@ -3,7 +3,7 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = 'LOCALHOST';
 $dbname = 'origami';
 $username = 'root';
 $password = '';

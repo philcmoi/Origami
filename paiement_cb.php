@@ -6,7 +6,7 @@ ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = 'LOCALHOST';
 $dbname = 'origami';
 $username = 'root';
 $password = '';
@@ -18,16 +18,14 @@ try {
     die("Erreur de connexion à la base de données: " . $e->getMessage());
 }
 
-// Configuration PayPal - MODE SANDBOX pour WAMP
+
+// Configuration PayPal Production
 $paypal_config = [
-    'client_id' => 'ARwZp4LWznNuNvv6pe4OFzGCf-LVqUIQbeMfP4BegaoGuQcSEnqmUIB962mBP7TZ7yftDbO2ZCEsvldX',
-    'client_secret' => 'EIQrOYfJe25BK1_ZKe01uk4-liK3FsJzj_2FGXS10K_n4IwPIn6bmtKMW2PffCawtf0DARJhCOZrO4E1',
-    'environment' => 'sandbox', // 'sandbox' pour test WAMP
+    'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
+    'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
+    'environment' => 'sandbox', // ← 'sandbox' pour les tests locaux
     'currency' => 'EUR'
-    ,'business_email' => 'sb-vyvj047419601@business.example.com'
-
 ];
-
 // Vérifier si une commande est spécifiée
 $idCommande = $_GET['commande'] ?? $_POST['id_commande'] ?? null;
 
@@ -102,7 +100,7 @@ function getPayPalAccessToken($client_id, $client_secret, $environment) {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_HEADER, false);
     
-    // IMPORTANT: Désactiver la vérification SSL en local
+    // Désactiver la vérification SSL en local
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     
@@ -110,39 +108,22 @@ function getPayPalAccessToken($client_id, $client_secret, $environment) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_USERPWD, $client_id . ":" . $client_secret);
     curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
-    
-    // Augmenter le timeout
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     
-    // Debug détaillé
+    // Debug
     curl_setopt($ch, CURLOPT_VERBOSE, true);
     $verbose = fopen('php://temp', 'w+');
     curl_setopt($ch, CURLOPT_STDERR, $verbose);
     
-
-/********************************************************************************************** */
-/********************************************************************************************* */
-// DEBUG TEMPORAIRE - À RETIRER EN PRODUCTION
-/*echo "<div style='background: #f8d7da; padding: 20px; margin: 20px;'>";
-echo "<h3>DEBUG PayPal Response:</h3>";
-echo "<pre>HTTP Code: " . $http_code . "</pre>";
-echo "<pre>Full Response: " . htmlspecialchars($result) . "</pre>";
-echo "</div>";
-/******************************************************************************************* */
-/******************************************************************************************* */
-
-
-
-
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     
-    // Log des erreurs détaillé
+    // SUPPRIMER TOUS LES COMMENTAIRES QUI BLOQUENT LE CODE ICI
+    
     if ($result === false) {
         $error_msg = "cURL Error: " . curl_error($ch);
         error_log("PAYPAL ACCESS TOKEN ERROR: " . $error_msg);
         
-        // Debug verbose
         rewind($verbose);
         $verboseLog = stream_get_contents($verbose);
         error_log("cURL Verbose: " . $verboseLog);
@@ -159,7 +140,6 @@ echo "</div>";
     } else {
         error_log("PAYPAL ACCESS TOKEN HTTP ERROR: $http_code - Response: " . $result);
         
-        // Analyse détaillée de l'erreur
         $error_response = json_decode($result, true);
         if (isset($error_response['error_description'])) {
             error_log("PayPal Error Description: " . $error_response['error_description']);
@@ -171,18 +151,17 @@ echo "</div>";
         return false;
     }
 }
-
 // Fonction pour traiter le paiement par carte via PayPal - AVEC SIMULATION WAMP
 function traiterPaiementPayPalCB($donnees, $paypal_config) {
     // SIMULATION POUR WAMP - DÉCOMMENTER POUR TESTER
-    /*
+    
     sleep(2);
     return [
         'success' => true,
         'reference' => 'SIMU_WAMP_' . time() . '_' . $donnees['commande']['idCommande'],
         'response' => ['state' => 'approved', 'simulated' => true]
     ];
-    */
+    
     
     try {
         // Obtenir l'access token
@@ -582,6 +561,7 @@ function afficherConfirmationCB($commande, $reference) {
 }
 
 // Traitement du formulaire de paiement
+// Traitement du formulaire de paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'traiter_paiement_cb') {
     
     // Récupération des données du formulaire
@@ -630,10 +610,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee', modeReglement = 'Carte Bancaire (PayPal)' WHERE idCommande = ?");
                 $stmt->execute([$idCommande]);
                 
-                // Enregistrer le paiement
+                // CORRECTION : Enregistrer le paiement avec les bons noms de colonnes
                 $stmt = $pdo->prepare("
                     INSERT INTO Paiement 
-                    (idCommande, montant, currency, statut, mode_paiement, reference_transaction, date_creation) 
+                    (idCommande, montant, currency, statut, methode_paiement, reference, date_creation) 
                     VALUES (?, ?, 'EUR', 'payee', 'Carte Bancaire (PayPal)', ?, NOW())
                 ");
                 $reference = $resultatPaiement['reference'];
@@ -782,13 +762,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <p><strong>Montant à payer :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
         </div>
 
-        <!-- INFO MODE TEST WAMP 
-        <div class="test-info">
-            <strong>🔧 MODE TEST WAMP ACTIVÉ</strong><br>
-            Paiements simulés - Sandbox PayPal
-        </div>-->
-
-        <div class="paypal-badge">
+          <div class="paypal-badge">
             <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/cc-badges-ppmcvdam.png" alt="PayPal" style="height: 30px;">
             <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Paiement sécurisé par PayPal</p>
         </div>
@@ -842,22 +816,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 </div>
             </div>
             
+            <!-- PAR CE BLOC UNIQUE -->
             <div class="form-group">
-                <label for="titulaire_carte">Nom du titulaire <span style="color: #d40000;">*</span></label>
-                <input type="text" id="titulaire_carte" name="titulaire_carte" 
-                       placeholder="M. DUPONT Jean" 
-                       value="<?= htmlspecialchars($commande['nom'] . ' ' . $commande['nom']) ?>"
-                       required>
+            <label for="titulaire_carte">Nom du titulaire <span style="color: #d40000;">*</span></label>
+            <input type="text" id="titulaire_carte" name="titulaire_carte" 
+            placeholder="M. DUPONT Jean" 
+            value="<?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>" required>
             </div>
-
-            <div class="form-group">
-                <label for="titulaire_carte">Prenom du titulaire <span style="color: #d40000;">*</span></label>
-                <input type="text" id="titulaire_carte" name="titulaire_carte" 
-                       placeholder="M. DUPONT Jean" 
-                       value="<?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>"
-                       required>
-            </div>
-            
             <div class="card-icons">
                 💳 • • • • • • • • • • • • • • • •
             </div>

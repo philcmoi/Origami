@@ -3,7 +3,7 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = 'LOCALHOST';
 $dbname = 'origami';
 $username = 'root';
 $password = '';
@@ -18,12 +18,17 @@ try {
         
         switch ($_POST['action']) {
             case 'confirmer':
-                $stmt = $pdo->prepare("UPDATE Commande SET statut = 'confirmee' WHERE idCommande = ?");
+                $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee' WHERE idCommande = ?");
                 $stmt->execute([$idCommande]);
                 break;
                 
             case 'expedier':
                 $stmt = $pdo->prepare("UPDATE Commande SET statut = 'expediee' WHERE idCommande = ?");
+                $stmt->execute([$idCommande]);
+                break;
+                
+            case 'livrer':
+                $stmt = $pdo->prepare("UPDATE Commande SET statut = 'livree' WHERE idCommande = ?");
                 $stmt->execute([$idCommande]);
                 break;
                 
@@ -35,7 +40,7 @@ try {
             // Nouvelle action pour le changement direct de statut
             case 'changer_statut':
                 $nouveauStatut = $_POST['nouveau_statut'] ?? null;
-                if ($nouveauStatut && in_array($nouveauStatut, ['en_attente', 'confirmee', 'expediee', 'annulee'])) {
+                if ($nouveauStatut && in_array($nouveauStatut, ['en_attente_paiement', 'payee', 'expediee', 'livree', 'annulee'])) {
                     $stmt = $pdo->prepare("UPDATE Commande SET statut = ? WHERE idCommande = ?");
                     $stmt->execute([$nouveauStatut, $idCommande]);
                 }
@@ -172,6 +177,7 @@ try {
         
         .btn-confirm { background: #28a745; color: white; }
         .btn-ship { background: #17a2b8; color: white; }
+        .btn-deliver { background: #20c997; color: white; }
         .btn-cancel { background: #dc3545; color: white; }
         .btn-details { background: #6c757d; color: white; }
         
@@ -203,9 +209,10 @@ try {
             transform: scale(1.05);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-        .status-en_attente { background: #fff3cd; color: #856404; }
-        .status-confirmee { background: #d1ecf1; color: #0c5460; }
+        .status-en_attente_paiement { background: #fff3cd; color: #856404; }
+        .status-payee { background: #d1ecf1; color: #0c5460; }
         .status-expediee { background: #d4edda; color: #155724; }
+        .status-livree { background: #28a745; color: white; }
         .status-annulee { background: #f8d7da; color: #721c24; }
         
         .action-form {
@@ -259,9 +266,10 @@ try {
                         <label class="filter-label">Statut</label>
                         <select name="statut" class="filter-select" onchange="this.form.submit()">
                             <option value="tous" <?= $statut === 'tous' ? 'selected' : '' ?>>Tous les statuts</option>
-                            <option value="en_attente" <?= $statut === 'en_attente' ? 'selected' : '' ?>>En attente</option>
-                            <option value="confirmee" <?= $statut === 'confirmee' ? 'selected' : '' ?>>Confirmée</option>
+                            <option value="en_attente_paiement" <?= $statut === 'en_attente_paiement' ? 'selected' : '' ?>>En attente paiement</option>
+                            <option value="payee" <?= $statut === 'payee' ? 'selected' : '' ?>>Payée</option>
                             <option value="expediee" <?= $statut === 'expediee' ? 'selected' : '' ?>>Expédiée</option>
+                            <option value="livree" <?= $statut === 'livree' ? 'selected' : '' ?>>Livrée</option>
                             <option value="annulee" <?= $statut === 'annulee' ? 'selected' : '' ?>>Annulée</option>
                         </select>
                     </div>
@@ -335,19 +343,24 @@ try {
                             </td>
                             <td>
                                 <div class="order-actions">
-                                    <?php if ($commande['statut'] === 'en_attente'): ?>
+                                    <?php if ($commande['statut'] === 'en_attente_paiement'): ?>
                                         <form method="POST" class="action-form">
                                             <input type="hidden" name="idCommande" value="<?= $commande['idCommande'] ?>">
-                                            <button type="submit" name="action" value="confirmer" class="btn-small btn-confirm" onclick="return confirm('Confirmer cette commande ?')">Confirmer</button>
+                                            <button type="submit" name="action" value="confirmer" class="btn-small btn-confirm" onclick="return confirm('Confirmer le paiement de cette commande ?')">Confirmer Paiement</button>
                                         </form>
                                         <form method="POST" class="action-form">
                                             <input type="hidden" name="idCommande" value="<?= $commande['idCommande'] ?>">
                                             <button type="submit" name="action" value="annuler" class="btn-small btn-cancel" onclick="return confirm('Annuler cette commande ?')">Annuler</button>
                                         </form>
-                                    <?php elseif ($commande['statut'] === 'confirmee'): ?>
+                                    <?php elseif ($commande['statut'] === 'payee'): ?>
                                         <form method="POST" class="action-form">
                                             <input type="hidden" name="idCommande" value="<?= $commande['idCommande'] ?>">
                                             <button type="submit" name="action" value="expedier" class="btn-small btn-ship" onclick="return confirm('Marquer cette commande comme expédiée ?')">Expédier</button>
+                                        </form>
+                                    <?php elseif ($commande['statut'] === 'expediee'): ?>
+                                        <form method="POST" class="action-form">
+                                            <input type="hidden" name="idCommande" value="<?= $commande['idCommande'] ?>">
+                                            <button type="submit" name="action" value="livrer" class="btn-small btn-deliver" onclick="return confirm('Marquer cette commande comme livrée ?')">Livrer</button>
                                         </form>
                                     <?php endif; ?>
                                     
@@ -369,20 +382,23 @@ try {
             // Déterminer le prochain statut dans le cycle
             let prochainStatut;
             switch(statutActuel) {
-                case 'en_attente':
-                    prochainStatut = 'confirmee';
+                case 'en_attente_paiement':
+                    prochainStatut = 'payee';
                     break;
-                case 'confirmee':
+                case 'payee':
                     prochainStatut = 'expediee';
                     break;
                 case 'expediee':
+                    prochainStatut = 'livree';
+                    break;
+                case 'livree':
                     prochainStatut = 'annulee';
                     break;
                 case 'annulee':
-                    prochainStatut = 'en_attente';
+                    prochainStatut = 'en_attente_paiement';
                     break;
                 default:
-                    prochainStatut = 'en_attente';
+                    prochainStatut = 'en_attente_paiement';
             }
             
             // Confirmer le changement
@@ -403,10 +419,13 @@ try {
                     
                     switch(action) {
                         case 'confirmer':
-                            message = 'Êtes-vous sûr de vouloir confirmer cette commande ?';
+                            message = 'Êtes-vous sûr de vouloir confirmer le paiement de cette commande ?';
                             break;
                         case 'expedier':
                             message = 'Êtes-vous sûr de vouloir marquer cette commande comme expédiée ?';
+                            break;
+                        case 'livrer':
+                            message = 'Êtes-vous sûr de vouloir marquer cette commande comme livrée ?';
                             break;
                         case 'annuler':
                             message = 'Êtes-vous sûr de vouloir annuler cette commande ?';

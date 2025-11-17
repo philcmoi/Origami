@@ -17,7 +17,7 @@ $client_id = intval($_GET['id']);
 
 // Configuration de la base de données
 $host = 'localhost';
-$dbname = 'origami';
+$dbname = 'Origami';
 $username = 'root';
 $password = '';
 

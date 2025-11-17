@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $motDePasse = $_POST['motDePasse'] ?? '';
     
     // Configuration de la base de données
-    $host = 'localhost';
+    $host = 'LOCALHOST';
     $dbname = 'origami';
     $username = 'root';
     $password = '';
