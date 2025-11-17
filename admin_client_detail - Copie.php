@@ -19,7 +19,7 @@ $client_id = intval($_GET['id']);
 $host = '217.182.198.20';
 $dbname = 'Origami';
 $username = 'root';
-$password = 'L099339R';
+$password = 'L099339Rs';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

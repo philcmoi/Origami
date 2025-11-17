@@ -6,10 +6,10 @@ ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = '217.182.198.20';
 $dbname = 'origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

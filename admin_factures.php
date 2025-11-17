@@ -12,10 +12,10 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
+$host = '217.182.198.20';
+$dbname = 'Origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

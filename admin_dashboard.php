@@ -3,35 +3,34 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = '217.182.198.20';
 $dbname = 'origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     // Récupérer les statistiques
-    // Commandes en attente de paiement (uniquement visibles)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM Commande WHERE statut = 'en_attente_paiement' AND visible = 1");
-    $commandesEnAttentePaiement = $stmt->fetchColumn();
+    // Commandes en attente
+    $stmt = $pdo->query("SELECT COUNT(*) FROM Commande WHERE statut = 'en_attente'");
+    $commandesEnAttente = $stmt->fetchColumn();
     
-    // Clients permanents (uniquement les clients permanents)
-    $stmt = $pdo->query("SELECT COUNT(*) FROM Client WHERE (type = 'permanent' OR (type IS NULL AND email NOT LIKE 'temp_%@origamizen.fr'))");
+    // Clients permanents
+    $stmt = $pdo->query("SELECT COUNT(*) FROM Client WHERE type = 'permanent' OR (type IS NULL AND email NOT LIKE 'temp_%@origamizen.fr')");
     $clientsPermanents = $stmt->fetchColumn();
     
-    // Chiffre d'affaires du mois (uniquement les commandes payées et visibles)
-    $stmt = $pdo->query("SELECT SUM(montantTotal) FROM Commande WHERE statut = 'payee' AND visible = 1 AND MONTH(dateCommande) = MONTH(CURRENT_DATE()) AND YEAR(dateCommande) = YEAR(CURRENT_DATE())");
+    // Chiffre d'affaires du mois
+    $stmt = $pdo->query("SELECT SUM(montantTotal) FROM Commande WHERE MONTH(dateCommande) = MONTH(CURRENT_DATE()) AND YEAR(dateCommande) = YEAR(CURRENT_DATE())");
     $chiffreAffaires = $stmt->fetchColumn() ?? 0;
     
-    // Récupérer les commandes récentes (uniquement visibles)
+    // Récupérer les commandes récentes
     $stmt = $pdo->query("
-        SELECT c.idCommande, c.dateCommande, c.montantTotal, c.statut, c.statut_paiement,
+        SELECT c.idCommande, c.dateCommande, c.montantTotal, c.statut, 
                cl.nom, cl.prenom, cl.email
         FROM Commande c
         JOIN Client cl ON c.idClient = cl.idClient
-        WHERE c.visible = 1
         ORDER BY c.dateCommande DESC 
         LIMIT 10
     ");
@@ -196,12 +195,12 @@ if (isset($_GET['logout'])) {
             font-weight: bold;
         }
         
-        .status-en_attente_paiement {
+        .status-en_attente {
             background: #fff3cd;
             color: #856404;
         }
         
-        .status-payee {
+        .status-confirmee {
             background: #d1ecf1;
             color: #0c5460;
         }
@@ -209,16 +208,6 @@ if (isset($_GET['logout'])) {
         .status-expediee {
             background: #d4edda;
             color: #155724;
-        }
-        
-        .status-livree {
-            background: #28a745;
-            color: white;
-        }
-        
-        .status-annulee {
-            background: #f8d7da;
-            color: #721c24;
         }
         
         .btn-action {
@@ -229,54 +218,10 @@ if (isset($_GET['logout'])) {
             border-radius: 3px;
             font-size: 12px;
             margin-right: 5px;
-            display: inline-block;
         }
         
         .btn-action:hover {
             background: #b30000;
-        }
-        
-        .btn-invoice {
-            padding: 6px 12px;
-            background: #28a745;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-            display: inline-block;
-        }
-        
-        .btn-invoice:hover {
-            background: #218838;
-        }
-        
-        .actions-container {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-        
-        .paiement-status {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: 5px;
-        }
-        
-        .paiement-payee {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .paiement-en_attente {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .paiement-echec {
-            background: #f8d7da;
-            color: #721c24;
         }
     </style>
 </head>
@@ -295,7 +240,6 @@ if (isset($_GET['logout'])) {
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item active">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item">Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>
@@ -303,8 +247,8 @@ if (isset($_GET['logout'])) {
         <div class="main-content">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number"><?= $commandesEnAttentePaiement ?></div>
-                    <div class="stat-label">Commandes en attente de paiement</div>
+                    <div class="stat-number"><?= $commandesEnAttente ?></div>
+                    <div class="stat-label">Commandes en attente</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= $clientsPermanents ?></div>
@@ -312,7 +256,7 @@ if (isset($_GET['logout'])) {
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= number_format($chiffreAffaires, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Chiffre d'affaires ce mois (payé)</div>
+                    <div class="stat-label">Chiffre d'affaires ce mois</div>
                 </div>
             </div>
             
@@ -334,34 +278,15 @@ if (isset($_GET['logout'])) {
                         <tr>
                             <td>#<?= $commande['idCommande'] ?></td>
                             <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
-                            <td>
-                                <?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>
-                                <br><small><?= htmlspecialchars($commande['email']) ?></small>
-                            </td>
+                            <td><?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?><br><small><?= htmlspecialchars($commande['email']) ?></small></td>
                             <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
                             <td>
                                 <span class="status-badge status-<?= $commande['statut'] ?>">
                                     <?= $commande['statut'] ?>
                                 </span>
-                                <?php if ($commande['statut_paiement']): ?>
-                                    <span class="paiement-status paiement-<?= $commande['statut_paiement'] ?>">
-                                        <?= $commande['statut_paiement'] ?>
-                                    </span>
-                                <?php endif; ?>
                             </td>
                             <td>
-                                <div class="actions-container">
-                                    <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a>
-                                    
-                                    <?php 
-                                    // Permettre la génération de facture pour les commandes payées OU livrées
-                                    // même si statut_paiement n'est pas "payee"
-                                    if (in_array($commande['statut'], ['payee', 'expediee', 'livree']) || $commande['statut_paiement'] === 'payee'): ?>
-                                        <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn-invoice" target="_blank">
-                                            📄 Facture
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
+                                <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>

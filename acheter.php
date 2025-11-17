@@ -33,10 +33,10 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
+$host = '217.182.198.20';
+$dbname = 'Origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -56,8 +56,8 @@ $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox', // ← IMPORTANT : 'sandbox' et non 'live'
-    'return_url' => 'http://localhost/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://localhost/Origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://217.182.198.20/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://217.182.198.20/Origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal

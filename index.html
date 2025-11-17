@@ -75,18 +75,37 @@
         color: #d40000;
       }
 
-      /* Styles pour le panier */
+      /* Styles pour le panier - AMÉLIORATIONS MOBILE */
+      #lien-panier {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 12px;
+        background-color: #f0f0f0;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: #333;
+        border: 1px solid #ddd;
+      }
+
+      #lien-panier:hover {
+        background-color: #e0e0e0;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
       #compteur-panier {
         background: #d40000;
         color: white;
         border-radius: 50%;
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         font-size: 12px;
-        margin-left: 5px;
+        font-weight: bold;
       }
 
       /* Bannière principale */
@@ -516,20 +535,38 @@
         font-size: 0.9rem;
       }
 
-      /* Responsive */
+      /* Responsive - AMÉLIORATIONS POUR MOBILE */
       @media (max-width: 768px) {
         .header-container {
-          flex-direction: column;
-          padding: 15px 0;
+          flex-direction: row;
+          padding: 10px 0;
+        }
+
+        nav {
+          margin-top: 0;
         }
 
         nav ul {
-          margin-top: 15px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          margin-top: 0;
         }
 
         nav ul li {
-          margin-left: 15px;
-          margin-right: 15px;
+          margin: 5px;
+        }
+
+        /* Le lien panier plus visible sur mobile */
+        #lien-panier {
+          background-color: #d40000;
+          color: white;
+          padding: 10px 15px;
+          border: none;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #lien-panier:hover {
+          background-color: #b30000;
         }
 
         .hero h1 {
@@ -550,6 +587,26 @@
 
         .footer-col {
           margin-bottom: 30px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        nav ul {
+          justify-content: space-between;
+          width: 100%;
+        }
+
+        nav ul li {
+          margin: 3px;
+        }
+
+        nav ul li a {
+          font-size: 12px;
+        }
+
+        #lien-panier {
+          padding: 8px 12px;
+          font-size: 12px;
         }
       }
 
@@ -691,11 +748,7 @@
             <li><a href="#">Ateliers</a></li>
             <li><a href="#contact">Contact</a></li>
             <li>
-              <a
-                href="#"
-                id="lien-panier"
-                style="display: flex; align-items: center; gap: 5px"
-              >
+              <a href="#" id="lien-panier">
                 🛒 Panier (<span id="compteur-panier">0</span>)
               </a>
             </li>
@@ -746,103 +799,102 @@
     </section>
 
     <!-- Section produits -->
-<section class="products">
-  <div class="container">
-    <div class="section-title" id="nosCreations">
-      <h2>Nos créations</h2>
-    </div>
-    <div class="products-grid">
-      <!-- Produit 1 - Grue -->
-      <div class="product-card" data-id="1">
-        <div class="product-image">
-          <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
+    <section class="products">
+      <div class="container">
+        <div class="section-title" id="nosCreations">
+          <h2>Nos créations</h2>
         </div>
-        <div class="product-info">
-          <h3>La grue Élégante</h3>
-          <p>
-            Symbole de paix et de longévité, cette grue est pliée avec un
-            papier washi traditionnel.
-          </p>
-          <div class="product-price">
-            <span class="price">24€</span>
-            <a href="#" class="btn">Commander</a>
+        <div class="products-grid">
+          <!-- Produit 1 - Grue -->
+          <div class="product-card" data-id="1">
+            <div class="product-image">
+              <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
+            </div>
+            <div class="product-info">
+              <h3>La grue Élégante</h3>
+              <p>
+                Symbole de paix et de longévité, cette grue est pliée avec un
+                papier washi traditionnel.
+              </p>
+              <div class="product-price">
+                <span class="price">24€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 2 - Fleur -->
-      <div class="product-card" data-id="2">
-        <div class="product-image">
-          <img src="img/flower.jpg" alt="Origami fleur" />
-        </div>
-        <div class="product-info">
-          <h3>Fleur de Cerisier</h3>
-          <p>
-            Inspirée des sakura japonais, cette fleur délicate apporte une
-            touche de printemps éternel.
-          </p>
-          <div class="product-price">
-            <span class="price">18€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 2 - Fleur -->
+          <div class="product-card" data-id="2">
+            <div class="product-image">
+              <img src="img/flower.jpg" alt="Origami fleur" />
+            </div>
+            <div class="product-info">
+              <h3>Fleur de Cerisier</h3>
+              <p>
+                Inspirée des sakura japonais, cette fleur délicate apporte une
+                touche de printemps éternel.
+              </p>
+              <div class="product-price">
+                <span class="price">18€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 3 - Dragon -->
-      <div class="product-card" data-id="3">
-        <div class="product-image">
-          <img src="img/dragon.png" alt="Origami dragon" />
-        </div>
-        <div class="product-info">
-          <h3>Dragon Majestueux</h3>
-          <p>
-            Une création complexe et impressionnante, symbole de puissance
-            et de sagesse.
-          </p>
-          <div class="product-price">
-            <span class="price">45€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 3 - Dragon -->
+          <div class="product-card" data-id="3">
+            <div class="product-image">
+              <img src="img/dragon.png" alt="Origami dragon" />
+            </div>
+            <div class="product-info">
+              <h3>Dragon Majestueux</h3>
+              <p>
+                Une création complexe et impressionnante, symbole de puissance
+                et de sagesse.
+              </p>
+              <div class="product-price">
+                <span class="price">45€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 4 - Éventail -->
-      <div class="product-card" data-id="4">
-        <div class="product-image">
-          <img src="img/eventail.jpg" alt="Origami éventail" />
-        </div>
-        <div class="product-info">
-          <h3>Éventail Traditionnel</h3>
-          <p>
-            Accessoire élégant et fonctionnel, plié avec un papier aux
-            motifs traditionnels.
-          </p>
-          <div class="product-price">
-            <span class="price">32€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 4 - Éventail -->
+          <div class="product-card" data-id="4">
+            <div class="product-image">
+              <img src="img/eventail.jpg" alt="Origami éventail" />
+            </div>
+            <div class="product-info">
+              <h3>Éventail Traditionnel</h3>
+              <p>
+                Accessoire élégant et fonctionnel, plié avec un papier aux
+                motifs traditionnels.
+              </p>
+              <div class="product-price">
+                <span class="price">32€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 5 - EURO (CORRIGÉ - placé correctement) -->
-      <div class="product-card" data-id="5">
-        <div class="product-image">
-          <img src="img/euro.jpg" alt="Euro" />
-        </div>
-        <div class="product-info">
-          <h3>1 euro</h3>
-          <p>
-            Pièce de monnaie
-          </p>
-          <div class="product-price">
-            <span class="price">1€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 5 - EURO (CORRIGÉ - placé correctement) -->
+          <div class="product-card" data-id="5">
+            <div class="product-image">
+              <img src="img/euro.jpg" alt="Euro" />
+            </div>
+            <div class="product-info">
+              <h3>1 euro</h3>
+              <p>Pièce de monnaie</p>
+              <div class="product-price">
+                <span class="price">1€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
+
     <!-- Section valeurs -->
     <section class="values">
       <div class="container">
