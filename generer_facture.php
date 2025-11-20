@@ -242,15 +242,13 @@ function generateHTMLInvoice($commande, $lignesCommande) {
 }
 
 function generateInvoiceContent($commande, $lignesCommande) {
-    $totalHT = 0;
-    $tauxTVA = 0.20;
+    $total = 0;
     
     foreach ($lignesCommande as $ligne) {
-        $totalHT += $ligne['prixUnitaire'] * $ligne['quantite'];
+        $total += $ligne['prixUnitaire'] * $ligne['quantite'];
     }
     
-    $totalTVA = $totalHT * $tauxTVA;
-    $totalTTC = $totalHT + $totalTVA + $commande['fraisDePort'];
+    $totalGeneral = $total + $commande['fraisDePort'];
     
     $html = '
     <div class="header">
@@ -298,29 +296,23 @@ function generateInvoiceContent($commande, $lignesCommande) {
     <table>
         <tr>
             <th>Produit</th>
-            <th>Prix HT</th>
-            <th>Qté</th>
-            <th>Total HT</th>
-            <th>TVA</th>
-            <th>Total TTC</th>
+            <th>Prix unitaire</th>
+            <th>Quantité</th>
+            <th>Total</th>
         </tr>';
     
     foreach ($lignesCommande as $ligne) {
-        $prixHT = $ligne['prixUnitaire'];
-        $sousTotalHT = $prixHT * $ligne['quantite'];
-        $montantTVA = $sousTotalHT * $tauxTVA;
-        $sousTotalTTC = $sousTotalHT + $montantTVA;
+        $prixUnitaire = $ligne['prixUnitaire'];
+        $sousTotal = $prixUnitaire * $ligne['quantite'];
         
         $html .= '
         <tr>
             <td>' . htmlspecialchars($ligne['produit_nom']) . '<br>
                 <small style="color: #666;">' . htmlspecialchars(substr($ligne['produit_description'], 0, 100)) . '...</small>
             </td>
-            <td>' . number_format($prixHT, 2, ',', ' ') . ' €</td>
+            <td>' . number_format($prixUnitaire, 2, ',', ' ') . ' €</td>
             <td>' . $ligne['quantite'] . '</td>
-            <td>' . number_format($sousTotalHT, 2, ',', ' ') . ' €</td>
-            <td>' . number_format($montantTVA, 2, ',', ' ') . ' €</td>
-            <td><strong>' . number_format($sousTotalTTC, 2, ',', ' ') . ' €</strong></td>
+            <td><strong>' . number_format($sousTotal, 2, ',', ' ') . ' €</strong></td>
         </tr>';
     }
     
@@ -329,8 +321,8 @@ function generateInvoiceContent($commande, $lignesCommande) {
 
     <div class="total-section">
         <div class="total-line">
-            <span>Sous-total HT:</span>
-            <span>' . number_format($totalHT, 2, ',', ' ') . ' €</span>
+            <span>Sous-total produits:</span>
+            <span>' . number_format($total, 2, ',', ' ') . ' €</span>
         </div>
         
         <div class="total-line">
@@ -338,19 +330,14 @@ function generateInvoiceContent($commande, $lignesCommande) {
             <span>' . number_format($commande['fraisDePort'], 2, ',', ' ') . ' €</span>
         </div>
         
-        <div class="total-line">
-            <span>TVA (' . ($tauxTVA * 100) . '%):</span>
-            <span>' . number_format($totalTVA, 2, ',', ' ') . ' €</span>
-        </div>
-        
         <div class="total-final">
-            <span><strong>TOTAL TTC</strong></span>
-            <span><strong>' . number_format($totalTTC, 2, ',', ' ') . ' €</strong></span>
+            <span><strong>TOTAL</strong></span>
+            <span><strong>' . number_format($totalGeneral, 2, ',', ' ') . ' €</strong></span>
         </div>
     </div>
 
     <div class="footer">
-        Origami Zen - RCS Paris 123 456 789 - TVA: FR 12 123456789<br>
+        Origami Zen - RCS Paris 123 456 789 - Exonération de TVA, art. 293 B du CGI<br>
         Facture générée le ' . date('d/m/Y à H:i') . '
     </div>';
     

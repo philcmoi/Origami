@@ -1,9 +1,9 @@
 <?php
 // Script pour créer un administrateur par défaut (à exécuter une seule fois)
-$host = '217.182.198.20';
+$host = 'localhost';
 $dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

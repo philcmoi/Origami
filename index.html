@@ -525,15 +525,34 @@
 
         nav ul {
           margin-top: 15px;
+          flex-wrap: wrap;
+          justify-content: center;
         }
 
         nav ul li {
-          margin-left: 15px;
-          margin-right: 15px;
+          margin-left: 10px;
+          margin-right: 10px;
+          margin-bottom: 10px;
+        }
+
+        /* Amélioration spécifique pour le lien panier sur mobile */
+        .panier-mobile {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          background: #f8f8f8;
+          padding: 8px 15px;
+          border-radius: 20px;
+          margin-top: 10px;
+          border: 1px solid #e0e0e0;
         }
 
         .hero h1 {
-          font-size: 2.5rem;
+          font-size: 2.2rem;
+        }
+
+        .hero p {
+          font-size: 1rem;
         }
 
         .about-content {
@@ -676,6 +695,51 @@
       #btn-passer-commande.loading {
         animation: pulse 1.5s infinite;
       }
+
+      /* Styles améliorés pour mobile */
+      @media (max-width: 480px) {
+        nav ul {
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+        }
+
+        nav ul li {
+          margin: 5px 0;
+          width: 100%;
+          text-align: center;
+        }
+
+        .panier-mobile {
+          width: auto;
+          margin: 10px auto;
+          background: #d40000;
+          color: white;
+        }
+
+        .panier-mobile a {
+          color: white !important;
+          font-weight: bold;
+        }
+
+        #compteur-panier {
+          background: white;
+          color: #d40000;
+        }
+
+        .hero h1 {
+          font-size: 1.8rem;
+        }
+
+        .hero p {
+          font-size: 0.9rem;
+        }
+
+        .btn {
+          padding: 10px 20px;
+          font-size: 13px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -689,8 +753,7 @@
             <li><a href="#nosCreations">Nos créations</a></li>
             <li><a href="#">À propos</a></li>
             <li><a href="#">Ateliers</a></li>
-            <li><a href="#contact">Contact</a></li>
-            <li>
+            <li class="panier-mobile">
               <a
                 href="#"
                 id="lien-panier"
@@ -746,103 +809,101 @@
     </section>
 
     <!-- Section produits -->
-<section class="products">
-  <div class="container">
-    <div class="section-title" id="nosCreations">
-      <h2>Nos créations</h2>
-    </div>
-    <div class="products-grid">
-      <!-- Produit 1 - Grue -->
-      <div class="product-card" data-id="1">
-        <div class="product-image">
-          <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
+    <section class="products">
+      <div class="container">
+        <div class="section-title" id="nosCreations">
+          <h2>Nos créations</h2>
         </div>
-        <div class="product-info">
-          <h3>La grue Élégante</h3>
-          <p>
-            Symbole de paix et de longévité, cette grue est pliée avec un
-            papier washi traditionnel.
-          </p>
-          <div class="product-price">
-            <span class="price">24€</span>
-            <a href="#" class="btn">Commander</a>
+        <div class="products-grid">
+          <!-- Produit 1 - Grue -->
+          <div class="product-card" data-id="1">
+            <div class="product-image">
+              <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
+            </div>
+            <div class="product-info">
+              <h3>La grue Élégante</h3>
+              <p>
+                Symbole de paix et de longévité, cette grue est pliée avec un
+                papier washi traditionnel.
+              </p>
+              <div class="product-price">
+                <span class="price">24€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 2 - Fleur -->
-      <div class="product-card" data-id="2">
-        <div class="product-image">
-          <img src="img/flower.jpg" alt="Origami fleur" />
-        </div>
-        <div class="product-info">
-          <h3>Fleur de Cerisier</h3>
-          <p>
-            Inspirée des sakura japonais, cette fleur délicate apporte une
-            touche de printemps éternel.
-          </p>
-          <div class="product-price">
-            <span class="price">18€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 2 - Fleur -->
+          <div class="product-card" data-id="2">
+            <div class="product-image">
+              <img src="img/flower.jpg" alt="Origami fleur" />
+            </div>
+            <div class="product-info">
+              <h3>Fleur de Cerisier</h3>
+              <p>
+                Inspirée des sakura japonais, cette fleur délicate apporte une
+                touche de printemps éternel.
+              </p>
+              <div class="product-price">
+                <span class="price">18€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 3 - Dragon -->
-      <div class="product-card" data-id="3">
-        <div class="product-image">
-          <img src="img/dragon.png" alt="Origami dragon" />
-        </div>
-        <div class="product-info">
-          <h3>Dragon Majestueux</h3>
-          <p>
-            Une création complexe et impressionnante, symbole de puissance
-            et de sagesse.
-          </p>
-          <div class="product-price">
-            <span class="price">45€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 3 - Dragon -->
+          <div class="product-card" data-id="3">
+            <div class="product-image">
+              <img src="img/dragon.png" alt="Origami dragon" />
+            </div>
+            <div class="product-info">
+              <h3>Dragon Majestueux</h3>
+              <p>
+                Une création complexe et impressionnante, symbole de puissance
+                et de sagesse.
+              </p>
+              <div class="product-price">
+                <span class="price">45€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 4 - Éventail -->
-      <div class="product-card" data-id="4">
-        <div class="product-image">
-          <img src="img/eventail.jpg" alt="Origami éventail" />
-        </div>
-        <div class="product-info">
-          <h3>Éventail Traditionnel</h3>
-          <p>
-            Accessoire élégant et fonctionnel, plié avec un papier aux
-            motifs traditionnels.
-          </p>
-          <div class="product-price">
-            <span class="price">32€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 4 - Éventail -->
+          <div class="product-card" data-id="4">
+            <div class="product-image">
+              <img src="img/eventail.jpg" alt="Origami éventail" />
+            </div>
+            <div class="product-info">
+              <h3>Éventail Traditionnel</h3>
+              <p>
+                Accessoire élégant et fonctionnel, plié avec un papier aux
+                motifs traditionnels.
+              </p>
+              <div class="product-price">
+                <span class="price">32€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Produit 5 - EURO (CORRIGÉ - placé correctement) -->
-      <div class="product-card" data-id="5">
-        <div class="product-image">
-          <img src="img/euro.jpg" alt="Euro" />
-        </div>
-        <div class="product-info">
-          <h3>1 euro</h3>
-          <p>
-            Pièce de monnaie
-          </p>
-          <div class="product-price">
-            <span class="price">1€</span>
-            <a href="#" class="btn">Commander</a>
+          <!-- Produit 5 - EURO (CORRIGÉ - placé correctement) -->
+          <div class="product-card" data-id="5">
+            <div class="product-image">
+              <img src="img/euro.jpg" alt="Euro" />
+            </div>
+            <div class="product-info">
+              <h3>1 euro</h3>
+              <p>Pièce de monnaie</p>
+              <div class="product-price">
+                <span class="price">1€</span>
+                <a href="#" class="btn">Commander</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
     <!-- Section valeurs -->
     <section class="values">
       <div class="container">
@@ -930,69 +991,6 @@
       </div>
     </section>
 
-    <!-- Section contact -->
-    <section class="contact" id="contact">
-      <div class="container">
-        <div class="section-title">
-          <h2>Contactez-nous</h2>
-        </div>
-        <div class="contact-container">
-          <div class="contact-info">
-            <h3>Parlons de votre projet</h3>
-            <p>
-              Que vous souhaitiez commander une pièce unique, organiser un
-              atelier ou simplement en savoir plus sur notre travail, n'hésitez
-              pas à nous contacter.
-            </p>
-
-            <div class="contact-details">
-              <div class="contact-detail">
-                <div class="contact-icon">📍</div>
-                <div>123 Rue du Papier, 75000 Paris, France</div>
-              </div>
-              <div class="contact-detail">
-                <div class="contact-icon">📞</div>
-                <div>+33 1 23 45 67 89</div>
-              </div>
-              <div class="contact-detail">
-                <div class="contact-icon">✉️</div>
-                <div>contact@origamizen.fr</div>
-              </div>
-            </div>
-
-            <div class="social-links">
-              <a href="#">📘</a>
-              <a href="#">📷</a>
-              <a href="#">🐦</a>
-              <a href="#">📌</a>
-            </div>
-          </div>
-
-          <div class="contact-form">
-            <form>
-              <div class="form-group">
-                <label for="name">Nom*</label>
-                <input type="text" id="name" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="email">Email*</label>
-                <input type="email" id="email" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="subject">Sujet*</label>
-                <input type="text" id="subject" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="message">Message*</label>
-                <textarea id="message" class="form-control" required></textarea>
-              </div>
-              <button type="submit" class="btn">Envoyer</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Pied de page -->
     <footer>
       <div class="container">
@@ -1012,7 +1010,6 @@
               <li><a href="#">Nos créations</a></li>
               <li><a href="#">À propos</a></li>
               <li><a href="#">Ateliers</a></li>
-              <li><a href="#">Contact</a></li>
             </ul>
           </div>
 
