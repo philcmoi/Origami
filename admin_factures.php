@@ -12,10 +12,10 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'LOCALHOST';
-$dbname = 'Origami';
+$host = '217.182.198.20';
+$dbname = 'origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -31,12 +31,12 @@ function envoyerEmail($destinataire, $sujet, $message) {
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         

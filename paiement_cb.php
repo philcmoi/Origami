@@ -6,10 +6,10 @@ ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
 // Configuration de la base de données
-$host = 'LOCALHOST';
+$host = '217.182.198.20';
 $dbname = 'origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -222,11 +222,11 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
                         'tax' => '0.00'
                     ]
                 ],
-                'description' => 'Commande #' . $donnees['commande']['idCommande'] . ' - Origami Zen',
+                'description' => 'Commande #' . $donnees['commande']['idCommande'] . ' - Youki and Go',
                 'custom' => $donnees['commande']['idCommande'],
                 'invoice_number' => 'CMD-' . $donnees['commande']['idCommande'] . '-' . time()
             ]],
-            'note_to_payer' => 'Merci pour votre commande sur Origami Zen',
+            'note_to_payer' => 'Merci pour votre commande sur Youki and Go',
             'redirect_urls' => [
                 'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=success',
                 'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=cancel'
@@ -396,12 +396,12 @@ function envoyerEmailConfirmationCB($commande, $reference) {
     try {
         // Configuration SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -414,9 +414,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Go');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Go');
         
         // Contenu
         $mail->isHTML(true);
@@ -438,7 +438,7 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Origami Zen</h1>
+                    <h1>Youki and Go</h1>
                 </div>
                 
                 <h2 class='success'>✅ Paiement Confirmé</h2>
@@ -460,9 +460,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
                 <p>Merci pour votre confiance !</p>
                 
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;'>
-                    <p><strong>Origami Zen</strong><br>
-                    📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89<br>
-                    123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>Youki and Go</strong><br>
+                    📧 contact@YoukiandGo.fr | 📞 +33 1 23 45 67 89<br>
+                    </p>
                 </div>
             </div>
         </body>
@@ -480,14 +480,21 @@ function envoyerEmailConfirmationCB($commande, $reference) {
 }
 
 // Fonction pour afficher la confirmation
+// Fonction pour afficher la confirmation
 function afficherConfirmationCB($commande, $reference) {
+    // Récupérer l'ID de commande depuis les données de la commande
+    $idCommande = $commande['idCommande'];
+    
+    // Générer l'URL de la facture HTML
+    $urlFactureHTML = "http://217.182.198.20/Origami/facture.php?id=" . $idCommande;
+    
     ?>
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement Confirmé - Origami Zen</title>
+        <title>Paiement Confirmé - Youki and Go</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -534,6 +541,28 @@ function afficherConfirmationCB($commande, $reference) {
             .btn:hover {
                 background-color: #b30000;
             }
+            .btn-facture { 
+                background-color: #28a745; 
+                color: white; 
+                padding: 10px 20px; 
+                text-decoration: none; 
+                border-radius: 4px; 
+                margin: 5px;
+                display: inline-block;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .btn-facture:hover {
+                background-color: #218838;
+            }
+            .facture-options {
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                padding: 20px;
+                border-radius: 4px;
+                margin: 20px 0;
+            }
         </style>
     </head>
     <body>
@@ -552,15 +581,27 @@ function afficherConfirmationCB($commande, $reference) {
             
             <p>Un email de confirmation a été envoyé à <strong><?= htmlspecialchars($commande['email']) ?></strong>.</p>
             <p>Votre commande est en cours de préparation.</p>
+
+            <!-- Section Options de Facture -->
+            <div class="facture-options">
+                <h3>📄 Options de facture</h3>
+                <p>Vous pouvez déjà télécharger votre facture :</p>
+                <!--<a href="<?= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>-->
+                <button onclick="telechargerFacturePDF(<?= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
+            </div>
             
             <a href="index.html" class="btn">Retour à l'accueil</a>
         </div>
+
+        <script>
+            function telechargerFacturePDF(idCommande) {
+                window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+            }
+        </script>
     </body>
     </html>
     <?php
 }
-
-// Traitement du formulaire de paiement
 // Traitement du formulaire de paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'traiter_paiement_cb') {
     
@@ -645,7 +686,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement Carte Bancaire - Origami Zen</title>
+    <title>Paiement Carte Bancaire - Youki and Co</title>
     <style>
         body { 
             font-family: 'Helvetica Neue', Arial, sans-serif; 

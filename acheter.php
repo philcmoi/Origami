@@ -33,10 +33,10 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'localhost';
+$host = '217.182.198.20';
 $dbname = 'Origami';
 $username = 'root';
-$password = '';
+$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -55,9 +55,9 @@ try {
 $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
-    'environment' => 'sandbox', // ← IMPORTANT : 'sandbox' et non 'live'
-    'return_url' => 'http://localhost/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://localhost/Origami/acheter.php?action=paypal_cancel'
+    'environment' => 'sandbox',
+    'return_url' => 'http://217.182.198.20/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://217.182.198.20/Origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -179,12 +179,12 @@ function envoyerEmail($destinataire, $sujet, $message) {
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -420,6 +420,170 @@ function getOrCreateClient($pdo) {
     return $clientId;
 }
 
+// FONCTION : Générer une facture via l'API facture.php
+function genererFactureAPI($idCommande, $format = 'html') {
+    error_log("🔄 Appel API facture pour commande: " . $idCommande . " format: " . $format);
+    
+    $url = "http://217.182.198.20/Origami/facture.php";
+    
+    if ($format === 'pdf') {
+        // Pour PDF, on fait un appel POST à l'API
+        $data = json_encode(['id_commande' => $idCommande]);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($data)
+        ]);
+        
+        $result = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($http_code == 200) {
+            $response = json_decode($result, true);
+            if ($response && $response['status'] === 'success') {
+                return $response['fichier_facture'];
+            }
+        }
+        error_log("❌ Erreur génération PDF via API: " . $result);
+        return false;
+    } else {
+        // Pour HTML, redirection simple
+        return $url . "?id=" . $idCommande;
+    }
+}
+
+// FONCTION : Envoyer email avec pièce jointe
+function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJoint) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        // Configuration du serveur SMTP
+        $mail->isSMTP();
+        $mail->Host = SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = SMTP_PORT;
+        $mail->SMTPDebug = 0;
+        $mail->CharSet = 'UTF-8';
+        
+        // Options de sécurité
+        $mail->SMTPOptions = array(
+            'ssl' => array(
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true
+            )
+        );
+        
+        // Destinataires
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addAddress($destinataire);
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        
+        // Pièce jointe
+        if (file_exists($fichierJoint)) {
+            $mail->addAttachment($fichierJoint, 'facture_' . basename($fichierJoint));
+        }
+        
+        // Contenu
+        $mail->isHTML(true);
+        $mail->Subject = $sujet;
+        $mail->Body = $message;
+        $mail->AltBody = strip_tags($message);
+        
+        if ($mail->send()) {
+            return ['success' => true, 'message' => 'Email avec facture envoyé avec succès'];
+        } else {
+            return ['success' => false, 'error' => 'Échec de l\'envoi sans exception'];
+        }
+        
+    } catch (Exception $e) {
+        error_log("Erreur PHPMailer avec pièce jointe: " . $mail->ErrorInfo);
+        return ['success' => false, 'error' => 'Erreur PHPMailer: ' . $e->getMessage()];
+    }
+}
+
+// FONCTION : Envoyer la facture par email
+function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
+    error_log("📧 Envoi facture par email pour commande: " . $idCommande . " à: " . $emailClient);
+    
+    try {
+        // Générer la facture via l'API
+        $fichierFacture = genererFactureAPI($idCommande, $format);
+        
+        if (!$fichierFacture) {
+            throw new Exception("Erreur lors de la génération de la facture");
+        }
+        
+        // Récupérer les infos de la commande pour l'email
+        $stmt = $pdo->prepare("
+            SELECT c.idCommande, c.montantTotal, cl.prenom, cl.nom
+            FROM Commande c
+            JOIN Client cl ON c.idClient = cl.idClient
+            WHERE c.idCommande = ?
+        ");
+        $stmt->execute([$idCommande]);
+        $commande_info = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$commande_info) {
+            throw new Exception("Commande non trouvée");
+        }
+        
+        // Préparer l'email
+        $sujet = "Votre facture #" . $idCommande . " - Origami Zen";
+        
+        if ($format === 'pdf') {
+            $message = "
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
+                <p>Veuillez trouver ci-joint votre facture pour la commande #" . $commande_info['idCommande'] . ".</p>
+                <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
+                <p>Vous pouvez également visualiser votre facture en ligne :</p>
+                <p><a href='" . genererFactureAPI($idCommande, 'html') . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir la facture en ligne</a></p>
+                <p>Merci pour votre confiance !</p>
+                <br>
+                <p><strong>L'équipe Origami Zen</strong></p>
+            </body>
+            </html>
+            ";
+            
+            // Envoyer l'email avec pièce jointe
+            return envoyerEmailAvecPieceJointe($emailClient, $sujet, $message, $fichierFacture);
+        } else {
+            $message = "
+            <html>
+            <body style='font-family: Arial, sans-serif;'>
+                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
+                <p>Veuillez trouver votre facture pour la commande #" . $commande_info['idCommande'] . " en cliquant sur le lien ci-dessous :</p>
+                <p><a href='" . $fichierFacture . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir ma facture</a></p>
+                <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
+                <p>Merci pour votre confiance !</p>
+                <br>
+                <p><strong>L'équipe Origami Zen</strong></p>
+            </body>
+            </html>
+            ";
+            
+            return envoyerEmail($emailClient, $sujet, $message);
+        }
+        
+    } catch (Exception $e) {
+        error_log("❌ Erreur envoi facture email: " . $e->getMessage());
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
 // Récupération des données JSON (uniquement pour les requêtes API)
 if (!$is_html_response) {
     $input = file_get_contents('php://input');
@@ -451,7 +615,114 @@ if ($action == 'nettoyer_clients_zombies') {
     exit;
 }
 
-// ACTIONS PAYPAL
+// NOUVELLES ACTIONS POUR LA GESTION DES FACTURES
+if ($action == 'generer_facture_html') {
+    $idCommande = $data['id_commande'] ?? null;
+    
+    if (!$idCommande) {
+        echo json_encode(['status' => 400, 'error' => 'ID commande manquant']);
+        exit;
+    }
+    
+    $urlFacture = genererFactureAPI($idCommande, 'html');
+    
+    if ($urlFacture) {
+        echo json_encode([
+            'status' => 200,
+            'data' => [
+                'url_facture' => $urlFacture,
+                'message' => 'Facture HTML générée avec succès'
+            ]
+        ]);
+    } else {
+        echo json_encode(['status' => 500, 'error' => 'Erreur lors de la génération de la facture HTML']);
+    }
+    exit;
+}
+
+if ($action == 'generer_facture_pdf') {
+    $idCommande = $data['id_commande'] ?? null;
+    
+    if (!$idCommande) {
+        echo json_encode(['status' => 400, 'error' => 'ID commande manquant']);
+        exit;
+    }
+    
+    $fichierFacture = genererFactureAPI($idCommande, 'pdf');
+    
+    if ($fichierFacture) {
+        echo json_encode([
+            'status' => 200,
+            'data' => [
+                'fichier_facture' => $fichierFacture,
+                'url_facture' => 'http://217.182.198.20/Origami/' . $fichierFacture,
+                'message' => 'Facture PDF générée avec succès'
+            ]
+        ]);
+    } else {
+        echo json_encode(['status' => 500, 'error' => 'Erreur lors de la génération de la facture PDF']);
+    }
+    exit;
+}
+
+if ($action == 'envoyer_facture_email') {
+    $idCommande = $data['id_commande'] ?? null;
+    $email = $data['email'] ?? null;
+    $format = $data['format'] ?? 'pdf';
+    
+    if (!$idCommande || !$email) {
+        echo json_encode(['status' => 400, 'error' => 'ID commande ou email manquant']);
+        exit;
+    }
+    
+    $resultat = envoyerFactureEmail($pdo, $idCommande, $email, $format);
+    
+    if ($resultat['success']) {
+        echo json_encode([
+            'status' => 200,
+            'data' => [
+                'message' => $resultat['message'],
+                'id_commande' => $idCommande,
+                'format' => $format
+            ]
+        ]);
+    } else {
+        echo json_encode(['status' => 500, 'error' => $resultat['error']]);
+    }
+    exit;
+}
+
+if ($action == 'telecharger_facture') {
+    $idCommande = $data['id_commande'] ?? ($_GET['id_commande'] ?? null);
+    
+    if (!$idCommande) {
+        if ($is_html_response) {
+            echo "<script>alert('ID commande manquant'); window.location.href = 'index.html';</script>";
+        } else {
+            echo json_encode(['status' => 400, 'error' => 'ID commande manquant']);
+        }
+        exit;
+    }
+    
+    // Générer le PDF
+    $fichierFacture = genererFactureAPI($idCommande, 'pdf');
+    
+    if ($fichierFacture && file_exists($fichierFacture)) {
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="facture_' . $idCommande . '.pdf"');
+        readfile($fichierFacture);
+        exit;
+    } else {
+        if ($is_html_response) {
+            echo "<script>alert('Erreur lors de la génération du PDF'); window.location.href = 'index.html';</script>";
+        } else {
+            echo json_encode(['status' => 500, 'error' => 'Erreur lors de la génération du PDF']);
+        }
+    }
+    exit;
+}
+
+// ACTIONS PAYPAL EXISTANTES
 if ($action == 'creer_commande_paypal') {
     $montant = $data['montant'] ?? 0;
     $idCommande = $data['id_commande'] ?? null;
@@ -515,8 +786,6 @@ if ($action == 'creer_commande_paypal') {
     exit;
 }
 
-
-// Ajouter cette nouvelle action
 if ($action == 'capturer_paiement_paypal') {
     $order_id = $data['order_id'] ?? '';
     
@@ -559,6 +828,18 @@ if ($action == 'capturer_paiement_paypal') {
                 $transaction_id = $capture['purchase_units'][0]['payments']['captures'][0]['id'] ?? $order_id;
                 $stmt->execute([$commande_id, $montant, $transaction_id]);
                 
+                // Générer automatiquement la facture PDF
+                $fichierFacture = genererFactureAPI($commande_id, 'pdf');
+                
+                // Envoyer la facture par email au client
+                $stmt = $pdo->prepare("SELECT cl.email FROM Commande c JOIN Client cl ON c.idClient = cl.idClient WHERE c.idCommande = ?");
+                $stmt->execute([$commande_id]);
+                $client_info = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($client_info) {
+                    envoyerFactureEmail($pdo, $commande_id, $client_info['email'], 'pdf');
+                }
+                
                 // Nettoyer la session
                 unset($_SESSION['paypal_order_id']);
                 unset($_SESSION['paypal_commande_id']);
@@ -571,15 +852,14 @@ if ($action == 'capturer_paiement_paypal') {
         echo json_encode([
             'status' => 200, 
             'message' => 'Paiement capturé avec succès',
-            'order_id' => $order_id
+            'order_id' => $order_id,
+            'facture_generee' => !empty($fichierFacture)
         ]);
     } else {
         echo json_encode(['status' => 500, 'error' => 'Erreur lors de la capture du paiement PayPal']);
     }
     exit;
 }
-
-
 
 if ($action == 'paypal_success') {
     $is_html_response = true;
@@ -625,6 +905,10 @@ if ($action == 'paypal_success') {
                 ");
                 $stmt->execute([$commande_id, $montant]);
                 
+                // Générer automatiquement la facture PDF
+                $fichierFacture = genererFactureAPI($commande_id, 'pdf');
+                $urlFactureHTML = genererFactureAPI($commande_id, 'html');
+                
                 // Récupérer les infos de la commande pour l'email
                 $stmt = $pdo->prepare("
                     SELECT c.idCommande, c.montantTotal, cl.email, cl.prenom, cl.nom
@@ -635,7 +919,7 @@ if ($action == 'paypal_success') {
                 $stmt->execute([$commande_id]);
                 $commande_info = $stmt->fetch(PDO::FETCH_ASSOC);
                 
-                // Envoyer email de confirmation
+                // Envoyer email de confirmation avec facture
                 if ($commande_info) {
                     $sujet = "Confirmation de paiement - Commande #" . $commande_info['idCommande'];
                     $message = "
@@ -645,12 +929,14 @@ if ($action == 'paypal_success') {
                         <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                         <p>Votre paiement PayPal pour la commande #" . $commande_info['idCommande'] . " a été traité avec succès.</p>
                         <p><strong>Montant :</strong> " . number_format($montant, 2, ',', ' ') . " €</p>
+                        <p>Votre facture est disponible en pièce jointe à télécharger :</p>
+                        <!--<p><a href='" . $urlFactureHTML . "'>Voir ma facture en ligne</a></p>-->
                         <p>Merci pour votre confiance !</p>
                     </body>
                     </html>
                     ";
                     
-                    envoyerEmail($commande_info['email'], $sujet, $message);
+                    envoyerEmailAvecPieceJointe($commande_info['email'], $sujet, $message, $fichierFacture);
                 }
                 
             } catch (Exception $e) {
@@ -662,7 +948,7 @@ if ($action == 'paypal_success') {
         unset($_SESSION['paypal_order_id']);
         unset($_SESSION['paypal_commande_id']);
         
-        // Afficher confirmation
+        // Afficher confirmation avec options de facture
         ?>
         <!DOCTYPE html>
         <html>
@@ -671,7 +957,7 @@ if ($action == 'paypal_success') {
             <title>Paiement Réussi - Origami Zen</title>
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 600px; }
                 .success { color: #28a745; }
                 .btn { 
                     display: inline-block;
@@ -680,7 +966,17 @@ if ($action == 'paypal_success') {
                     padding: 12px 30px; 
                     text-decoration: none; 
                     border-radius: 2px; 
-                    margin-top: 20px;
+                    margin: 10px 5px;
+                }
+                .btn-success { 
+                    background-color: #28a745; 
+                }
+                .facture-options {
+                    background: #e7f3ff;
+                    border: 1px solid #b3d9ff;
+                    padding: 20px;
+                    border-radius: 4px;
+                    margin: 20px 0;
                 }
             </style>
         </head>
@@ -692,8 +988,17 @@ if ($action == 'paypal_success') {
                 <p><strong>Numéro de commande :</strong> #<?= $commande_id ?></p>
                 <p><strong>Montant payé :</strong> <?= number_format($montant, 2, ',', ' ') ?> €</p>
                 <?php endif; ?>
+                
+                <div class="facture-options">
+                    <h3>📄 Votre facture</h3>
+                    <p>Votre facture a été générée.</p>
+                    <p>Vous pouvez :</p>
+                    <!-- <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>-->
+                    <a href="acheter.php?action=telecharger_facture&id_commande=<?= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
+                </div>
+                
                 <p>Vous recevrez un email de confirmation sous peu.</p>
-                <a href="index.html" class="btn">Retour à l'accueil</a>
+                <a href="index.html" class="btn">🏠 Retour à l'accueil</a>
             </div>
         </body>
         </html>
@@ -1091,7 +1396,7 @@ try {
                     width: 280px; 
                     margin: 30px auto; 
                     padding: 15px 30px; 
-                    background-color: #d40000; 
+                    background-color: #a6a2dcff; 
                     color: white; 
                     text-decoration: none; 
                     text-align: center; 
@@ -1100,7 +1405,7 @@ try {
                     font-weight: bold;
                 }
                 .btn-confirmation:hover {
-                    background-color: #b30000;
+                    background-color: #16b005ff;
                 }
                 .footer { 
                     margin-top: 40px; 
@@ -1177,9 +1482,8 @@ try {
                 </div>
                 
                 <div class='footer'>
-                    <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-                    <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                    <p>123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>YOUKI and Co - Créations artisanales japonaises</strong></p>
+                    <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
                 </div>
             </div>
         </body>
@@ -1615,8 +1919,8 @@ try {
 </head>
 <body>
     <div class="container">
-        <h1>💳 Finaliser le Paiement</h1>
-        <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p>
+        <!--<h1>💳 Finaliser le Paiement</h1>
+        <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p> -->
         
         <div class="payment-options">
             <!-- Option 1 : Compte PayPal -->
@@ -1990,57 +2294,56 @@ try {
 
         echo json_encode(['status' => 200, 'message' => 'Panier vidé']);
 
-    } // AJOUTER CETTE ACTION - Après les autres actions de gestion du panier
- elseif ($action == 'utiliser_adresse_existante') {
-    $is_html_response = true;
-    header('Content-Type: text/html; charset=UTF-8');
-    
-    $token = $_POST['token'] ?? '';
-    $choixAdresse = $_POST['choix_adresse'] ?? '';
-    
-    if (!$token || !$choixAdresse) {
-        echo "<script>alert('Données manquantes'); window.location.href = 'index.html';</script>";
-        exit;
-    }
-    
-    // Vérifier le token
-    $stmt = $pdo->prepare("SELECT id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
-    $stmt->execute([$token]);
-    $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
-        echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
-        exit;
-    }
-    
-    $idClient = $tokenData['id_client'];
-    
-    if ($choixAdresse === 'existante') {
-        // Récupérer la dernière adresse de livraison du client
-        $stmt = $pdo->prepare("
-            SELECT idAdresse 
-            FROM Adresse 
-            WHERE idClient = ? AND type = 'livraison' 
-            ORDER BY dateCreation DESC 
-            LIMIT 1
-        ");
-        $stmt->execute([$idClient]);
-        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+    } elseif ($action == 'utiliser_adresse_existante') {
+        $is_html_response = true;
+        header('Content-Type: text/html; charset=UTF-8');
         
-        if ($adresseExistante) {
-            // Marquer le token comme utilisé
-            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
-            $stmt->execute([$token]);
-            
-            // Créer la commande avec l'adresse existante
-            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
-            exit;
-        } else {
-            echo "<script>alert('Aucune adresse trouvée'); window.location.href = 'acheter.php?action=saisir_adresse&token=" . $token . "';</script>";
+        $token = $_POST['token'] ?? '';
+        $choixAdresse = $_POST['choix_adresse'] ?? '';
+        
+        if (!$token || !$choixAdresse) {
+            echo "<script>alert('Données manquantes'); window.location.href = 'index.html';</script>";
             exit;
         }
-    }
-} else {
+        
+        // Vérifier le token
+        $stmt = $pdo->prepare("SELECT id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
+        $stmt->execute([$token]);
+        $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
+            echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
+            exit;
+        }
+        
+        $idClient = $tokenData['id_client'];
+        
+        if ($choixAdresse === 'existante') {
+            // Récupérer la dernière adresse de livraison du client
+            $stmt = $pdo->prepare("
+                SELECT idAdresse 
+                FROM Adresse 
+                WHERE idClient = ? AND type = 'livraison' 
+                ORDER BY dateCreation DESC 
+                LIMIT 1
+            ");
+            $stmt->execute([$idClient]);
+            $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($adresseExistante) {
+                // Marquer le token comme utilisé
+                $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
+                $stmt->execute([$token]);
+                
+                // Créer la commande avec l'adresse existante
+                creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
+                exit;
+            } else {
+                echo "<script>alert('Aucune adresse trouvée'); window.location.href = 'acheter.php?action=saisir_adresse&token=" . $token . "';</script>";
+                exit;
+            }
+        }
+    } else {
         echo json_encode(['status' => 400, 'error' => 'Action non reconnue: ' . $action]);
     }
 
@@ -2100,13 +2403,14 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
                 background: #fafafa;
             }
             .choice-card:hover {
-                border-color: #d40000;
-                background: #fff5f5;
+                border-color: #007bff;
+                background: #f0f8ff;
                 transform: translateY(-2px);
             }
             .choice-card.selected {
-                border-color: #d40000;
-                background: #fff5f5;
+                border-color: #007bff;
+                background: #e6f2ff;
+                box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
             }
             .choice-icon {
                 font-size: 24px;
@@ -2128,9 +2432,10 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
                 border-radius: 4px;
                 border: 1px solid #e0e0e0;
                 margin-top: 10px;
+                color: #555;
             }
             .btn { 
-                background-color: #d40000; 
+                background-color: #007bff; 
                 color: white; 
                 padding: 15px 30px; 
                 border: none; 
@@ -2139,13 +2444,23 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
                 width: 100%; 
                 font-size: 16px;
                 margin-top: 20px;
+                transition: background-color 0.3s ease;
             }
             .btn:hover {
-                background-color: #b30000;
+                background-color: #0056b3;
             }
             .btn:disabled {
                 background-color: #cccccc;
                 cursor: not-allowed;
+            }
+            .selected-indicator {
+                color: #007bff;
+                font-weight: bold;
+                margin-top: 10px;
+                display: none;
+            }
+            .choice-card.selected .selected-indicator {
+                display: block;
             }
         </style>
     </head>
@@ -2174,6 +2489,7 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
                         <?= htmlspecialchars($adresseExistante['codePostal']) ?> <?= htmlspecialchars($adresseExistante['ville']) ?><br>
                         <?= htmlspecialchars($adresseExistante['pays']) ?>
                     </div>
+                    <div class="selected-indicator">✓ Sélectionné</div>
                 </div>
 
                 <!-- Option 2 : Saisir une nouvelle adresse -->
@@ -2183,6 +2499,7 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
                     <div class="choice-description">
                         Utilisez une adresse différente pour cette commande
                     </div>
+                    <div class="selected-indicator">✓ Sélectionné</div>
                 </div>
 
                 <button type="submit" class="btn" id="btnContinuer" disabled>Continuer vers le paiement</button>
@@ -2225,58 +2542,6 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
     </html>
     <?php
     exit;
-}
-
-// NOUVELLE ACTION : Utiliser l'adresse existante
-if ($action == 'utiliser_adresse_existante') {
-    $is_html_response = true;
-    header('Content-Type: text/html; charset=UTF-8');
-    
-    $token = $_POST['token'] ?? '';
-    $choixAdresse = $_POST['choix_adresse'] ?? '';
-    
-    if (!$token || !$choixAdresse) {
-        echo "<script>alert('Données manquantes'); window.location.href = 'index.html';</script>";
-        exit;
-    }
-    
-    // Vérifier le token
-    $stmt = $pdo->prepare("SELECT id_client, expiration, utilise FROM tokens_confirmation WHERE token = ?");
-    $stmt->execute([$token]);
-    $tokenData = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$tokenData || $tokenData['utilise'] == 1 || strtotime($tokenData['expiration']) < time()) {
-        echo "<script>alert('Lien invalide ou expiré'); window.location.href = 'index.html';</script>";
-        exit;
-    }
-    
-    $idClient = $tokenData['id_client'];
-    
-    if ($choixAdresse === 'existante') {
-        // Récupérer la dernière adresse de livraison du client
-        $stmt = $pdo->prepare("
-            SELECT idAdresse 
-            FROM Adresse 
-            WHERE idClient = ? AND type = 'livraison' 
-            ORDER BY dateCreation DESC 
-            LIMIT 1
-        ");
-        $stmt->execute([$idClient]);
-        $adresseExistante = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($adresseExistante) {
-            // Marquer le token comme utilisé
-            $stmt = $pdo->prepare("UPDATE tokens_confirmation SET utilise = 1 WHERE token = ?");
-            $stmt->execute([$token]);
-            
-            // Créer la commande avec l'adresse existante
-            creerCommandeAvecAdresseExistante($pdo, $idClient, $adresseExistante['idAdresse']);
-            exit;
-        } else {
-            echo "<script>alert('Aucune adresse trouvée'); window.location.href = 'acheter.php?action=saisir_adresse&token=" . $token . "';</script>";
-            exit;
-        }
-    }
 }
 
 // FONCTION : Créer une commande avec une adresse existante
@@ -2373,7 +2638,10 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
     $stmt->execute([$panier['idPanier']]);
 
-    // PROPOSER LE PAIEMENT PAYPAL
+    // 9. Générer automatiquement la facture HTML (pour affichage immédiat)
+    $urlFactureHTML = genererFactureAPI($idCommande, 'html');
+
+    // PROPOSER LE PAIEMENT AVEC OPTION DE TÉLÉCHARGEMENT DE FACTURE
     ?>
     <!DOCTYPE html>
     <html lang="fr">
@@ -2393,7 +2661,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                 min-height: 100vh;
             }
             .container { 
-                max-width: 600px; 
+                max-width: 700px; 
                 background: white; 
                 padding: 40px; 
                 border-radius: 8px; 
@@ -2413,6 +2681,18 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                 align-items: center;
                 gap: 10px;
             }
+            .btn-facture { 
+                background-color: #28a745; 
+                color: white; 
+                padding: 12px 25px; 
+                border: none; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-size: 14px;
+                margin: 5px;
+                text-decoration: none;
+                display: inline-block;
+            }
             .btn-cb { 
                 background-color: #d40000; 
                 color: white; 
@@ -2430,13 +2710,16 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                 border-radius: 4px;
                 margin: 20px 0;
             }
-            .info-message {
+            .facture-options {
                 background: #e7f3ff;
                 border: 1px solid #b3d9ff;
-                padding: 15px;
+                padding: 20px;
                 border-radius: 4px;
                 margin: 20px 0;
-                text-align: left;
+            }
+            .facture-options h3 {
+                margin-top: 0;
+                color: #0070ba;
             }
         </style>
     </head>
@@ -2445,15 +2728,18 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             <h1>💳 Finaliser le Paiement</h1>
             <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p>
             
-            <div class="info-message">
-                <strong>🏠 Adresse utilisée</strong><br>
-                Nous avons utilisé votre adresse de livraison précédemment enregistrée.
-            </div>
-            
             <div class="details">
                 <p><strong>Montant total :</strong> <?= number_format($montantTotal, 2, ',', ' ') ?> €</p>
                 <p><strong>Livraison prévue :</strong> <?= date('d/m/Y', strtotime($delaiLivraison)) ?></p>
             </div>
+
+            <!--<div class="facture-options">
+                <h3>📄 Options de facture</h3>
+                <p>Vous pouvez déjà visualiser ou télécharger votre facture :</p>
+                <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>
+                <button onclick="telechargerFacturePDF(<?= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
+                <button onclick="envoyerFactureEmail(<?= $idCommande ?>)" class="btn-facture">📧 Envoyer par email</button>
+            </div>--> 
             
             <p>Choisissez votre méthode de paiement :</p>
             
@@ -2467,11 +2753,6 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                     💳 Payer par Carte Bancaire
                 </button>
             </div>
-            
-            <p style="margin-top: 20px; font-size: 14px; color: #666;">
-                <strong>PayPal</strong> : Paiement sécurisé - Pas de frais supplémentaires<br>
-                <strong>Carte Bancaire</strong> : Paiement sécurisé via notre système
-            </p>
         </div>
 
         <script>
@@ -2510,6 +2791,42 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             function paiementCB() {
                 // Rediriger vers le traitement CB classique
                 window.location.href = 'paiement_cb.php?commande=<?= $idCommande ?>';
+            }
+
+            function telechargerFacturePDF(idCommande) {
+                window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+            }
+
+            function envoyerFactureEmail(idCommande) {
+                const email = prompt('Entrez votre email pour recevoir la facture:');
+                if (email && email.includes('@')) {
+                    fetch('acheter.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'envoyer_facture_email',
+                            id_commande: idCommande,
+                            email: email,
+                            format: 'pdf'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 200) {
+                            alert('Facture envoyée avec succès à ' + email);
+                        } else {
+                            alert('Erreur: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors de l\'envoi');
+                    });
+                } else if (email !== null) {
+                    alert('Email invalide');
+                }
             }
         </script>
     </body>
