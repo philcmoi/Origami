@@ -17,10 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $motDePasse = $_POST['motDePasse'] ?? '';
     
     // Configuration de la base de données
-    $host = '217.182.198.20';
+    $host = 'LOCALHOST';
     $dbname = 'origami';
     $username = 'root';
-    $password = 'L099339R';
+    $password = '';
     
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

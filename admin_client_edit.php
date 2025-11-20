@@ -16,10 +16,10 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 $client_id = intval($_GET['id']);
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'Origami';
+$host = 'localhost';
+$dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 $message_success = '';
 $message_erreur = '';

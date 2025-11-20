@@ -1,6 +1,6 @@
 <?php
 // Script pour créer un administrateur par défaut (à exécuter une seule fois)
-$host = 'LOCALHOST';
+$host = 'localhost';
 $dbname = 'origami';
 $username = 'root';
 $password = '';

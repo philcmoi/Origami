@@ -6,10 +6,10 @@ ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
 // Configuration de la base de données
-$host = '217.182.198.20';
+$host = 'localhost';
 $dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -480,7 +480,14 @@ function envoyerEmailConfirmationCB($commande, $reference) {
 }
 
 // Fonction pour afficher la confirmation
+// Fonction pour afficher la confirmation
 function afficherConfirmationCB($commande, $reference) {
+    // Récupérer l'ID de commande depuis les données de la commande
+    $idCommande = $commande['idCommande'];
+    
+    // Générer l'URL de la facture HTML
+    $urlFactureHTML = "http://localhost/Origami/facture.php?id=" . $idCommande;
+    
     ?>
     <!DOCTYPE html>
     <html lang="fr">
@@ -534,6 +541,28 @@ function afficherConfirmationCB($commande, $reference) {
             .btn:hover {
                 background-color: #b30000;
             }
+            .btn-facture { 
+                background-color: #28a745; 
+                color: white; 
+                padding: 10px 20px; 
+                text-decoration: none; 
+                border-radius: 4px; 
+                margin: 5px;
+                display: inline-block;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .btn-facture:hover {
+                background-color: #218838;
+            }
+            .facture-options {
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                padding: 20px;
+                border-radius: 4px;
+                margin: 20px 0;
+            }
         </style>
     </head>
     <body>
@@ -552,15 +581,27 @@ function afficherConfirmationCB($commande, $reference) {
             
             <p>Un email de confirmation a été envoyé à <strong><?= htmlspecialchars($commande['email']) ?></strong>.</p>
             <p>Votre commande est en cours de préparation.</p>
+
+            <!-- Section Options de Facture -->
+            <div class="facture-options">
+                <h3>📄 Options de facture</h3>
+                <p>Vous pouvez déjà télécharger votre facture :</p>
+                <!--<a href="<?= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>-->
+                <button onclick="telechargerFacturePDF(<?= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
+            </div>
             
             <a href="index.html" class="btn">Retour à l'accueil</a>
         </div>
+
+        <script>
+            function telechargerFacturePDF(idCommande) {
+                window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+            }
+        </script>
     </body>
     </html>
     <?php
 }
-
-// Traitement du formulaire de paiement
 // Traitement du formulaire de paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'traiter_paiement_cb') {
     

@@ -75,37 +75,18 @@
         color: #d40000;
       }
 
-      /* Styles pour le panier - AMÉLIORATIONS MOBILE */
-      #lien-panier {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        padding: 8px 12px;
-        background-color: #f0f0f0;
-        border-radius: 20px;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        color: #333;
-        border: 1px solid #ddd;
-      }
-
-      #lien-panier:hover {
-        background-color: #e0e0e0;
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      }
-
+      /* Styles pour le panier */
       #compteur-panier {
         background: #d40000;
         color: white;
         border-radius: 50%;
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         font-size: 12px;
-        font-weight: bold;
+        margin-left: 5px;
       }
 
       /* Bannière principale */
@@ -535,42 +516,43 @@
         font-size: 0.9rem;
       }
 
-      /* Responsive - AMÉLIORATIONS POUR MOBILE */
+      /* Responsive */
       @media (max-width: 768px) {
         .header-container {
-          flex-direction: row;
-          padding: 10px 0;
-        }
-
-        nav {
-          margin-top: 0;
+          flex-direction: column;
+          padding: 15px 0;
         }
 
         nav ul {
+          margin-top: 15px;
           flex-wrap: wrap;
-          justify-content: flex-end;
-          margin-top: 0;
+          justify-content: center;
         }
 
         nav ul li {
-          margin: 5px;
+          margin-left: 10px;
+          margin-right: 10px;
+          margin-bottom: 10px;
         }
 
-        /* Le lien panier plus visible sur mobile */
-        #lien-panier {
-          background-color: #d40000;
-          color: white;
-          padding: 10px 15px;
-          border: none;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-
-        #lien-panier:hover {
-          background-color: #b30000;
+        /* Amélioration spécifique pour le lien panier sur mobile */
+        .panier-mobile {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          background: #f8f8f8;
+          padding: 8px 15px;
+          border-radius: 20px;
+          margin-top: 10px;
+          border: 1px solid #e0e0e0;
         }
 
         .hero h1 {
-          font-size: 2.5rem;
+          font-size: 2.2rem;
+        }
+
+        .hero p {
+          font-size: 1rem;
         }
 
         .about-content {
@@ -587,26 +569,6 @@
 
         .footer-col {
           margin-bottom: 30px;
-        }
-      }
-
-      @media (max-width: 480px) {
-        nav ul {
-          justify-content: space-between;
-          width: 100%;
-        }
-
-        nav ul li {
-          margin: 3px;
-        }
-
-        nav ul li a {
-          font-size: 12px;
-        }
-
-        #lien-panier {
-          padding: 8px 12px;
-          font-size: 12px;
         }
       }
 
@@ -733,6 +695,51 @@
       #btn-passer-commande.loading {
         animation: pulse 1.5s infinite;
       }
+
+      /* Styles améliorés pour mobile */
+      @media (max-width: 480px) {
+        nav ul {
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+        }
+
+        nav ul li {
+          margin: 5px 0;
+          width: 100%;
+          text-align: center;
+        }
+
+        .panier-mobile {
+          width: auto;
+          margin: 10px auto;
+          background: #d40000;
+          color: white;
+        }
+
+        .panier-mobile a {
+          color: white !important;
+          font-weight: bold;
+        }
+
+        #compteur-panier {
+          background: white;
+          color: #d40000;
+        }
+
+        .hero h1 {
+          font-size: 1.8rem;
+        }
+
+        .hero p {
+          font-size: 0.9rem;
+        }
+
+        .btn {
+          padding: 10px 20px;
+          font-size: 13px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -746,9 +753,12 @@
             <li><a href="#nosCreations">Nos créations</a></li>
             <li><a href="#">À propos</a></li>
             <li><a href="#">Ateliers</a></li>
-            <li><a href="#contact">Contact</a></li>
-            <li>
-              <a href="#" id="lien-panier">
+            <li class="panier-mobile">
+              <a
+                href="#"
+                id="lien-panier"
+                style="display: flex; align-items: center; gap: 5px"
+              >
                 🛒 Panier (<span id="compteur-panier">0</span>)
               </a>
             </li>
@@ -894,7 +904,6 @@
         </div>
       </div>
     </section>
-
     <!-- Section valeurs -->
     <section class="values">
       <div class="container">
@@ -982,69 +991,6 @@
       </div>
     </section>
 
-    <!-- Section contact -->
-    <section class="contact" id="contact">
-      <div class="container">
-        <div class="section-title">
-          <h2>Contactez-nous</h2>
-        </div>
-        <div class="contact-container">
-          <div class="contact-info">
-            <h3>Parlons de votre projet</h3>
-            <p>
-              Que vous souhaitiez commander une pièce unique, organiser un
-              atelier ou simplement en savoir plus sur notre travail, n'hésitez
-              pas à nous contacter.
-            </p>
-
-            <div class="contact-details">
-              <div class="contact-detail">
-                <div class="contact-icon">📍</div>
-                <div>123 Rue du Papier, 75000 Paris, France</div>
-              </div>
-              <div class="contact-detail">
-                <div class="contact-icon">📞</div>
-                <div>+33 1 23 45 67 89</div>
-              </div>
-              <div class="contact-detail">
-                <div class="contact-icon">✉️</div>
-                <div>contact@origamizen.fr</div>
-              </div>
-            </div>
-
-            <div class="social-links">
-              <a href="#">📘</a>
-              <a href="#">📷</a>
-              <a href="#">🐦</a>
-              <a href="#">📌</a>
-            </div>
-          </div>
-
-          <div class="contact-form">
-            <form>
-              <div class="form-group">
-                <label for="name">Nom*</label>
-                <input type="text" id="name" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="email">Email*</label>
-                <input type="email" id="email" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="subject">Sujet*</label>
-                <input type="text" id="subject" class="form-control" required />
-              </div>
-              <div class="form-group">
-                <label for="message">Message*</label>
-                <textarea id="message" class="form-control" required></textarea>
-              </div>
-              <button type="submit" class="btn">Envoyer</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Pied de page -->
     <footer>
       <div class="container">
@@ -1064,7 +1010,6 @@
               <li><a href="#">Nos créations</a></li>
               <li><a href="#">À propos</a></li>
               <li><a href="#">Ateliers</a></li>
-              <li><a href="#">Contact</a></li>
             </ul>
           </div>
 

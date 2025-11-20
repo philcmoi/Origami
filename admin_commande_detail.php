@@ -3,10 +3,10 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'Origami';
+$host = 'localhost';
+$dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 // Vérifier si l'ID de commande est passé en paramètre
 if (!isset($_GET['id']) || empty($_GET['id'])) {

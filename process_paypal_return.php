@@ -4,10 +4,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Configuration de la base de données
-$host = '217.182.198.20';
+$host = 'localhost';
 $dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

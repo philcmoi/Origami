@@ -4,10 +4,10 @@ ini_set('display_errors', 1);
 session_start();
 
 // Configuration de la base de données
-$host = '217.182.198.20';
+$host = 'localhost';
 $dbname = 'origami';
 $username = 'root';
-$password = 'L099339R';
+$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -132,6 +132,17 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
                 <p><strong>" . htmlspecialchars($commande['adresse_livraison']) . "<br>
                 " . $commande['cp_livraison'] . " " . htmlspecialchars($commande['ville_livraison']) . "</strong></p>
                 
+                <div class="facture-options">
+                <h3>📄 Options de facture</h3>
+                <p>Vous pouvez déjà télécharger votre facture :</p>
+                <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>
+                <button onclick="telechargerFacturePDF(<?= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
+                </div>
+            
+                <a href="index.html" class="btn">Retour à l'accueil</a>
+                </div>
+
+
                 <p>Merci pour votre confiance !</p>
                 
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;'>
@@ -142,6 +153,11 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
             </div>
         </body>
         </html>
+        <script>
+            function telechargerFacturePDF(idCommande) {
+                window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+            }
+        </script>
         ";
         
         $mail->Body = $message;
