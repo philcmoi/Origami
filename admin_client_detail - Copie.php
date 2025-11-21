@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+// Configuration de la base de données
+require_once('config.php');
+
 // Vérifier la connexion administrateur
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: admin_login.php');
@@ -15,11 +18,6 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $client_id = intval($_GET['id']);
 
-// Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -94,7 +92,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Détails Client #<?= $client_id ?> - Origami Zen</title>
+    <title>Détails Client #<?= $client_id ?> - Youki and Co</title>
     <style>
         * {
             margin: 0;
@@ -411,7 +409,7 @@ try {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Administration</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>

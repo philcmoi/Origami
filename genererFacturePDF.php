@@ -1,4 +1,5 @@
 <?php
+require_once('tcpdf/tcpdf.php');
 function genererFacturePDF($pdo, $idCommande) {
     error_log("🔄 GENERER FACTURE PDF - Début pour commande: " . $idCommande);
     
@@ -10,22 +11,27 @@ function genererFacturePDF($pdo, $idCommande) {
                 c.dateCommande,
                 c.montantTotal,
                 c.fraisDePort,
+                c.statut,
                 cl.nom as client_nom,
                 cl.prenom as client_prenom,
                 cl.email as client_email,
+                cl.telephone as client_telephone,
                 a_liv.adresse as adresse_livraison,
                 a_liv.codePostal as cp_livraison,
                 a_liv.ville as ville_livraison,
-                a_liv.pays as pays_livraison
+                a_liv.pays as pays_livraison,
+                a_fact.adresse as adresse_facturation,
+                a_fact.codePostal as cp_facturation,
+                a_fact.ville as ville_facturation,
+                a_fact.pays as pays_facturation
             FROM Commande c
             JOIN Client cl ON c.idClient = cl.idClient
             JOIN Adresse a_liv ON c.idAdresseLivraison = a_liv.idAdresse
+            LEFT JOIN Adresse a_fact ON c.idAdresseFacturation = a_fact.idAdresse
             WHERE c.idCommande = ?
         ");
         $stmt->execute([$idCommande]);
         $commande = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        error_log("📊 Données commande récupérées: " . ($commande ? 'OUI' : 'NON'));
         
         if (!$commande) {
             throw new Exception("Commande non trouvée: " . $idCommande);
@@ -46,14 +52,12 @@ function genererFacturePDF($pdo, $idCommande) {
         $stmt->execute([$idCommande]);
         $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        error_log("📦 Articles commande récupérés: " . count($articles));
-        
         // Vérifier que TCPDF est bien inclus
         if (!class_exists('TCPDF')) {
             throw new Exception("TCPDF non chargé");
         }
         
-        // Créer un nouveau PDF
+        // Créer un nouveau PDF avec une police de base
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
         
         // Information du document
@@ -62,53 +66,66 @@ function genererFacturePDF($pdo, $idCommande) {
         $pdf->SetTitle('Facture #' . $idCommande);
         $pdf->SetSubject('Facture');
         
-        // Marges
-        $pdf->SetMargins(15, 25, 15);
-        $pdf->SetHeaderMargin(10);
-        $pdf->SetFooterMargin(10);
+        // Marges simplifiées
+        $pdf->SetMargins(15, 15, 15);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        
+        // Supprimer header/footer par défaut
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
         
         // Ajouter une page
         $pdf->AddPage();
         
-        // Contenu de la facture détaillé
+        // Contenu HTML SIMPLIFIÉ pour éviter les erreurs
         $html = '
-        <style>
-            .header { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
-            .section { margin-bottom: 15px; }
-            .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .table th { background-color: #f8f9fa; padding: 8px; text-align: left; border: 1px solid #dee2e6; }
-            .table td { padding: 8px; border: 1px solid #dee2e6; }
-            .total { font-weight: bold; font-size: 16px; color: #2c3e50; }
-            .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 12px; }
-        </style>
+        <h1 style="text-align:center; color:#d40000;">FACTURE</h1>
+        <h2 style="text-align:center;">Youki and Co</h2>
+        <hr>
         
-        <div class="header">
-            <h1>FACTURE #' . $idCommande . '</h1>
-            <h2>Youki and Co</h2>
-            <p>Date de facturation: ' . date('d/m/Y') . '</p>
-        </div>
+        <table width="100%">
+            <tr>
+                <td width="50%">
+                    <strong>Facture N°:</strong> ' . $idCommande . '<br>
+                    <strong>Date:</strong> ' . date('d/m/Y') . '<br>
+                    <strong>Statut:</strong> ' . htmlspecialchars($commande['statut']) . '
+                </td>
+                <td width="50%" style="text-align:right;">
+                    <strong>Youki and Co</strong><br>
+                    Créations artisanales japonaises<br>
+                    SIRET: 123 456 789 00012
+                </td>
+            </tr>
+        </table>
         
-        <div class="section">
-            <h3>Informations Client</h3>
-            <p><strong>' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '</strong></p>
-            <p>Email: ' . htmlspecialchars($commande['client_email']) . '</p>
-        </div>
+        <br>
         
-        <div class="section">
-            <h3>Adresse de Livraison</h3>
-            <p>' . htmlspecialchars($commande['adresse_livraison']) . '</p>
-            <p>' . htmlspecialchars($commande['cp_livraison'] . ' ' . $commande['ville_livraison']) . '</p>
-            <p>' . htmlspecialchars($commande['pays_livraison']) . '</p>
-        </div>
+        <table width="100%">
+            <tr>
+                <td width="50%">
+                    <strong>CLIENT</strong><br>
+                    ' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '<br>
+                    Email: ' . htmlspecialchars($commande['client_email']) . '
+                </td>
+                <td width="50%">
+                    <strong>LIVRAISON</strong><br>
+                    ' . htmlspecialchars($commande['adresse_livraison']) . '<br>
+                    ' . htmlspecialchars($commande['cp_livraison'] . ' ' . $commande['ville_livraison']) . '<br>
+                    ' . htmlspecialchars($commande['pays_livraison']) . '
+                </td>
+            </tr>
+        </table>
         
-        <h3>Détail de la Commande</h3>
-        <table class="table">
+        <br>
+        
+        <h3>DÉTAIL DE LA COMMANDE</h3>
+        <table border="1" cellpadding="5" style="border-collapse: collapse; width:100%;">
             <thead>
-                <tr>
-                    <th>Produit</th>
-                    <th>Quantité</th>
-                    <th>Prix Unitaire</th>
-                    <th>Total</th>
+                <tr style="background-color:#f0f0f0;">
+                    <th width="50%">Produit</th>
+                    <th width="15%">Quantité</th>
+                    <th width="15%">Prix Unitaire</th>
+                    <th width="20%">Total</th>
                 </tr>
             </thead>
             <tbody>';
@@ -125,58 +142,86 @@ function genererFacturePDF($pdo, $idCommande) {
             $sousTotal += $article['total_ligne'];
         }
         
+        $totalGeneral = $sousTotal + $commande['fraisDePort'];
+        
         $html .= '
             </tbody>
         </table>
         
-        <div style="text-align: right;">
-            <p>Sous-total: ' . number_format($sousTotal, 2, ',', ' ') . ' €</p>
-            <p>Frais de port: ' . number_format($commande['fraisDePort'], 2, ',', ' ') . ' €</p>
-            <p class="total">Total TTC: ' . number_format($commande['montantTotal'], 2, ',', ' ') . ' €</p>
-        </div>
+        <br>
         
-        <div class="footer">
-            <p>Merci pour votre confiance !</p>
-            <p>Youki and Go - Contact: contact@YoukiandGo.com</p>
-        </div>
-        ';
+        <table width="100%">
+            <tr>
+                <td width="70%"></td>
+                <td width="30%">
+                    <table width="100%">
+                        <tr>
+                            <td>Sous-total:</td>
+                            <td style="text-align:right;">' . number_format($sousTotal, 2, ',', ' ') . ' €</td>
+                        </tr>
+                        <tr>
+                            <td>Frais de port:</td>
+                            <td style="text-align:right;">' . number_format($commande['fraisDePort'], 2, ',', ' ') . ' €</td>
+                        </tr>
+                        <tr style="border-top:1px solid #000;">
+                            <td><strong>Total:</strong></td>
+                            <td style="text-align:right;"><strong>' . number_format($totalGeneral, 2, ',', ' ') . ' €</strong></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <br>
+        
+        <div style="text-align:center; color:#666; font-size:10px;">
+            <p>Youki and Co - Créations artisanales japonaises</p>
+            <p>Facture générée le ' . date('d/m/Y à H:i') . '</p>
+        </div>';
         
         // Écrire le contenu HTML
         $pdf->writeHTML($html, true, false, true, false, '');
         
-        // Sauvegarder le PDF dans un fichier temporaire
-        $filename = 'facture_' . $idCommande . '_' . date('YmdHis') . '.pdf';
-        $filepath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename;
+        // Créer le répertoire factures s'il n'existe pas
+        $factureDir = __DIR__ . '/factures';
+        if (!is_dir($factureDir)) {
+            mkdir($factureDir, 0755, true);
+        }
         
-        error_log("💾 Sauvegarde PDF: " . $filepath);
+        // Nom du fichier
+        $filename = 'facture_' . $idCommande . '.pdf';
+        $filepath = $factureDir . '/' . $filename;
         
-        $result = $pdf->Output($filepath, 'F');
+        // Sauvegarder le PDF
+        $pdf->Output($filepath, 'F');
         
         if (file_exists($filepath)) {
-            $size = filesize($filepath);
-            error_log("✅ PDF créé avec succès: " . $filepath . " (" . $size . " bytes)");
-            
-            // ENVOYER LA FACTURE PAR EMAIL
-            $emailEnvoye = envoyerFactureParEmail($commande['client_email'], $filepath, $idCommande);
-            
-            if ($emailEnvoye) {
-                error_log("✅ Facture envoyée par email à: " . $commande['client_email']);
-                // Supprimer le fichier temporaire après envoi
-                unlink($filepath);
-                return true;
-            } else {
-                error_log("❌ Échec envoi email, PDF conservé: " . $filepath);
-                return $filepath; // Retourne le chemin pour gestion manuelle
-            }
-            
+            error_log("✅ PDF créé avec succès: " . $filepath);
+            return $filepath;
         } else {
-            error_log("❌ PDF non créé: " . $filepath);
-            return false;
+            throw new Exception("Le fichier PDF n'a pas été créé");
         }
         
     } catch (Exception $e) {
         error_log("❌ ERREUR génération facture PDF: " . $e->getMessage());
         return false;
+    }
+}
+
+// Fonction pour envoyer directement le PDF au navigateur
+function afficherFacturePDFDirect($pdo, $idCommande) {
+    $filepath = genererFacturePDF($pdo, $idCommande);
+    
+    if ($filepath && file_exists($filepath)) {
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="facture_' . $idCommande . '.pdf"');
+        header('Content-Length: ' . filesize($filepath));
+        readfile($filepath);
+        exit;
+    } else {
+        header('Content-Type: text/html');
+        echo "Erreur: Impossible de générer la facture PDF";
+        exit;
     }
 }
 

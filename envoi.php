@@ -10,11 +10,8 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
-
+require_once 'config.php';
+require_once 'smtp_config.php';
 // Accepter les requêtes POST pour l'appel automatique
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -61,13 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->CharSet = 'UTF-8';
             
             // Destinataires
-            $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+            $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
             $mail->addAddress($commande['client_email'], $commande['client_prenom'] . ' ' . $commande['client_nom']);
-            $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+            $mail->addReplyTo('SMTP_USERNAME', 'Youki and Co');
             
             // Sujet et contenu
             $mail->isHTML(true);
-            $mail->Subject = 'Votre facture Origami Zen - Commande #' . $idCommande;
+            $mail->Subject = 'Votre facture Youki and Co - Commande #' . $idCommande;
             
             $messageHTML = "
             <!DOCTYPE html>
@@ -128,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ";
             
             $mail->Body = $messageHTML;
-            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
+            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nYouki and Co";
             
             if ($mail->send()) {
                 error_log("✅ Email envoyé avec succès à: " . $commande['client_email']);
@@ -196,13 +193,13 @@ try {
     $mail->CharSet = 'UTF-8';
     
     // Destinataires
-    $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+    $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
     $mail->addAddress($commande['client_email'], $commande['client_prenom'] . ' ' . $commande['client_nom']);
-    $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+    $mail->addReplyTo(SMTP_USERNAME, 'Youki and Co');
     
     // Sujet et contenu
     $mail->isHTML(true);
-    $mail->Subject = 'Votre facture Origami Zen - Commande #' . $idCommande;
+    $mail->Subject = 'Votre facture Youki and Co - Commande #' . $idCommande;
     
     $messageHTML = "
     <!DOCTYPE html>
@@ -262,7 +259,7 @@ try {
     </html>
     ";
     
-    $mail->Body = $messageHTML;
+    $mail->Body = $messageHTML;Youki and Co
     $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
     
     if ($mail->send()) {

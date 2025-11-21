@@ -5,11 +5,9 @@ ini_set('log_errors', 1);
 ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
+require_once 'smtp_config.php';
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
+require_once 'config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -414,9 +412,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Go');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->addReplyTo(SMTP_USERNAME, 'Youki and Go');
         
         // Contenu
         $mail->isHTML(true);
@@ -486,7 +484,7 @@ function afficherConfirmationCB($commande, $reference) {
     $idCommande = $commande['idCommande'];
     
     // Générer l'URL de la facture HTML
-    $urlFactureHTML = "http://217.182.198.20/Origami/facture.php?id=" . $idCommande;
+    $urlFactureHTML = 'http://$host/Origami/facture.php?id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>

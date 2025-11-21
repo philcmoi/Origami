@@ -4,10 +4,8 @@ ini_set('display_errors', 1);
 session_start();
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
+require_once 'config.php';
+require_once 'smtp_config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -89,9 +87,9 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
+        $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
+        $mail->addReplyTo(SMTP_USERNAME, 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);
@@ -325,7 +323,7 @@ function afficherConfirmationPayPal($commande, $reference) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement Confirmé - Origami Zen</title>
+        <title>Paiement Confirmé - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 

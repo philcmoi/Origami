@@ -3,10 +3,7 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
+require_once 'config.php';
 
 // Vérifier si l'ID de commande est passé en paramètre
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -85,7 +82,7 @@ if (isset($_GET['logout'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Détail Commande - Origami Zen</title>
+    <title>Détail Commande - Youki and Co</title>
     <style>
         * {
             margin: 0;
@@ -298,7 +295,7 @@ if (isset($_GET['logout'])) {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Administration</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>

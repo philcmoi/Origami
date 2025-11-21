@@ -1,14 +1,8 @@
-[file name]: admin_clients.php
-[file content begin]
 <?php
 // Inclure la protection au tout début
 require_once 'admin_protection.php';
 
-// Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'origami';
-$username = 'root';
-$password = 'L099339R';
+require_once 'config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -37,7 +31,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Clients - Origami Zen</title>
+    <title>Gestion des Clients - Youki and Co</title>
     <style>
         /* Styles similaires aux autres pages */
         .client-stats {
@@ -90,7 +84,7 @@ try {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Gestion des Clients</h1>
+            <h1>Youki and Co - Gestion des Clients</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
