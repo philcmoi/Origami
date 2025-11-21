@@ -2,6 +2,8 @@
 // Inclure la protection au tout début - COMME DANS admin_dashboard.php
 require_once 'admin_protection.php';
 
+require_once 'smtp_config.php';
+
 // Inclure PHPMailer
 require 'PHPMailer/src/Exception.php';
 require 'PHPMailer/src/PHPMailer.php';
@@ -22,7 +24,7 @@ try {
 }
 
 // Fonction pour envoyer un email avec PHPMailer
-function envoyerEmail($destinataire, $sujet, $message) {
+function envoyerEmail($destinataire, $sujet, $message, $pieceJointe = null) {
     $mail = new PHPMailer(true);
     
     try {
@@ -32,7 +34,7 @@ function envoyerEmail($destinataire, $sujet, $message) {
         $mail->SMTPAuth = true;
         $mail->Username = SMTP_USERNAME;
         $mail->Password = SMTP_PASSWORD;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->SMTPSecure = SMTP_SECURE === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
@@ -46,10 +48,15 @@ function envoyerEmail($destinataire, $sujet, $message) {
             )
         );
         
-        // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
+        // Destinataires - UTILISER LES CONSTANTES DE CONFIGURATION
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
+        $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+        
+        // Pièce jointe si fournie
+        if ($pieceJointe && file_exists($pieceJointe)) {
+            $mail->addAttachment($pieceJointe, 'facture_' . basename($pieceJointe));
+        }
         
         // Contenu
         $mail->isHTML(true);
@@ -104,17 +111,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $commande = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($commande) {
-                        // Générer le contenu HTML de la facture
-                        $sujet = "Facture - Commande #" . $commande['idCommande'] . " - Youki and Co";
-                        $message = genererFactureHTML($commande);
+                        // Inclure et utiliser la vraie fonction de génération PDF
+                        require_once 'genererFacturePDF.php';
+                        $cheminPDF = genererFacturePDF($pdo, $idCommande);
                         
-                        // Envoyer l'email avec PHPMailer
-                        $resultat = envoyerEmail($email, $sujet, $message);
-                        
-                        if ($resultat['success']) {
-                            $_SESSION['message_success'] = "✅ Facture #" . $commande['idCommande'] . " envoyée avec succès à " . $email;
+                        if ($cheminPDF && file_exists($cheminPDF)) {
+                            // Générer le contenu HTML de l'email
+                            $sujet = "Votre facture Youki and Co - Commande #" . $commande['idCommande'];
+                            $message = "
+                            <html>
+                            <head>
+                                <style>
+                                    body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+                                    .container { max-width: 600px; margin: 0 auto; }
+                                    .header { background: #d40000; color: white; padding: 20px; text-align: center; }
+                                    .content { padding: 20px; background: #f9f9f9; }
+                                    .footer { padding: 20px; text-align: center; color: #666; font-size: 12px; background: #f0f0f0; }
+                                    .info-box { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #d40000; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class='container'>
+                                    <div class='header'>
+                                        <h1>Youki and Co</h1>
+                                        <p>Créations artisanales japonaises</p>
+                                    </div>
+                                    <div class='content'>
+                                        <h2>Merci pour votre commande !</h2>
+                                        <p>Bonjour <strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong>,</p>
+                                        
+                                        <div class='info-box'>
+                                            <h3>📦 Détails de votre commande</h3>
+                                            <p><strong>Commande #" . $commande['idCommande'] . "</strong></p>
+                                            <p>Date : " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
+                                            <p><strong>Montant total : " . number_format($commande['montantTotal'], 2, ',', ' ') . " € TTC</strong></p>
+                                        </div>
+                                        
+                                        <p>Votre facture détaillée est jointe à cet email au format PDF.</p>
+                                        <p>Nous vous remercions pour votre confiance et espérons vous revoir très bientôt !</p>
+                                        <br>
+                                        <p>Cordialement,<br>L'équipe Youki and Co</p>
+                                    </div>
+                                    <div class='footer'>
+                                        <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                                        <p>📧 " . SMTP_FROM_EMAIL . " | 📞 +33 1 23 45 67 89</p>
+                                        <p>123 Rue du Papier, 75000 Paris, France</p>
+                                        <p><em>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</em></p>
+                                    </div>
+                                </div>
+                            </body>
+                            </html>
+                            ";
+                            
+                            // Envoyer l'email avec PHPMailer et la pièce jointe PDF
+                            $resultat = envoyerEmail($email, $sujet, $message, $cheminPDF);
+                            
+                            if ($resultat['success']) {
+                                $_SESSION['message_success'] = "✅ Facture #" . $commande['idCommande'] . " envoyée avec succès à " . $email;
+                            } else {
+                                $_SESSION['message_error'] = "❌ Erreur lors de l'envoi: " . $resultat['error'];
+                            }
                         } else {
-                            $_SESSION['message_error'] = "❌ Erreur lors de l'envoi: " . $resultat['error'];
+                            $_SESSION['message_error'] = "❌ Erreur lors de la génération du PDF";
                         }
                     } else {
                         $_SESSION['message_error'] = "❌ Commande non trouvée";
@@ -588,6 +646,16 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         .btn-primary:hover {
             background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
             transform: translateY(-1px);
         }
         

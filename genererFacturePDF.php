@@ -1,5 +1,5 @@
 <?php
-
+require_once('tcpdf/tcpdf.php');
 function genererFacturePDF($pdo, $idCommande) {
     error_log("🔄 GENERER FACTURE PDF - Début pour commande: " . $idCommande);
     
