@@ -110,7 +110,7 @@ function createPayPalOrder($access_token, $amount, $currency, $environment, $ret
         'application_context' => [
             'return_url' => $return_url,
             'cancel_url' => $cancel_url,
-            'brand_name' => 'Origami Zen',
+            'brand_name' => 'Youki and Co',
             'user_action' => 'PAY_NOW'
         ]
     ];
@@ -201,9 +201,9 @@ function envoyerEmail($destinataire, $sujet, $message) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);
@@ -473,9 +473,9 @@ function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJo
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Pièce jointe
         if (file_exists($fichierJoint)) {
@@ -527,13 +527,13 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
         }
         
         // Préparer l'email
-        $sujet = "Votre facture #" . $idCommande . " - Origami Zen";
+        $sujet = "Votre facture #" . $idCommande . " - Youki and Co";
         
         if ($format === 'pdf') {
             $message = "
             <html>
             <body style='font-family: Arial, sans-serif;'>
-                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <h2 style='color: #d40000;'>Votre facture Youki and Co</h2>
                 <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                 <p>Veuillez trouver ci-joint votre facture pour la commande #" . $commande_info['idCommande'] . ".</p>
                 <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
@@ -541,7 +541,7 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
                 <p><a href='" . genererFactureAPI($idCommande, 'html') . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir la facture en ligne</a></p>
                 <p>Merci pour votre confiance !</p>
                 <br>
-                <p><strong>L'équipe Origami Zen</strong></p>
+                <p><strong>L'équipe Youki and Co</strong></p>
             </body>
             </html>
             ";
@@ -552,14 +552,14 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
             $message = "
             <html>
             <body style='font-family: Arial, sans-serif;'>
-                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <h2 style='color: #d40000;'>Votre facture Youki and Co</h2>
                 <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                 <p>Veuillez trouver votre facture pour la commande #" . $commande_info['idCommande'] . " en cliquant sur le lien ci-dessous :</p>
                 <p><a href='" . $fichierFacture . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir ma facture</a></p>
                 <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
                 <p>Merci pour votre confiance !</p>
                 <br>
-                <p><strong>L'équipe Origami Zen</strong></p>
+                <p><strong>L'équipe Youki and Co</strong></p>
             </body>
             </html>
             ";
@@ -943,7 +943,7 @@ if ($action == 'paypal_success') {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Paiement Réussi - Origami Zen</title>
+            <title>Paiement Réussi - Youki and Co</title>
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 600px; }
@@ -1000,7 +1000,7 @@ if ($action == 'paypal_success') {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Erreur de Paiement - Origami Zen</title>
+            <title>Erreur de Paiement - Youki and Co</title>
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -1042,7 +1042,7 @@ if ($action == 'paypal_cancel') {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>Paiement Annulé - Origami Zen</title>
+        <title>Paiement Annulé - Youki and Co</title>
         <style>
             body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
             .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -1345,7 +1345,7 @@ try {
         }
 
         // Préparer l'email HTML avec le lien de confirmation ET le récapitulatif
-        $sujet = "Confirmez votre commande - Origami Zen";
+        $sujet = "Confirmez votre commande - Youki and Co";
         $messageHTML = "
         <!DOCTYPE html>
         <html>
@@ -1442,14 +1442,14 @@ try {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Origami Zen</h1>
+                    <h1>Youki and Co</h1>
                     <h2>Confirmation de votre commande</h2>
                 </div>
                 
                 <div class='content'>
                     <p>Bonjour <strong>" . htmlspecialchars($nom) . "</strong>,</p>
                     
-                    <p>Pour finaliser votre commande sur Origami Zen, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
+                    <p>Pour finaliser votre commande sur Youki and Co, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
                     
                     " . $recapAchatsHTML . "
                     
@@ -1544,7 +1544,7 @@ try {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Adresses de Livraison et Facturation - Origami Zen</title>
+            <title>Adresses de Livraison et Facturation - Youki and Co</title>
             <style>
                 body { 
                     font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -1881,7 +1881,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement - Origami Zen</title>
+    <title>Paiement - Youki and Co</title>
     <style>
         .btn-paypal-account { 
             background-color: #0070ba; 
@@ -2358,7 +2358,7 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Choix de l'adresse - Origami Zen</title>
+        <title>Choix de l'adresse - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -2637,7 +2637,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement - Origami Zen</title>
+        <title>Paiement - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
