@@ -425,21 +425,18 @@ function getOrCreateClient($pdo) {
 
 // FONCTION : Générer une facture via l'API facture.php
 // FONCTION : Générer une facture
+// Remplacer cette fonction dans acheter.php
 function genererFactureAPI($idCommande, $format = 'html') {
     error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
-    global $pdo; // Accéder à la connexion PDO
+    global $pdo;
     
     if ($format === 'pdf') {
-        // Générer directement le PDF
+        // Utiliser la nouvelle fonction simplifiée
         $resultat = genererFacturePDF($pdo, $idCommande);
         
-        if ($resultat && $resultat !== true) {
-            // Retourne le chemin du fichier PDF
-            return $resultat;
-        } elseif ($resultat === true) {
-            // PDF généré et envoyé par email
-            return 'facture_' . $idCommande . '.pdf';
+        if ($resultat) {
+            return $resultat; // Retourne le chemin du fichier PDF
         } else {
             error_log("❌ Erreur génération PDF");
             return false;
