@@ -1,8 +1,15 @@
 <?php
 session_start();
-
+require_once 'smtp_config.php';
+require_once 'config.php';
 // DÉBUT CRITIQUE : Gestion intelligente des en-têtes
 $is_html_response = false;
+
+// Inclure TCPDF pour la génération de PDF
+require_once('tcpdf/tcpdf.php');
+
+// Inclure le fichier de génération de facture
+require_once 'genererFacturePDF.php';
 
 // Détecter si c'est une requête de confirmation HTML
 if (isset($_GET['token']) && (!isset($_POST['action']))) {
@@ -33,10 +40,6 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'Origami';
-$username = 'root';
-$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -56,8 +59,8 @@ $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox',
-    'return_url' => 'http://localhost/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://localhost/Origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -107,7 +110,7 @@ function createPayPalOrder($access_token, $amount, $currency, $environment, $ret
         'application_context' => [
             'return_url' => $return_url,
             'cancel_url' => $cancel_url,
-            'brand_name' => 'Origami Zen',
+            'brand_name' => 'Youki and CO',
             'user_action' => 'PAY_NOW'
         ]
     ];
@@ -179,12 +182,12 @@ function envoyerEmail($destinataire, $sujet, $message) {
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -198,9 +201,9 @@ function envoyerEmail($destinataire, $sujet, $message) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);
@@ -421,40 +424,29 @@ function getOrCreateClient($pdo) {
 }
 
 // FONCTION : Générer une facture via l'API facture.php
+// FONCTION : Générer une facture
 function genererFactureAPI($idCommande, $format = 'html') {
-    error_log("🔄 Appel API facture pour commande: " . $idCommande . " format: " . $format);
+    error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
-    $url = "http://localhost/Origami/facture.php";
+    global $pdo; // Accéder à la connexion PDO
     
     if ($format === 'pdf') {
-        // Pour PDF, on fait un appel POST à l'API
-        $data = json_encode(['id_commande' => $idCommande]);
+        // Générer directement le PDF
+        $resultat = genererFacturePDF($pdo, $idCommande);
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($data)
-        ]);
-        
-        $result = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($http_code == 200) {
-            $response = json_decode($result, true);
-            if ($response && $response['status'] === 'success') {
-                return $response['fichier_facture'];
-            }
+        if ($resultat && $resultat !== true) {
+            // Retourne le chemin du fichier PDF
+            return $resultat;
+        } elseif ($resultat === true) {
+            // PDF généré et envoyé par email
+            return 'facture_' . $idCommande . '.pdf';
+        } else {
+            error_log("❌ Erreur génération PDF");
+            return false;
         }
-        error_log("❌ Erreur génération PDF via API: " . $result);
-        return false;
     } else {
         // Pour HTML, redirection simple
-        return $url . "?id=" . $idCommande;
+        return "facture.php?id=" . $idCommande;
     }
 }
 
@@ -465,12 +457,12 @@ function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJo
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -484,9 +476,9 @@ function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJo
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Pièce jointe
         if (file_exists($fichierJoint)) {
@@ -538,13 +530,13 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
         }
         
         // Préparer l'email
-        $sujet = "Votre facture #" . $idCommande . " - Origami Zen";
+        $sujet = "Votre facture #" . $idCommande . " - Youki and Co";
         
         if ($format === 'pdf') {
             $message = "
             <html>
             <body style='font-family: Arial, sans-serif;'>
-                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <h2 style='color: #d40000;'>Votre facture Youki and Co</h2>
                 <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                 <p>Veuillez trouver ci-joint votre facture pour la commande #" . $commande_info['idCommande'] . ".</p>
                 <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
@@ -552,7 +544,7 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
                 <p><a href='" . genererFactureAPI($idCommande, 'html') . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir la facture en ligne</a></p>
                 <p>Merci pour votre confiance !</p>
                 <br>
-                <p><strong>L'équipe Origami Zen</strong></p>
+                <p><strong>L'équipe Youki and Co</strong></p>
             </body>
             </html>
             ";
@@ -563,14 +555,14 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
             $message = "
             <html>
             <body style='font-family: Arial, sans-serif;'>
-                <h2 style='color: #d40000;'>Votre facture Origami Zen</h2>
+                <h2 style='color: #d40000;'>Votre facture Youki and Co</h2>
                 <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                 <p>Veuillez trouver votre facture pour la commande #" . $commande_info['idCommande'] . " en cliquant sur le lien ci-dessous :</p>
                 <p><a href='" . $fichierFacture . "' style='background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Voir ma facture</a></p>
                 <p><strong>Montant :</strong> " . number_format($commande_info['montantTotal'], 2, ',', ' ') . " €</p>
                 <p>Merci pour votre confiance !</p>
                 <br>
-                <p><strong>L'équipe Origami Zen</strong></p>
+                <p><strong>L'équipe Youki and Co</strong></p>
             </body>
             </html>
             ";
@@ -655,7 +647,7 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://localhost/Origami/' . $fichierFacture,
+                'url_facture' => 'http://$host/origami/' . $fichierFacture,
                 'message' => 'Facture PDF générée avec succès'
             ]
         ]);
@@ -714,9 +706,9 @@ if ($action == 'telecharger_facture') {
         exit;
     } else {
         if ($is_html_response) {
-            echo "<script>alert('Erreur lors de la génération du PDF'); window.location.href = 'index.html';</script>";
+            echo "<script>alert('Erreur lors de la generation du PDF'); window.location.href = 'index.html';</script>";
         } else {
-            echo json_encode(['status' => 500, 'error' => 'Erreur lors de la génération du PDF']);
+            echo json_encode(['status' => 500, 'error' => 'Erreur lors de la generation du PDF']);
         }
     }
     exit;
@@ -954,7 +946,7 @@ if ($action == 'paypal_success') {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Paiement Réussi - Origami Zen</title>
+            <title>Paiement Réussi - Youki and Co</title>
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 600px; }
@@ -1011,7 +1003,7 @@ if ($action == 'paypal_success') {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Erreur de Paiement - Origami Zen</title>
+            <title>Erreur de Paiement - Youki and Co</title>
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -1053,7 +1045,7 @@ if ($action == 'paypal_cancel') {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>Paiement Annulé - Origami Zen</title>
+        <title>Paiement Annulé - Youki and Co</title>
         <style>
             body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
             .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -1288,7 +1280,7 @@ try {
         }
 
         // URL de confirmation pointant vers acheter.php
-        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
+        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
         // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
         $recapAchatsHTML = "";
@@ -1356,7 +1348,7 @@ try {
         }
 
         // Préparer l'email HTML avec le lien de confirmation ET le récapitulatif
-        $sujet = "Confirmez votre commande - Origami Zen";
+        $sujet = "Confirmez votre commande - Youki and Co";
         $messageHTML = "
         <!DOCTYPE html>
         <html>
@@ -1453,14 +1445,14 @@ try {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Origami Zen</h1>
+                    <h1>Youki and Co</h1>
                     <h2>Confirmation de votre commande</h2>
                 </div>
                 
                 <div class='content'>
                     <p>Bonjour <strong>" . htmlspecialchars($nom) . "</strong>,</p>
                     
-                    <p>Pour finaliser votre commande sur Origami Zen, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
+                    <p>Pour finaliser votre commande sur Youki and Co, veuillez cliquer sur le bouton de confirmation ci-dessous :</p>
                     
                     " . $recapAchatsHTML . "
                     
@@ -1482,9 +1474,8 @@ try {
                 </div>
                 
                 <div class='footer'>
-                    <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-                    <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                    <p>123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>YOUKI and Co - Créations artisanales japonaises</strong></p>
+                    <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
                 </div>
             </div>
         </body>
@@ -1556,7 +1547,7 @@ try {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Adresses de Livraison et Facturation - Origami Zen</title>
+            <title>Adresses de Livraison et Facturation - Youki and Co</title>
             <style>
                 body { 
                     font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -1893,7 +1884,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement - Origami Zen</title>
+    <title>Paiement - Youki and Co</title>
     <style>
         .btn-paypal-account { 
             background-color: #0070ba; 
@@ -2370,7 +2361,7 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Choix de l'adresse - Origami Zen</title>
+        <title>Choix de l'adresse - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -2649,7 +2640,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement - Origami Zen</title>
+        <title>Paiement - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -2829,6 +2820,21 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                     alert('Email invalide');
                 }
             }
+
+            // Dans index.html, après la classe OrigamiAPI
+        async function testerConnexionAPI() {
+        try {
+        const response = await fetch('acheter.php?action=get_panier');
+        const result = await response.text();
+        console.log('Test connexion API:', response.status, result.substring(0, 100));
+        return response.ok;
+        } catch (error) {
+        console.error('Erreur connexion API:', error);
+        return false;
+    }
+}
+
+
         </script>
     </body>
     </html>

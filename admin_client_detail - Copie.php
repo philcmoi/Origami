@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+// Configuration de la base de données
+require_once('config.php');
+
 // Vérifier la connexion administrateur
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: admin_login.php');
@@ -15,11 +18,6 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $client_id = intval($_GET['id']);
 
-// Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);

@@ -6,10 +6,7 @@ error_log("🎯 Facture.php - Génération et affichage direct");
 require_once('tcpdf/tcpdf.php');
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
+require_once 'config.php';
 
 // Accepter les requêtes POST pour l'appel automatique
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -180,10 +177,9 @@ function genererFacturePDF($pdo, $idCommande) {
             <table width="100%">
                 <tr>
                     <td width="60%">
-                        <strong>🎎 Origami Zen</strong><br>
-                        116 rue de Javel, 75015 Paris<br>
-                        📧 contact@origamizen.fr<br>
-                        📞 +33 1 23 45 67 89<br>
+                        <strong>🎎 Youki and Go</strong><br>
+                       📧  <br>
+                        📞 <br>
                         SIRET: 123 456 789 00012
                     </td>
                     <td width="40%" class="invoice-meta">
@@ -295,8 +291,8 @@ function genererFacturePDF($pdo, $idCommande) {
         </div>
         
         <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #666;">
-            <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-            <p>116 Rue de Javel, 75015 Paris - contact@origamizen.fr - +33 1 23 45 67 89</p>
+            <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+            <p>contact@Youki and Co.fr - +33 1 23 45 67 89</p>
             <p>SIRET: 123 456 789 00012 - RCS Paris - Exonération de TVA, art. 293 B du CGI</p>
             <p>Facture générée le ' . date('d/m/Y à H:i') . '</p>
         </div>

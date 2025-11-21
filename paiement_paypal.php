@@ -4,10 +4,7 @@ ini_set('display_errors', 1);
 session_start();
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
+require_once 'config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -71,12 +68,12 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
     try {
         // Configuration SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -89,9 +86,9 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);
@@ -113,7 +110,7 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Origami Zen</h1>
+                    <h1>Youki and Co</h1>
                 </div>
                 
                 <h2 class='success'>✅ Paiement PayPal Confirmé</h2>
@@ -146,9 +143,9 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
                 <p>Merci pour votre confiance !</p>
                 
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;'>
-                    <p><strong>Origami Zen</strong><br>
-                    📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89<br>
-                    123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>Youki and Co</strong><br>
+                    📧 contact@YoukiandCo.fr | 📞 +33 1 23 45 67 89<br>
+                    </p>
                 </div>
             </div>
         </body>
@@ -420,8 +417,7 @@ function afficherConfirmationPayPal($commande, $reference) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement PayPal - Origami Zen</title>
-    
+    <title>Paiement PayPal - Youki and Co
     <!-- SDK PayPal -->
     <script src="https://www.paypal.com/sdk/js?client-id=<?= $paypal_config['client_id'] ?>&currency=EUR&intent=capture"></script>
     

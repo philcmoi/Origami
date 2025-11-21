@@ -1,12 +1,11 @@
+[file name]: admin_commandes.php
+[file content begin]
 <?php
 // Inclure la protection au tout début
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
+require_once 'config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -255,6 +254,7 @@ try {
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item active">Gestion des Commandes</a>
+            <a href="admin_factures.php" class="nav-item">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>
@@ -441,3 +441,4 @@ try {
     </script>
 </body>
 </html>
+[file content end]

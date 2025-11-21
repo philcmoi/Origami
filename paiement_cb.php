@@ -5,11 +5,9 @@ ini_set('log_errors', 1);
 ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
+require_once 'smtp_config.php';
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
+require_once 'config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -222,11 +220,11 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
                         'tax' => '0.00'
                     ]
                 ],
-                'description' => 'Commande #' . $donnees['commande']['idCommande'] . ' - Origami Zen',
+                'description' => 'Commande #' . $donnees['commande']['idCommande'] . ' - Youki and Go',
                 'custom' => $donnees['commande']['idCommande'],
                 'invoice_number' => 'CMD-' . $donnees['commande']['idCommande'] . '-' . time()
             ]],
-            'note_to_payer' => 'Merci pour votre commande sur Origami Zen',
+            'note_to_payer' => 'Merci pour votre commande sur Youki and Go',
             'redirect_urls' => [
                 'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=success',
                 'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=cancel'
@@ -396,12 +394,12 @@ function envoyerEmailConfirmationCB($commande, $reference) {
     try {
         // Configuration SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -414,9 +412,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Go');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Go');
         
         // Contenu
         $mail->isHTML(true);
@@ -438,7 +436,7 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Origami Zen</h1>
+                    <h1>Youki and Go</h1>
                 </div>
                 
                 <h2 class='success'>✅ Paiement Confirmé</h2>
@@ -460,9 +458,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
                 <p>Merci pour votre confiance !</p>
                 
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;'>
-                    <p><strong>Origami Zen</strong><br>
-                    📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89<br>
-                    123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>Youki and Go</strong><br>
+                    📧 contact@YoukiandGo.fr | 📞 +33 1 23 45 67 89<br>
+                    </p>
                 </div>
             </div>
         </body>
@@ -486,7 +484,7 @@ function afficherConfirmationCB($commande, $reference) {
     $idCommande = $commande['idCommande'];
     
     // Générer l'URL de la facture HTML
-    $urlFactureHTML = "http://localhost/Origami/facture.php?id=" . $idCommande;
+    $urlFactureHTML = 'http://$host/Origami/facture.php?id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>
@@ -494,7 +492,7 @@ function afficherConfirmationCB($commande, $reference) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement Confirmé - Origami Zen</title>
+        <title>Paiement Confirmé - Youki and Go</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -686,7 +684,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement Carte Bancaire - Origami Zen</title>
+    <title>Paiement Carte Bancaire - Youki and Co</title>
     <style>
         body { 
             font-family: 'Helvetica Neue', Arial, sans-serif; 
