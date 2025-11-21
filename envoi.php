@@ -10,11 +10,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'origami';
-$username = 'root';
-$password = '';
-
+require_once 'config.php';
 // Accepter les requêtes POST pour l'appel automatique
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -52,12 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Configuration SMTP
             $mail->isSMTP();
-            $mail->Host = 'smtp.gmail.com';
+            $mail->Host = SMTP_HOST;
             $mail->SMTPAuth = true;
-            $mail->Username = 'lhpp.philippe@gmail.com';
-            $mail->Password = 'lvpk zqjt vuon qyrz';
+            $mail->Username = SMTP_USERNAME;
+            $mail->Password = SMTP_PASSWORD;
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = 587;
+            $mail->Port = SMTP_PORT;
             $mail->CharSet = 'UTF-8';
             
             // Destinataires
@@ -106,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p>Vous pouvez consulter et télécharger votre facture en cliquant sur le lien ci-dessous :</p>
                         
                         <div style='text-align: center; margin: 25px 0;'>
-                            <a href='http://localhost/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
+                            <a href='http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
                         </div>
                         
                         <div class='info-box'>
@@ -119,9 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     
                     <div class='footer'>
-                        <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-                        <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                        <p>116 Rue de Javel, 75015 Paris, France</p>
+                        <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                        <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
                     </div>
                 </div>
             </body>
@@ -129,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ";
             
             $mail->Body = $messageHTML;
-            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://localhost/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
+            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
             
             if ($mail->send()) {
                 error_log("✅ Email envoyé avec succès à: " . $commande['client_email']);
@@ -188,12 +183,12 @@ try {
     
     // Configuration SMTP
     $mail->isSMTP();
-    $mail->Host = 'smtp.gmail.com';
+    $mail->Host = SMTP_HOST;
     $mail->SMTPAuth = true;
-    $mail->Username = 'lhpp.philippe@gmail.com';
-    $mail->Password = 'lvpk zqjt vuon qyrz';
+    $mail->Username = SMTP_USERNAME;
+    $mail->Password = SMTP_PASSWORD;
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port = 587;
+    $mail->Port = SMTP_PORT;
     $mail->CharSet = 'UTF-8';
     
     // Destinataires
@@ -242,7 +237,7 @@ try {
                 <p>Vous pouvez consulter et télécharger votre facture en cliquant sur le lien ci-dessous :</p>
                 
                 <div style='text-align: center; margin: 25px 0;'>
-                    <a href='http://localhost/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
+                    <a href='http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
                 </div>
                 
                 <div class='info-box'>
@@ -255,9 +250,8 @@ try {
             </div>
             
             <div class='footer'>
-                <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-                <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                <p>116 Rue de Javel, 75015 Paris, France</p>
+                <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                <p>📧 contact@YoukiandCo.fr | 📞 +33 1 23 45 67 89</p>
             </div>
         </div>
     </body>
@@ -265,7 +259,7 @@ try {
     ";
     
     $mail->Body = $messageHTML;
-    $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://localhost/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
+    $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
     
     if ($mail->send()) {
         echo "<!DOCTYPE html>

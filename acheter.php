@@ -1,6 +1,7 @@
 <?php
 session_start();
-
+require_once 'smtp_config.php';
+require_once 'config.php';
 // DÉBUT CRITIQUE : Gestion intelligente des en-têtes
 $is_html_response = false;
 
@@ -33,10 +34,6 @@ use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\SMTP;
 
 // Configuration de la base de données
-$host = 'localhost';
-$dbname = 'Origami';
-$username = 'root';
-$password = '';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -56,8 +53,8 @@ $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox',
-    'return_url' => 'http://localhost/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://localhost/Origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://$host/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://$host/Origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -179,12 +176,12 @@ function envoyerEmail($destinataire, $sujet, $message) {
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -424,7 +421,7 @@ function getOrCreateClient($pdo) {
 function genererFactureAPI($idCommande, $format = 'html') {
     error_log("🔄 Appel API facture pour commande: " . $idCommande . " format: " . $format);
     
-    $url = "http://localhost/Origami/facture.php";
+    $url = "http://$host/Origami/facture.php";
     
     if ($format === 'pdf') {
         // Pour PDF, on fait un appel POST à l'API
@@ -465,12 +462,12 @@ function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJo
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = 'lhpp.philippe@gmail.com';
-        $mail->Password = 'lvpk zqjt vuon qyrz';
+        $mail->Username = SMTP_USERNAME;
+        $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
@@ -655,7 +652,7 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://localhost/Origami/' . $fichierFacture,
+                'url_facture' => 'http://$host/Origami/' . $fichierFacture,
                 'message' => 'Facture PDF générée avec succès'
             ]
         ]);
@@ -929,8 +926,8 @@ if ($action == 'paypal_success') {
                         <p>Bonjour " . htmlspecialchars($commande_info['prenom']) . ",</p>
                         <p>Votre paiement PayPal pour la commande #" . $commande_info['idCommande'] . " a été traité avec succès.</p>
                         <p><strong>Montant :</strong> " . number_format($montant, 2, ',', ' ') . " €</p>
-                        <p>Votre facture est disponible en pièce jointe et en ligne :</p>
-                        <p><a href='" . $urlFactureHTML . "'>Voir ma facture en ligne</a></p>
+                        <p>Votre facture est disponible en pièce jointe à télécharger :</p>
+                        <!--<p><a href='" . $urlFactureHTML . "'>Voir ma facture en ligne</a></p>-->
                         <p>Merci pour votre confiance !</p>
                     </body>
                     </html>
@@ -991,9 +988,9 @@ if ($action == 'paypal_success') {
                 
                 <div class="facture-options">
                     <h3>📄 Votre facture</h3>
-                    <p>Votre facture a été générée et envoyée par email.</p>
-                    <p>Vous pouvez également :</p>
-                    <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>
+                    <p>Votre facture a été générée.</p>
+                    <p>Vous pouvez :</p>
+                    <!-- <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>-->
                     <a href="acheter.php?action=telecharger_facture&id_commande=<?= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
                 </div>
                 
@@ -1396,7 +1393,7 @@ try {
                     width: 280px; 
                     margin: 30px auto; 
                     padding: 15px 30px; 
-                    background-color: #d40000; 
+                    background-color: #a6a2dcff; 
                     color: white; 
                     text-decoration: none; 
                     text-align: center; 
@@ -1405,7 +1402,7 @@ try {
                     font-weight: bold;
                 }
                 .btn-confirmation:hover {
-                    background-color: #b30000;
+                    background-color: #16b005ff;
                 }
                 .footer { 
                     margin-top: 40px; 
@@ -1482,9 +1479,8 @@ try {
                 </div>
                 
                 <div class='footer'>
-                    <p><strong>Origami Zen - Créations artisanales japonaises</strong></p>
-                    <p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
-                    <p>123 Rue du Papier, 75000 Paris, France</p>
+                    <p><strong>YOUKI and Co - Créations artisanales japonaises</strong></p>
+                    <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
                 </div>
             </div>
         </body>

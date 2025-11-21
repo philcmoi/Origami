@@ -2,10 +2,7 @@
 require_once 'admin_protection.php';
 
 // Configuration de la base de données
-$host = '217.182.198.20';
-$dbname = 'Origami';
-$username = 'root';
-$password = 'L099339R';
+require_once 'config.php';
 
 // Vérifier si l'ID de commande est passé en paramètre
 if (!isset($_GET['id']) || empty($_GET['id'])) {
@@ -73,8 +70,8 @@ function generatePDFInvoice($commande, $lignesCommande) {
     require_once('tcpdf/tcpdf.php');
     
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-    $pdf->SetCreator('Origami Zen');
-    $pdf->SetAuthor('Origami Zen');
+    $pdf->SetCreator('Yougi and Go');
+    $pdf->SetAuthor('Yougi and Go');
     $pdf->SetTitle('Facture #' . $commande['idCommande']);
     
     $pdf->SetMargins(15, 25, 15);
@@ -256,7 +253,6 @@ function generateInvoiceContent($commande, $lignesCommande) {
             <tr>
                 <td width="50%">
                     <div class="company-info">ORIGAMI ZEN</div>
-                    <div>116 rue de Javel, 75015 Paris</div>
                     <div>contact@origamizen.fr - SIRET: 123 456 789 00012</div>
                 </td>
                 <td width="50%" style="text-align: right;">

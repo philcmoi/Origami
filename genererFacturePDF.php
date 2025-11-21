@@ -57,8 +57,8 @@ function genererFacturePDF($pdo, $idCommande) {
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
         
         // Information du document
-        $pdf->SetCreator('Origami Zen');
-        $pdf->SetAuthor('Origami Zen');
+        $pdf->SetCreator('Youki and Co');
+        $pdf->SetAuthor('Youki and Co');
         $pdf->SetTitle('Facture #' . $idCommande);
         $pdf->SetSubject('Facture');
         
@@ -84,7 +84,7 @@ function genererFacturePDF($pdo, $idCommande) {
         
         <div class="header">
             <h1>FACTURE #' . $idCommande . '</h1>
-            <h2>Origami Zen</h2>
+            <h2>Youki and Co</h2>
             <p>Date de facturation: ' . date('d/m/Y') . '</p>
         </div>
         
@@ -137,7 +137,7 @@ function genererFacturePDF($pdo, $idCommande) {
         
         <div class="footer">
             <p>Merci pour votre confiance !</p>
-            <p>Origami Zen - Contact: contact@origamizen.com</p>
+            <p>Youki and Go - Contact: contact@YoukiandGo.com</p>
         </div>
         ';
         
@@ -187,11 +187,11 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
         
         // Configuration de l'email
         $to = $emailClient;
-        $subject = "Votre facture Origami Zen - Commande #" . $idCommande;
+        $subject = "Votre facture Youki and Co - Commande #" . $idCommande;
         $message = "
         <html>
         <head>
-            <title>Votre facture Origami Zen</title>
+            <title>Votre facture Youki and Go</title>
         </head>
         <body>
             <h2>Merci pour votre commande !</h2>
@@ -199,7 +199,7 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
             <p>Vous trouverez votre facture en pièce jointe.</p>
             <p>Nous vous remercions pour votre confiance.</p>
             <br>
-            <p>Cordialement,<br>L'équipe Origami Zen</p>
+            <p>Cordialement,<br>L'équipe Youki and Go</p>
         </body>
         </html>
         ";
@@ -207,7 +207,7 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
         // Headers pour email HTML
         $headers = "MIME-Version: 1.0" . "\r\n";
         $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-        $headers .= "From: Origami Zen <noreply@origamizen.com>" . "\r\n";
+        $headers .= "From: Youki and Co <noreply@YoukiandCo.com>" . "\r\n";
         
         // Boundary pour les pièces jointes
         $boundary = md5(time());
