@@ -5,6 +5,12 @@ require_once 'config.php';
 // DÉBUT CRITIQUE : Gestion intelligente des en-têtes
 $is_html_response = false;
 
+// Inclure TCPDF pour la génération de PDF
+require_once('tcpdf/tcpdf.php');
+
+// Inclure le fichier de génération de facture
+require_once 'genererFacturePDF.php';
+
 // Détecter si c'est une requête de confirmation HTML
 if (isset($_GET['token']) && (!isset($_POST['action']))) {
     $is_html_response = true;
@@ -418,40 +424,29 @@ function getOrCreateClient($pdo) {
 }
 
 // FONCTION : Générer une facture via l'API facture.php
+// FONCTION : Générer une facture
 function genererFactureAPI($idCommande, $format = 'html') {
-    error_log("🔄 Appel API facture pour commande: " . $idCommande . " format: " . $format);
+    error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
-    $url = "http://$host/Origami/facture.php";
+    global $pdo; // Accéder à la connexion PDO
     
     if ($format === 'pdf') {
-        // Pour PDF, on fait un appel POST à l'API
-        $data = json_encode(['id_commande' => $idCommande]);
+        // Générer directement le PDF
+        $resultat = genererFacturePDF($pdo, $idCommande);
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($data)
-        ]);
-        
-        $result = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($http_code == 200) {
-            $response = json_decode($result, true);
-            if ($response && $response['status'] === 'success') {
-                return $response['fichier_facture'];
-            }
+        if ($resultat && $resultat !== true) {
+            // Retourne le chemin du fichier PDF
+            return $resultat;
+        } elseif ($resultat === true) {
+            // PDF généré et envoyé par email
+            return 'facture_' . $idCommande . '.pdf';
+        } else {
+            error_log("❌ Erreur génération PDF");
+            return false;
         }
-        error_log("❌ Erreur génération PDF via API: " . $result);
-        return false;
     } else {
         // Pour HTML, redirection simple
-        return $url . "?id=" . $idCommande;
+        return "facture.php?id=" . $idCommande;
     }
 }
 
@@ -711,9 +706,9 @@ if ($action == 'telecharger_facture') {
         exit;
     } else {
         if ($is_html_response) {
-            echo "<script>alert('Erreur lors de la génération du PDF'); window.location.href = 'index.html';</script>";
+            echo "<script>alert('Erreur lors de la generation du PDF'); window.location.href = 'index.html';</script>";
         } else {
-            echo json_encode(['status' => 500, 'error' => 'Erreur lors de la génération du PDF']);
+            echo json_encode(['status' => 500, 'error' => 'Erreur lors de la generation du PDF']);
         }
     }
     exit;

@@ -5,6 +5,7 @@ ini_set('log_errors', 1);
 ini_set('error_log', 'C:/wamp64/logs/paypal_errors.log');
 session_start();
 
+require_once 'smtp_config.php';
 // Configuration de la base de données
 require_once 'config.php';
 
@@ -483,7 +484,7 @@ function afficherConfirmationCB($commande, $reference) {
     $idCommande = $commande['idCommande'];
     
     // Générer l'URL de la facture HTML
-    $urlFactureHTML = "http://$host/Origami/facture.php?id=" . $idCommande;
+    $urlFactureHTML = 'http://$host/Origami/facture.php?id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>
