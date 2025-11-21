@@ -5,6 +5,7 @@ session_start();
 
 // Configuration de la base de données
 require_once 'config.php';
+require_once 'smtp_config.php';
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
@@ -86,9 +87,9 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
+        $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
+        $mail->addReplyTo(SMTP_USERNAME, 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);

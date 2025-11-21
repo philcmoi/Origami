@@ -11,6 +11,7 @@ use PHPMailer\PHPMailer\Exception;
 
 // Configuration de la base de données
 require_once 'config.php';
+require_once 'smtp_config.php';
 // Accepter les requêtes POST pour l'appel automatique
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
@@ -57,9 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->CharSet = 'UTF-8';
             
             // Destinataires
-            $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
+            $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
             $mail->addAddress($commande['client_email'], $commande['client_prenom'] . ' ' . $commande['client_nom']);
-            $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
+            $mail->addReplyTo('SMTP_USERNAME', 'Youki and Co');
             
             // Sujet et contenu
             $mail->isHTML(true);
@@ -192,9 +193,9 @@ try {
     $mail->CharSet = 'UTF-8';
     
     // Destinataires
-    $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
+    $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Co');
     $mail->addAddress($commande['client_email'], $commande['client_prenom'] . ' ' . $commande['client_nom']);
-    $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
+    $mail->addReplyTo(SMTP_USERNAME, 'Youki and Co');
     
     // Sujet et contenu
     $mail->isHTML(true);

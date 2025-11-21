@@ -85,12 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $email = $_POST['email'] ?? '';
                 
                 if ($idCommande && $email) {
-                    // Récupérer les détails de la commande avec l'adresse de FACTURATION
+                    // Récupérer les détails de la commande avec l'adresse de FACTURATION et vérifier le statut
                     $stmt = $pdo->prepare("
                         SELECT 
                             c.idCommande,
                             c.dateCommande,
                             c.montantTotal,
+                            c.statut,
                             cl.nom,
                             cl.prenom,
                             cl.email,
@@ -111,6 +112,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $commande = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($commande) {
+                        // VÉRIFIER SI LA COMMANDE EST PAYÉE
+                        if ($commande['statut'] !== 'payee') {
+                            $_SESSION['message_error'] = "❌ Impossible d'envoyer la facture : La commande #" . $commande['idCommande'] . " n'est pas payée (statut: " . $commande['statut'] . ")";
+                            break;
+                        }
+                        
                         // Inclure et utiliser la vraie fonction de génération PDF
                         require_once 'genererFacturePDF.php';
                         $cheminPDF = genererFacturePDF($pdo, $idCommande);
@@ -199,6 +206,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'generer' && isset($_GET['id']
             c.idCommande,
             c.dateCommande,
             c.montantTotal,
+            c.statut,
             cl.nom,
             cl.prenom,
             cl.email,
@@ -363,6 +371,15 @@ function genererFactureHTML($commande) {
                 margin-bottom: 8px;
                 padding-left: 10px;
             }
+            .statut-non-paye {
+                background: #ffc107;
+                color: #212529;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
         </style>
     </head>
     <body>
@@ -375,7 +392,9 @@ function genererFactureHTML($commande) {
             <div class='header'>
                 <h2 style='margin: 0 0 8px 0; font-size: 20px;'>FACTURE #" . $commande['idCommande'] . "</h2>
                 <p style='margin: 0; font-size: 14px;'>Date d'émission: " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
-                <span class='badge'>PAYÉE</span>
+                " . ($commande['statut'] === 'payee' ? 
+                    '<span class="badge">PAYÉE</span>' : 
+                    '<span class="statut-non-paye">NON PAYÉE</span>') . "
             </div>
             
             <div class='info-section'>
@@ -659,6 +678,18 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             transform: translateY(-1px);
         }
         
+        .btn-disabled {
+            background-color: #6c757d;
+            color: white;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .btn-disabled:hover {
+            background-color: #6c757d;
+            transform: none;
+        }
+        
         .statut {
             padding: 6px 12px;
             border-radius: 20px;
@@ -716,6 +747,35 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-weight: bold;
             color: #333;
         }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -733,7 +793,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item active">Factures</a>
+            <a href="admin_factures.php" class="nav-item active">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>
@@ -816,14 +876,24 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
                             <td>
                                 <div class="actions-cell">
-                                    <form method="POST" class="form-inline">
-                                        <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
-                                        <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
-                                        <input type="hidden" name="action" value="envoyer_facture">
-                                        <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
-                                            📧 Envoyer
-                                        </button>
-                                    </form>
+                                    <?php if ($commande['statut'] === 'payee'): ?>
+                                        <form method="POST" class="form-inline">
+                                            <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
+                                            <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
+                                            <input type="hidden" name="action" value="envoyer_facture">
+                                            <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
+                                                📧 Envoyer
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <div class="tooltip">
+                                            <button type="button" class="btn btn-disabled">
+                                                📧 Envoyer
+                                            </button>
+                                            <span class="tooltiptext">La facture ne peut être envoyée que pour les commandes payées</span>
+                                        </div>
+                                    <?php endif; ?>
+                                    
                                     <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn btn-primary" target="_blank">
                                         👁️ Voir
                                     </a>

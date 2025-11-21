@@ -412,9 +412,9 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->setFrom(SMTP_FROM_EMAIL, 'Youki and Go');
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->addReplyTo(SMTP_USERNAME, 'Youki and Go');
         
         // Contenu
         $mail->isHTML(true);
