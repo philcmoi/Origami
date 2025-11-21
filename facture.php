@@ -131,8 +131,8 @@ function genererFacturePDF($pdo, $idCommande) {
         $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
         
         // Information du document
-        $pdf->SetCreator('Origami Zen');
-        $pdf->SetAuthor('Origami Zen');
+        $pdf->SetCreator('Youki and Co');
+        $pdf->SetAuthor('Youki and Co');
         $pdf->SetTitle('Facture #' . $idCommande);
         $pdf->SetSubject('Facture');
         
@@ -169,7 +169,7 @@ function genererFacturePDF($pdo, $idCommande) {
         </style>
         
         <div class="header">
-            <h1>ORIGAMI ZEN</h1>
+            <h1>Youki and Co</h1>
             <p><em>Créations artisanales japonaises</em></p>
         </div>
         

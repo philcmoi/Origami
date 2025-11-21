@@ -47,9 +47,9 @@ function envoyerEmail($destinataire, $sujet, $message) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Co');
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Co');
         
         // Contenu
         $mail->isHTML(true);
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($commande) {
                         // Générer le contenu HTML de la facture
-                        $sujet = "Facture - Commande #" . $commande['idCommande'] . " - Origami Zen";
+                        $sujet = "Facture - Commande #" . $commande['idCommande'] . " - Youki and Co";
                         $message = genererFactureHTML($commande);
                         
                         // Envoyer l'email avec PHPMailer
@@ -181,7 +181,7 @@ function genererFactureHTML($commande) {
     <html>
     <head>
         <meta charset='UTF-8'>
-        <title>Facture #" . $commande['idCommande'] . " - Origami Zen</title>
+        <title>Facture #" . $commande['idCommande'] . " - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -310,7 +310,7 @@ function genererFactureHTML($commande) {
     <body>
         <div class='container'>
             <div class='entreprise-info'>
-                <h1 style='margin: 0; color: white; font-size: 24px;'>Origami Zen</h1>
+                <h1 style='margin: 0; color: white; font-size: 24px;'>Youki and Co</h1>
                 <p style='margin: 5px 0 0 0; opacity: 0.9;'>Créations artisanales japonaises</p>
             </div>
             
@@ -386,7 +386,7 @@ function genererFactureHTML($commande) {
             </div>
             
             <div class='footer'>
-                <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Origami Zen - Créations artisanales japonaises</p>
+                <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Youki and Co - Créations artisanales japonaises</p>
                 <p style='margin: 4px 0;'>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
                 <p style='margin: 4px 0;'>123 Rue du Papier, 75000 Paris, France</p>
                 <p style='margin: 4px 0;'>SIRET: 123 456 789 00012 | APE: 1234Z | TVA: FR12345678901</p>
@@ -429,7 +429,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administration des Factures - Origami Zen</title>
+    <title>Administration des Factures - Youki and Co</title>
     <style>
         * {
             margin: 0;
@@ -653,7 +653,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Administration</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
