@@ -77,7 +77,7 @@ function genererFacturePDF($pdo, $idCommande) {
         // Ajouter une page
         $pdf->AddPage();
         
-        // Contenu HTML SIMPLIFIÉ pour éviter les erreurs
+        // Contenu HTML avec ADRESSE DE FACTURATION
         $html = '
         <h1 style="text-align:center; color:#d40000;">FACTURE</h1>
         <h2 style="text-align:center;">Youki and Co</h2>
@@ -108,10 +108,10 @@ function genererFacturePDF($pdo, $idCommande) {
                     Email: ' . htmlspecialchars($commande['client_email']) . '
                 </td>
                 <td width="50%">
-                    <strong>LIVRAISON</strong><br>
-                    ' . htmlspecialchars($commande['adresse_livraison']) . '<br>
-                    ' . htmlspecialchars($commande['cp_livraison'] . ' ' . $commande['ville_livraison']) . '<br>
-                    ' . htmlspecialchars($commande['pays_livraison']) . '
+                    <strong>FACTURATION</strong><br>
+                    ' . htmlspecialchars($commande['adresse_facturation']) . '<br>
+                    ' . htmlspecialchars($commande['cp_facturation'] . ' ' . $commande['ville_facturation']) . '<br>
+                    ' . htmlspecialchars($commande['pays_facturation']) . '
                 </td>
             </tr>
         </table>
@@ -208,7 +208,6 @@ function genererFacturePDF($pdo, $idCommande) {
     }
 }
 
-// Fonction pour envoyer directement le PDF au navigateur
 function afficherFacturePDFDirect($pdo, $idCommande) {
     $filepath = genererFacturePDF($pdo, $idCommande);
     
@@ -225,7 +224,6 @@ function afficherFacturePDFDirect($pdo, $idCommande) {
     }
 }
 
-// NOUVELLE FONCTION POUR ENVOYER LA FACTURE PAR EMAIL
 function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
     try {
         error_log("📧 Envoi facture par email à: " . $emailClient);
@@ -289,7 +287,6 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
     }
 }
 
-// FONCTION À APPELER APRÈS PAIEMENT RÉUSSI
 function traiterPaiementReussi($pdo, $idCommande) {
     error_log("💰 TRAITEMENT PAIEMENT RÉUSSI - Commande: " . $idCommande);
     

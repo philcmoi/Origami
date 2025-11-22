@@ -197,7 +197,7 @@ function genererFacturePDF($pdo, $idCommande) {
         </div>
         ';
         
-        // Informations client
+        // Informations client avec ADRESSE DE FACTURATION
         $html .= '
         <div class="section-title">INFORMATIONS CLIENT</div>
         
@@ -219,11 +219,11 @@ function genererFacturePDF($pdo, $idCommande) {
                     </td>
                     <td width="50%">
                         <div class="address-box">
-                            <strong>📦 ADRESSE DE LIVRAISON</strong><br>
+                            <strong>🧾 ADRESSE DE FACTURATION</strong><br>
                             ' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '<br>
-                            📍 ' . htmlspecialchars($commande['adresse_livraison']) . '<br>
-                            🏙️ ' . htmlspecialchars($commande['cp_livraison'] . ' ' . $commande['ville_livraison']) . '<br>
-                            🌍 ' . htmlspecialchars($commande['pays_livraison']) . '
+                            📍 ' . htmlspecialchars($commande['adresse_facturation']) . '<br>
+                            🏙️ ' . htmlspecialchars($commande['cp_facturation'] . ' ' . $commande['ville_facturation']) . '<br>
+                            🌍 ' . htmlspecialchars($commande['pays_facturation']) . '
                         </div>
                     </td>
                 </tr>
@@ -329,8 +329,199 @@ function genererFacturePDF($pdo, $idCommande) {
  * Génère et affiche la facture HTML directement
  */
 function afficherFactureHTML($pdo, $idCommande) {
-    // ... (le reste de la fonction afficherFactureHTML reste identique)
-    // [Le code existant de afficherFactureHTML reste inchangé]
+    try {
+        // Récupérer les informations de la commande
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.idCommande,
+                c.dateCommande,
+                c.montantTotal,
+                c.fraisDePort,
+                c.statut,
+                cl.nom as client_nom,
+                cl.prenom as client_prenom,
+                cl.email as client_email,
+                cl.telephone as client_telephone,
+                a_fact.adresse as adresse_facturation,
+                a_fact.codePostal as cp_facturation,
+                a_fact.ville as ville_facturation,
+                a_fact.pays as pays_facturation
+            FROM Commande c
+            JOIN Client cl ON c.idClient = cl.idClient
+            JOIN Adresse a_fact ON c.idAdresseFacturation = a_fact.idAdresse
+            WHERE c.idCommande = ?
+        ");
+        $stmt->execute([$idCommande]);
+        $commande = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$commande) {
+            throw new Exception("Commande non trouvée: " . $idCommande);
+        }
+        
+        // Récupérer les articles
+        $stmt = $pdo->prepare("
+            SELECT 
+                lc.quantite,
+                lc.prixUnitaire,
+                (lc.quantite * lc.prixUnitaire) as total_ligne,
+                o.nom as produit_nom,
+                o.description
+            FROM LigneCommande lc
+            JOIN Origami o ON lc.idOrigami = o.idOrigami
+            WHERE lc.idCommande = ?
+        ");
+        $stmt->execute([$idCommande]);
+        $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Calculer les totaux
+        $sousTotal = 0;
+        foreach ($articles as $article) {
+            $sousTotal += $article['total_ligne'];
+        }
+        $totalGeneral = $sousTotal + $commande['fraisDePort'];
+        
+        // Afficher la facture HTML
+        ?>
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Facture #<?= $idCommande ?> - Youki and Co</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f9f9f9; }
+                .invoice-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .header { background: #d40000; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; margin: -30px -30px 20px -30px; }
+                .company-info { background: #f8f9fa; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+                .section-title { background: #d40000; color: white; padding: 10px; margin: 20px 0 10px 0; border-radius: 4px; }
+                .client-info { display: flex; gap: 20px; margin: 20px 0; }
+                .address-box { border: 1px solid #ddd; padding: 15px; border-radius: 4px; flex: 1; }
+                .table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                .table th { background: #d40000; color: white; padding: 10px; text-align: left; }
+                .table td { padding: 10px; border-bottom: 1px solid #ddd; }
+                .totals { text-align: right; margin-top: 20px; }
+                .no-tva { background: #fff3cd; padding: 15px; text-align: center; margin: 20px 0; border: 1px solid #ffeaa7; border-radius: 4px; }
+                .btn { background: #d40000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 5px; }
+            </style>
+        </head>
+        <body>
+            <div class="invoice-container">
+                <div class="header">
+                    <h1>Youki and Co</h1>
+                    <p><em>Créations artisanales japonaises</em></p>
+                </div>
+                
+                <div class="company-info">
+                    <table width="100%">
+                        <tr>
+                            <td width="60%">
+                                <strong>Youki and Co</strong><br>
+                                Créations artisanales japonaises<br>
+                                SIRET: 123 456 789 00012
+                            </td>
+                            <td width="40%" style="text-align: right;">
+                                <div style="font-size: 18px; font-weight: bold; color: #d40000;">FACTURE N° <?= $idCommande ?></div>
+                                <div>Date: <?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></div>
+                                <div>Statut: <?= strtoupper($commande['statut']) ?></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="no-tva">
+                    <strong>🏢 EXONÉRATION DE TVA - Article 293 B du CGI</strong><br>
+                    <small>Tous les montants sont indiqués hors taxes</small>
+                </div>
+                
+                <div class="section-title">INFORMATIONS CLIENT</div>
+                
+                <div class="client-info">
+                    <div class="address-box">
+                        <strong>👤 CLIENT</strong><br>
+                        <?= htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) ?><br>
+                        📧 <?= htmlspecialchars($commande['client_email']) ?><br>
+                        <?php if ($commande['client_telephone']): ?>
+                            📞 <?= htmlspecialchars($commande['client_telephone']) ?><br>
+                        <?php endif; ?>
+                    </div>
+                    <div class="address-box">
+                        <strong>🧾 ADRESSE DE FACTURATION</strong><br>
+                        <?= htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) ?><br>
+                        📍 <?= htmlspecialchars($commande['adresse_facturation']) ?><br>
+                        🏙️ <?= htmlspecialchars($commande['cp_facturation'] . ' ' . $commande['ville_facturation']) ?><br>
+                        🌍 <?= htmlspecialchars($commande['pays_facturation']) ?>
+                    </div>
+                </div>
+                
+                <div class="section-title">DÉTAIL DE LA COMMANDE</div>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th width="45%">Produit</th>
+                            <th width="15%">Prix unitaire HT</th>
+                            <th width="15%">Quantité</th>
+                            <th width="25%">Total HT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($articles as $article): ?>
+                        <tr>
+                            <td>
+                                <strong><?= htmlspecialchars($article['produit_nom']) ?></strong><br>
+                                <small><?= htmlspecialchars(substr($article['description'], 0, 80)) ?>...</small>
+                            </td>
+                            <td><?= number_format($article['prixUnitaire'], 2, ',', ' ') ?> €</td>
+                            <td><?= $article['quantite'] ?></td>
+                            <td><strong><?= number_format($article['total_ligne'], 2, ',', ' ') ?> €</strong></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                
+                <div class="totals">
+                    <table style="width: 300px; margin-left: auto;">
+                        <tr>
+                            <td>Sous-total produits:</td>
+                            <td style="text-align: right;"><?= number_format($sousTotal, 2, ',', ' ') ?> €</td>
+                        </tr>
+                        <tr>
+                            <td>Frais de port:</td>
+                            <td style="text-align: right;"><?= number_format($commande['fraisDePort'], 2, ',', ' ') ?> €</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #d40000;">
+                            <td><strong>TOTAL FACTURE:</strong></td>
+                            <td style="text-align: right;"><strong><?= number_format($totalGeneral, 2, ',', ' ') ?> €</strong></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="no-tva">
+                    <strong>⚠️ MONTANT HORS TAXES</strong><br>
+                    Exonération de TVA applicable - Article 293 B du CGI
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="facture.php?format=pdf&id=<?= $idCommande ?>" class="btn">📥 Télécharger PDF</a>
+                    <a href="envoi.php?id=<?= $idCommande ?>" class="btn" style="background: #28a745;">📧 Envoyer par email</a>
+                    <a href="index.html" class="btn" style="background: #6c757d;">🏠 Accueil</a>
+                </div>
+                
+                <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+                    <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                    <p>contact@YoukiandCo.fr - +33 1 23 45 67 89</p>
+                    <p>SIRET: 123 456 789 00012 - RCS Paris - Exonération de TVA, art. 293 B du CGI</p>
+                    <p>Facture générée le <?= date('d/m/Y à H:i') ?></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        
+    } catch (Exception $e) {
+        echo "<h1>Erreur</h1>";
+        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+    }
 }
 
 // Si on demande spécifiquement un PDF via le paramètre format=pdf
