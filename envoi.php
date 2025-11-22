@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p>Vous pouvez consulter et télécharger votre facture en cliquant sur le lien ci-dessous :</p>
                         
                         <div style='text-align: center; margin: 25px 0;'>
-                            <a href='http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
+                            <a href='http://217.182.198.20/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
                         </div>
                         
                         <div class='info-box'>
@@ -117,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     <div class='footer'>
                         <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
-                        <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
+                        <!--<p>📧 contact@YoukiAndCO.fr | 📞 +33 1 23 45 67 89</p>-->
                     </div>
                 </div>
             </body>
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ";
             
             $mail->Body = $messageHTML;
-            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nYouki and Co";
+            $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nYouki and Co";
             
             if ($mail->send()) {
                 error_log("✅ Email envoyé avec succès à: " . $commande['client_email']);
@@ -238,7 +238,7 @@ try {
                 <p>Vous pouvez consulter et télécharger votre facture en cliquant sur le lien ci-dessous :</p>
                 
                 <div style='text-align: center; margin: 25px 0;'>
-                    <a href='http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
+                    <a href='http://217.182.198.20/facture.php?id=" . $idCommande . "' class='btn'>📄 Voir ma facture</a>
                 </div>
                 
                 <div class='info-box'>
@@ -260,7 +260,7 @@ try {
     ";
     
     $mail->Body = $messageHTML;Youki and Co
-    $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/Origami/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nOrigami Zen";
+    $mail->AltBody = "Bonjour " . $commande['client_prenom'] . ",\n\nVotre facture pour la commande #" . $idCommande . " est disponible.\nMontant: " . number_format($commande['montantTotal'], 2, ',', ' ') . " € HT\n\nConsultez votre facture: http://217.182.198.20/facture.php?id=" . $idCommande . "\n\nExonération de TVA - Art. 293 B du CGI\n\nMerci pour votre confiance!\n\nYoukiAndCO";
     
     if ($mail->send()) {
         echo "<!DOCTYPE html>

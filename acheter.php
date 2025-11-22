@@ -60,8 +60,8 @@ $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox',
-    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -398,7 +398,7 @@ function getOrCreateClient($pdo) {
     try {
         // Essayer d'insérer avec la colonne type
         $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, type, date_creation, session_id) VALUES (?, 'Invité', 'Client', 'temporaire', NOW(), ?)");
-        $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+        $emailTemp = 'temp_' . uniqid() . '@YoukiAndCo.fr';
         $stmt->execute([$emailTemp, $sessionId]);
     } catch (Exception $e) {
         // Si échec (colonne type manquante), insérer sans type
@@ -406,13 +406,13 @@ function getOrCreateClient($pdo) {
         try {
             // Essayer avec date_creation
             $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, date_creation, session_id) VALUES (?, 'Invité', 'Client', NOW(), ?)");
-            $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCo.fr';
             $stmt->execute([$emailTemp, $sessionId]);
         } catch (Exception $e2) {
             // Si échec (date_creation manquante), insérer avec les colonnes minimales
             error_log("Insertion avec colonnes minimales: " . $e2->getMessage());
             $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, session_id) VALUES (?, 'Invité', 'Client', ?)");
-            $emailTemp = 'temp_' . uniqid() . '@origamizen.fr';
+            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCO.fr';
             $stmt->execute([$emailTemp, $sessionId]);
         }
     }
@@ -645,7 +645,7 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
+                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
             ]
         ]);
     } else {
@@ -978,13 +978,13 @@ if ($action == 'paypal_success') {
                 <p><strong>Montant payé :</strong> <?= number_format($montant, 2, ',', ' ') ?> €</p>
                 <?php endif; ?>
                 
-                <div class="facture-options">
+                <!--<div class="facture-options">
                     <h3>📄 Votre facture</h3>
                     <p>Votre facture a été générée.</p>
                     <p>Vous pouvez :</p>
-                    <!-- <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>-->
-                    <a href="acheter.php?action=telecharger_facture&id_commande=<?= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
-                </div>
+                     <a href="<?//= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>
+                    <a href="acheter.php?action=telecharger_facture&id_commande=<?//= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
+                </div>-->
                 
                 <p>Vous recevrez un email de confirmation sous peu.</p>
                 <a href="index.html" class="btn">🏠 Retour à l'accueil</a>
@@ -1277,7 +1277,7 @@ try {
         }
 
         // URL de confirmation pointant vers acheter.php
-        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
+        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
         // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
         $recapAchatsHTML = "";
@@ -1472,7 +1472,7 @@ try {
                 
                 <div class='footer'>
                     <p><strong>YOUKI and Co - Créations artisanales japonaises</strong></p>
-                    <!--<p>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>-->
+                    <!--<p>📧 contact@YoukiAndCO.fr | 📞 +33 1 23 45 67 89</p>-->
                 </div>
             </div>
         </body>

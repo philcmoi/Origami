@@ -464,7 +464,7 @@ function genererFactureHTML($commande) {
             
             <div class='footer'>
                 <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Youki and Co - Créations artisanales japonaises</p>
-                <p style='margin: 4px 0;'>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
+                <p style='margin: 4px 0;'>📧 contact@YoukiAndCO.fr | 📞 +33 1 23 45 67 89</p>
                 <p style='margin: 4px 0;'>123 Rue du Papier, 75000 Paris, France</p>
                 <p style='margin: 4px 0;'>SIRET: 123 456 789 00012 | APE: 1234Z | TVA: FR12345678901</p>
                 <p style='margin-top: 12px; font-size: 11px; color: #999;'>
