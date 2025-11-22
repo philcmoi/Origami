@@ -16,7 +16,6 @@ try {
     die("Erreur de connexion à la base de données: " . $e->getMessage());
 }
 
-
 // Configuration PayPal Production
 $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
@@ -24,6 +23,7 @@ $paypal_config = [
     'environment' => 'sandbox', // ← 'sandbox' pour les tests locaux
     'currency' => 'EUR'
 ];
+
 // Vérifier si une commande est spécifiée
 $idCommande = $_GET['commande'] ?? $_POST['id_commande'] ?? null;
 
@@ -60,9 +60,7 @@ try {
     die("Erreur lors de la récupération de la commande: " . $e->getMessage());
 }
 
-// Fonction pour obtenir l'access token PayPal - CORRIGÉE POUR WAMP
-
-// FONCTION DE DIAGNOSTIC PAYPAL - À AJOUTER
+// FONCTION DE DIAGNOSTIC PAYPAL
 function diagnostiquerPayPal($paypal_config) {
     error_log("=== DIAGNOSTIC PAYPAL ===");
     error_log("Environment: " . $paypal_config['environment']);
@@ -116,8 +114,6 @@ function getPayPalAccessToken($client_id, $client_secret, $environment) {
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     
-    // SUPPRIMER TOUS LES COMMENTAIRES QUI BLOQUENT LE CODE ICI
-    
     if ($result === false) {
         $error_msg = "cURL Error: " . curl_error($ch);
         error_log("PAYPAL ACCESS TOKEN ERROR: " . $error_msg);
@@ -149,10 +145,10 @@ function getPayPalAccessToken($client_id, $client_secret, $environment) {
         return false;
     }
 }
+
 // Fonction pour traiter le paiement par carte via PayPal - AVEC SIMULATION WAMP
 function traiterPaiementPayPalCB($donnees, $paypal_config) {
     // SIMULATION POUR WAMP - DÉCOMMENTER POUR TESTER
-    
     sleep(2);
     return [
         'success' => true,
@@ -160,7 +156,7 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
         'response' => ['state' => 'approved', 'simulated' => true]
     ];
     
-    
+    /*
     try {
         // Obtenir l'access token
         $access_token = getPayPalAccessToken(
@@ -284,7 +280,8 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             } else if (isset($error_response['message'])) {
                 $error_message .= $error_response['message'];
             } else {
-            $error_message .= 'Erreur inconnue - HTTP: ' . $http_code . ' - Full response: ' . $result;            }
+                $error_message .= 'Erreur inconnue - HTTP: ' . $http_code . ' - Full response: ' . $result;
+            }
             
             error_log("Erreur paiement PayPal CB: " . $result);
             
@@ -303,8 +300,8 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             'reference' => null
         ];
     }
+    */
 }
-
 
 // Fonction pour détecter le type de carte
 function detecterTypeCarte($numero) {
@@ -382,23 +379,38 @@ function validerDateExpiration($date) {
     return $dateExpiration > $aujourdhui;
 }
 
-// Fonction pour envoyer l'email de confirmation
-function envoyerEmailConfirmationCB($commande, $reference) {
-    // Inclure PHPMailer
-    require_once 'PHPMailer/src/Exception.php';
-    require_once 'PHPMailer/src/PHPMailer.php';
-    require_once 'PHPMailer/src/SMTP.php';
-    
-    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+// NOUVELLE FONCTION : Générer et envoyer la facture par email
+function envoyerFactureAvecEmail($pdo, $commande, $reference) {
+    error_log("📧 Début envoi facture avec email pour commande: " . $commande['idCommande']);
     
     try {
+        // Inclure la fonction de génération PDF
+        require_once 'genererFacturePDF.php';
+        
+        // Générer la facture PDF
+        $cheminFacture = genererFacturePDF($pdo, $commande['idCommande']);
+        
+        if (!$cheminFacture || !file_exists($cheminFacture)) {
+            error_log("❌ Erreur génération PDF pour commande: " . $commande['idCommande']);
+            return false;
+        }
+        
+        error_log("✅ PDF généré: " . $cheminFacture);
+        
+        // Inclure PHPMailer
+        require_once 'PHPMailer/src/Exception.php';
+        require_once 'PHPMailer/src/PHPMailer.php';
+        require_once 'PHPMailer/src/SMTP.php';
+        
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        
         // Configuration SMTP
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
         $mail->Username = SMTP_USERNAME;
         $mail->Password = SMTP_PASSWORD;
-        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->SMTPSecure = SMTP_SECURE === 'ssl' ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
@@ -412,13 +424,16 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         );
         
         // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($commande['email']);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Youki and Go');
+        $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         
-        // Contenu
+        // Pièce jointe - la facture PDF
+        $mail->addAttachment($cheminFacture, 'facture_' . $commande['idCommande'] . '.pdf');
+        
+        // Sujet et contenu de l'email
         $mail->isHTML(true);
-        $mail->Subject = "Confirmation de paiement - Commande #" . $commande['idCommande'];
+        $mail->Subject = "Votre facture Youki and Co - Commande #" . $commande['idCommande'];
         
         $message = "
         <!DOCTYPE html>
@@ -431,17 +446,19 @@ function envoyerEmailConfirmationCB($commande, $reference) {
                 .header { text-align: center; color: #d40000; margin-bottom: 20px; }
                 .success { color: #28a745; font-size: 24px; }
                 .details { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 15px 0; }
+                .facture-info { background: #e7f3ff; border: 1px solid #b3d9ff; padding: 15px; border-radius: 4px; margin: 15px 0; }
             </style>
         </head>
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>Youki and Go</h1>
+                    <h1>Youki and Co</h1>
+                    <p>Créations artisanales japonaises</p>
                 </div>
                 
                 <h2 class='success'>✅ Paiement Confirmé</h2>
                 
-                <p>Bonjour " . htmlspecialchars($commande['prenom']) . ",</p>
+                <p>Bonjour <strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong>,</p>
                 
                 <p>Votre paiement par carte bancaire pour la commande <strong>#" . $commande['idCommande'] . "</strong> a été traité avec succès via PayPal.</p>
                 
@@ -450,17 +467,24 @@ function envoyerEmailConfirmationCB($commande, $reference) {
                     <p><strong>Montant :</strong> " . number_format($commande['montantTotal'], 2, ',', ' ') . " €</p>
                     <p><strong>Mode de paiement :</strong> Carte Bancaire (PayPal)</p>
                 </div>
+
+                <div class='facture-info'>
+                    <h3>📄 Votre facture</h3>
+                    <p>Votre facture détaillée est jointe à cet email au format PDF.</p>
+                    <p>Vous pouvez également la télécharger depuis votre espace client.</p>
+                </div>
                 
                 <p>Votre commande est en cours de préparation et vous sera livrée à l'adresse :</p>
                 <p><strong>" . htmlspecialchars($commande['adresse_livraison']) . "<br>
                 " . $commande['cp_livraison'] . " " . htmlspecialchars($commande['ville_livraison']) . "</strong></p>
                 
-                <p>Merci pour votre confiance !</p>
+                <p>Nous vous remercions pour votre confiance et espérons vous revoir très bientôt !</p>
                 
                 <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px;'>
-                    <p><strong>Youki and Go</strong><br>
-                    📧 contact@YoukiandGo.fr | 📞 +33 1 23 45 67 89<br>
-                    </p>
+                    <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                    <p>📧 " . SMTP_FROM_EMAIL . " | 📞 +33 1 23 45 67 89</p>
+                    <p>123 Rue du Papier, 75000 Paris, France</p>
+                    <p><em>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</em></p>
                 </div>
             </div>
         </body>
@@ -470,21 +494,27 @@ function envoyerEmailConfirmationCB($commande, $reference) {
         $mail->Body = $message;
         $mail->AltBody = strip_tags($message);
         
-        $mail->send();
+        if ($mail->send()) {
+            error_log("✅ Email avec facture envoyé avec succès à: " . $commande['email']);
+            return true;
+        } else {
+            error_log("❌ Erreur envoi email avec facture: " . $mail->ErrorInfo);
+            return false;
+        }
         
     } catch (Exception $e) {
-        error_log("Erreur envoi email CB: " . $e->getMessage());
+        error_log("❌ ERREUR envoi facture par email: " . $e->getMessage());
+        return false;
     }
 }
 
-// Fonction pour afficher la confirmation
 // Fonction pour afficher la confirmation
 function afficherConfirmationCB($commande, $reference) {
     // Récupérer l'ID de commande depuis les données de la commande
     $idCommande = $commande['idCommande'];
     
     // Générer l'URL de la facture HTML
-    $urlFactureHTML = 'http://$host/Origami/facture.php?id=' . $idCommande;
+    $urlFactureHTML = 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/admin_factures.php?action=generer&id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>
@@ -492,7 +522,7 @@ function afficherConfirmationCB($commande, $reference) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paiement Confirmé - Youki and Go</title>
+        <title>Paiement Confirmé - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -561,6 +591,14 @@ function afficherConfirmationCB($commande, $reference) {
                 border-radius: 4px;
                 margin: 20px 0;
             }
+            .email-notice {
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+                padding: 15px;
+                border-radius: 4px;
+                margin: 20px 0;
+                color: #155724;
+            }
         </style>
     </head>
     <body>
@@ -576,30 +614,35 @@ function afficherConfirmationCB($commande, $reference) {
                 <p><strong>Montant :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
                 <p><strong>Mode de paiement :</strong> Carte Bancaire (PayPal)</p>
             </div>
+
+            <div class="email-notice">
+                <p><strong>📧 Email envoyé !</strong></p>
+                <p>Un email de confirmation avec votre facture PDF a été envoyé à <strong><?= htmlspecialchars($commande['email']) ?></strong>.</p>
+            </div>
             
-            <p>Un email de confirmation a été envoyé à <strong><?= htmlspecialchars($commande['email']) ?></strong>.</p>
             <p>Votre commande est en cours de préparation.</p>
 
             <!-- Section Options de Facture -->
-            <div class="facture-options">
+            <!--<div class="facture-options">
                 <h3>📄 Options de facture</h3>
-                <p>Vous pouvez déjà télécharger votre facture :</p>
-                <!--<a href="<?= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>-->
-                <button onclick="telechargerFacturePDF(<?= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
-            </div>
+                <p>Vous pouvez également :</p>
+                <a href="<?//= $urlFactureHTML ?>" target="_blank" class="btn-facture">👁️ Voir la facture HTML</a>
+                <button onclick="telechargerFacturePDF(<?//= $idCommande ?>)" class="btn-facture">📥 Télécharger PDF</button>
+            </div>-->
             
             <a href="index.html" class="btn">Retour à l'accueil</a>
         </div>
 
         <script>
             function telechargerFacturePDF(idCommande) {
-                window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+                window.open('generer_facture.php?id=' + idCommande, '_blank');
             }
         </script>
     </body>
     </html>
     <?php
 }
+
 // Traitement du formulaire de paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'traiter_paiement_cb') {
     
@@ -661,8 +704,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 // Valider la transaction
                 $pdo->commit();
                 
-                // Envoyer un email de confirmation
-                envoyerEmailConfirmationCB($commande, $reference);
+                // NOUVEAU : Envoyer l'email avec la facture PDF
+                $resultatEmail = envoyerFactureAvecEmail($pdo, $commande, $reference);
+                
+                if (!$resultatEmail) {
+                    error_log("⚠️ Paiement réussi mais échec envoi email avec facture");
+                }
                 
                 // Afficher la page de confirmation
                 afficherConfirmationCB($commande, $reference);
@@ -801,7 +848,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <p><strong>Montant à payer :</strong> <?= number_format($commande['montantTotal'], 2, ',', ' ') ?> €</p>
         </div>
 
-          <div class="paypal-badge">
+        <div class="paypal-badge">
             <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/cc-badges-ppmcvdam.png" alt="PayPal" style="height: 30px;">
             <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Paiement sécurisé par PayPal</p>
         </div>
@@ -820,6 +867,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="security-notice">
             <strong>🔒 Paiement 100% sécurisé par PayPal</strong><br>
             Vos données bancaires sont cryptées et traitées directement par PayPal. Aucune information n'est stockée sur nos serveurs.
+        </div>
+
+        <div class="test-info">
+            <strong>💡 Mode test activé</strong><br>
+            Le paiement est simulé pour les tests. Après validation, vous recevrez un email avec votre facture PDF.
         </div>
 
         <form id="formPaiementCB" method="POST">
@@ -855,13 +907,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 </div>
             </div>
             
-            <!-- PAR CE BLOC UNIQUE -->
             <div class="form-group">
-            <label for="titulaire_carte">Nom du titulaire <span style="color: #d40000;">*</span></label>
-            <input type="text" id="titulaire_carte" name="titulaire_carte" 
-            placeholder="M. DUPONT Jean" 
-            value="<?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>" required>
+                <label for="titulaire_carte">Nom du titulaire <span style="color: #d40000;">*</span></label>
+                <input type="text" id="titulaire_carte" name="titulaire_carte" 
+                       placeholder="M. DUPONT Jean" 
+                       value="<?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?>" required>
             </div>
+            
             <div class="card-icons">
                 💳 • • • • • • • • • • • • • • • •
             </div>

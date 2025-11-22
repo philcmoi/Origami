@@ -31,7 +31,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Clients - Origami Zen</title>
+    <title>Gestion des Clients - Youki and Co</title>
     <style>
         /* Styles similaires aux autres pages */
         .client-stats {
@@ -84,7 +84,7 @@ try {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Gestion des Clients</h1>
+            <h1>Youki and Co - Gestion des Clients</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>

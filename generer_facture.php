@@ -92,7 +92,7 @@ function generateHTMLInvoice($commande, $lignesCommande) {
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>Facture #' . $commande['idCommande'] . ' - Origami Zen</title>
+        <title>Facture #' . $commande['idCommande'] . ' - Youki and Co</title>
         <style>
             body { 
                 font-family: Arial, sans-serif; 
@@ -252,7 +252,7 @@ function generateInvoiceContent($commande, $lignesCommande) {
         <table>
             <tr>
                 <td width="50%">
-                    <div class="company-info">ORIGAMI ZEN</div>
+                    <div class="company-info">Youki and Co</div>
                     <div>contact@origamizen.fr - SIRET: 123 456 789 00012</div>
                 </td>
                 <td width="50%" style="text-align: right;">
@@ -333,7 +333,7 @@ function generateInvoiceContent($commande, $lignesCommande) {
     </div>
 
     <div class="footer">
-        Origami Zen - RCS Paris 123 456 789 - Exonération de TVA, art. 293 B du CGI<br>
+        Youki and Co - RCS Paris 123 456 789 - Exonération de TVA, art. 293 B du CGI<br>
         Facture générée le ' . date('d/m/Y à H:i') . '
     </div>';
     

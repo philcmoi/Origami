@@ -2,6 +2,8 @@
 // Inclure la protection au tout début - COMME DANS admin_dashboard.php
 require_once 'admin_protection.php';
 
+require_once 'smtp_config.php';
+
 // Inclure PHPMailer
 require 'PHPMailer/src/Exception.php';
 require 'PHPMailer/src/PHPMailer.php';
@@ -22,7 +24,7 @@ try {
 }
 
 // Fonction pour envoyer un email avec PHPMailer
-function envoyerEmail($destinataire, $sujet, $message) {
+function envoyerEmail($destinataire, $sujet, $message, $pieceJointe = null) {
     $mail = new PHPMailer(true);
     
     try {
@@ -32,7 +34,7 @@ function envoyerEmail($destinataire, $sujet, $message) {
         $mail->SMTPAuth = true;
         $mail->Username = SMTP_USERNAME;
         $mail->Password = SMTP_PASSWORD;
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->SMTPSecure = SMTP_SECURE === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
@@ -46,10 +48,15 @@ function envoyerEmail($destinataire, $sujet, $message) {
             )
         );
         
-        // Destinataires
-        $mail->setFrom('lhpp.philippe@gmail.com', 'Origami Zen');
+        // Destinataires - UTILISER LES CONSTANTES DE CONFIGURATION
+        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($destinataire);
-        $mail->addReplyTo('lhpp.philippe@gmail.com', 'Origami Zen');
+        $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+        
+        // Pièce jointe si fournie
+        if ($pieceJointe && file_exists($pieceJointe)) {
+            $mail->addAttachment($pieceJointe, 'facture_' . basename($pieceJointe));
+        }
         
         // Contenu
         $mail->isHTML(true);
@@ -78,12 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $email = $_POST['email'] ?? '';
                 
                 if ($idCommande && $email) {
-                    // Récupérer les détails de la commande avec l'adresse de FACTURATION
+                    // Récupérer les détails de la commande avec l'adresse de FACTURATION et vérifier le statut
                     $stmt = $pdo->prepare("
                         SELECT 
                             c.idCommande,
                             c.dateCommande,
                             c.montantTotal,
+                            c.statut,
                             cl.nom,
                             cl.prenom,
                             cl.email,
@@ -104,17 +112,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $commande = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($commande) {
-                        // Générer le contenu HTML de la facture
-                        $sujet = "Facture - Commande #" . $commande['idCommande'] . " - Origami Zen";
-                        $message = genererFactureHTML($commande);
+                        // VÉRIFIER SI LA COMMANDE EST PAYÉE
+                        if ($commande['statut'] !== 'payee') {
+                            $_SESSION['message_error'] = "❌ Impossible d'envoyer la facture : La commande #" . $commande['idCommande'] . " n'est pas payée (statut: " . $commande['statut'] . ")";
+                            break;
+                        }
                         
-                        // Envoyer l'email avec PHPMailer
-                        $resultat = envoyerEmail($email, $sujet, $message);
+                        // Inclure et utiliser la vraie fonction de génération PDF
+                        require_once 'genererFacturePDF.php';
+                        $cheminPDF = genererFacturePDF($pdo, $idCommande);
                         
-                        if ($resultat['success']) {
-                            $_SESSION['message_success'] = "✅ Facture #" . $commande['idCommande'] . " envoyée avec succès à " . $email;
+                        if ($cheminPDF && file_exists($cheminPDF)) {
+                            // Générer le contenu HTML de l'email
+                            $sujet = "Votre facture Youki and Co - Commande #" . $commande['idCommande'];
+                            $message = "
+                            <html>
+                            <head>
+                                <style>
+                                    body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }
+                                    .container { max-width: 600px; margin: 0 auto; }
+                                    .header { background: #d40000; color: white; padding: 20px; text-align: center; }
+                                    .content { padding: 20px; background: #f9f9f9; }
+                                    .footer { padding: 20px; text-align: center; color: #666; font-size: 12px; background: #f0f0f0; }
+                                    .info-box { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #d40000; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class='container'>
+                                    <div class='header'>
+                                        <h1>Youki and Co</h1>
+                                        <p>Créations artisanales japonaises</p>
+                                    </div>
+                                    <div class='content'>
+                                        <h2>Merci pour votre commande !</h2>
+                                        <p>Bonjour <strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong>,</p>
+                                        
+                                        <div class='info-box'>
+                                            <h3>📦 Détails de votre commande</h3>
+                                            <p><strong>Commande #" . $commande['idCommande'] . "</strong></p>
+                                            <p>Date : " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
+                                            <p><strong>Montant total : " . number_format($commande['montantTotal'], 2, ',', ' ') . " € TTC</strong></p>
+                                        </div>
+                                        
+                                        <p>Votre facture détaillée est jointe à cet email au format PDF.</p>
+                                        <p>Nous vous remercions pour votre confiance et espérons vous revoir très bientôt !</p>
+                                        <br>
+                                        <p>Cordialement,<br>L'équipe Youki and Co</p>
+                                    </div>
+                                    <div class='footer'>
+                                        <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
+                                        <p>📧 " . SMTP_FROM_EMAIL . " | 📞 +33 1 23 45 67 89</p>
+                                        <p>123 Rue du Papier, 75000 Paris, France</p>
+                                        <p><em>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</em></p>
+                                    </div>
+                                </div>
+                            </body>
+                            </html>
+                            ";
+                            
+                            // Envoyer l'email avec PHPMailer et la pièce jointe PDF
+                            $resultat = envoyerEmail($email, $sujet, $message, $cheminPDF);
+                            
+                            if ($resultat['success']) {
+                                $_SESSION['message_success'] = "✅ Facture #" . $commande['idCommande'] . " envoyée avec succès à " . $email;
+                            } else {
+                                $_SESSION['message_error'] = "❌ Erreur lors de l'envoi: " . $resultat['error'];
+                            }
                         } else {
-                            $_SESSION['message_error'] = "❌ Erreur lors de l'envoi: " . $resultat['error'];
+                            $_SESSION['message_error'] = "❌ Erreur lors de la génération du PDF";
                         }
                     } else {
                         $_SESSION['message_error'] = "❌ Commande non trouvée";
@@ -141,6 +206,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'generer' && isset($_GET['id']
             c.idCommande,
             c.dateCommande,
             c.montantTotal,
+            c.statut,
             cl.nom,
             cl.prenom,
             cl.email,
@@ -181,7 +247,7 @@ function genererFactureHTML($commande) {
     <html>
     <head>
         <meta charset='UTF-8'>
-        <title>Facture #" . $commande['idCommande'] . " - Origami Zen</title>
+        <title>Facture #" . $commande['idCommande'] . " - Youki and Co</title>
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -305,19 +371,30 @@ function genererFactureHTML($commande) {
                 margin-bottom: 8px;
                 padding-left: 10px;
             }
+            .statut-non-paye {
+                background: #ffc107;
+                color: #212529;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
         </style>
     </head>
     <body>
         <div class='container'>
             <div class='entreprise-info'>
-                <h1 style='margin: 0; color: white; font-size: 24px;'>Origami Zen</h1>
+                <h1 style='margin: 0; color: white; font-size: 24px;'>Youki and Co</h1>
                 <p style='margin: 5px 0 0 0; opacity: 0.9;'>Créations artisanales japonaises</p>
             </div>
             
             <div class='header'>
                 <h2 style='margin: 0 0 8px 0; font-size: 20px;'>FACTURE #" . $commande['idCommande'] . "</h2>
                 <p style='margin: 0; font-size: 14px;'>Date d'émission: " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
-                <span class='badge'>PAYÉE</span>
+                " . ($commande['statut'] === 'payee' ? 
+                    '<span class="badge">PAYÉE</span>' : 
+                    '<span class="statut-non-paye">NON PAYÉE</span>') . "
             </div>
             
             <div class='info-section'>
@@ -386,7 +463,7 @@ function genererFactureHTML($commande) {
             </div>
             
             <div class='footer'>
-                <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Origami Zen - Créations artisanales japonaises</p>
+                <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Youki and Co - Créations artisanales japonaises</p>
                 <p style='margin: 4px 0;'>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
                 <p style='margin: 4px 0;'>123 Rue du Papier, 75000 Paris, France</p>
                 <p style='margin: 4px 0;'>SIRET: 123 456 789 00012 | APE: 1234Z | TVA: FR12345678901</p>
@@ -429,7 +506,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administration des Factures - Origami Zen</title>
+    <title>Administration des Factures - Youki and Co</title>
     <style>
         * {
             margin: 0;
@@ -591,6 +668,28 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             transform: translateY(-1px);
         }
         
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
+            transform: translateY(-1px);
+        }
+        
+        .btn-disabled {
+            background-color: #6c757d;
+            color: white;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .btn-disabled:hover {
+            background-color: #6c757d;
+            transform: none;
+        }
+        
         .statut {
             padding: 6px 12px;
             border-radius: 20px;
@@ -648,12 +747,41 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-weight: bold;
             color: #333;
         }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Administration</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
@@ -665,7 +793,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item active">Factures</a>
+            <a href="admin_factures.php" class="nav-item active">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>
@@ -748,14 +876,24 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
                             <td>
                                 <div class="actions-cell">
-                                    <form method="POST" class="form-inline">
-                                        <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
-                                        <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
-                                        <input type="hidden" name="action" value="envoyer_facture">
-                                        <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
-                                            📧 Envoyer
-                                        </button>
-                                    </form>
+                                    <?php if ($commande['statut'] === 'payee'): ?>
+                                        <form method="POST" class="form-inline">
+                                            <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
+                                            <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
+                                            <input type="hidden" name="action" value="envoyer_facture">
+                                            <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
+                                                📧 Envoyer
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <div class="tooltip">
+                                            <button type="button" class="btn btn-disabled">
+                                                📧 Envoyer
+                                            </button>
+                                            <span class="tooltiptext">La facture ne peut être envoyée que pour les commandes payées</span>
+                                        </div>
+                                    <?php endif; ?>
+                                    
                                     <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn btn-primary" target="_blank">
                                         👁️ Voir
                                     </a>

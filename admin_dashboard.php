@@ -53,7 +53,7 @@ if (isset($_GET['logout'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de Bord Admin - Origami Zen</title>
+    <title>Tableau de Bord Admin - Youki and Co</title>
     <style>
         * {
             margin: 0;
@@ -226,7 +226,7 @@ if (isset($_GET['logout'])) {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Administration</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
@@ -238,7 +238,7 @@ if (isset($_GET['logout'])) {
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item active">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item">Factures</a>
+            <a href="admin_factures.php" class="nav-item">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>

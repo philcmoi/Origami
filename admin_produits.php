@@ -91,7 +91,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Produits - Origami Zen</title>
+    <title>Gestion des Produits - Youki and Co</title>
     <style>
         /* Styles spécifiques à la gestion des produits */
         .product-grid {
@@ -266,7 +266,7 @@ try {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Origami Zen - Gestion des Produits</h1>
+            <h1>Youki and Co - Gestion des Produits</h1>
         </div>
         <div class="admin-info">
             <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>

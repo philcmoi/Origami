@@ -55,12 +55,13 @@ try {
 }
 
 // Configuration PayPal
+// Configuration PayPal
 $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox',
-    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -110,7 +111,7 @@ function createPayPalOrder($access_token, $amount, $currency, $environment, $ret
         'application_context' => [
             'return_url' => $return_url,
             'cancel_url' => $cancel_url,
-            'brand_name' => 'Youki and CO',
+            'brand_name' => 'Youki and Co',
             'user_action' => 'PAY_NOW'
         ]
     ];
@@ -425,21 +426,18 @@ function getOrCreateClient($pdo) {
 
 // FONCTION : Générer une facture via l'API facture.php
 // FONCTION : Générer une facture
+// Remplacer cette fonction dans acheter.php
 function genererFactureAPI($idCommande, $format = 'html') {
     error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
-    global $pdo; // Accéder à la connexion PDO
+    global $pdo;
     
     if ($format === 'pdf') {
-        // Générer directement le PDF
+        // Utiliser la nouvelle fonction simplifiée
         $resultat = genererFacturePDF($pdo, $idCommande);
         
-        if ($resultat && $resultat !== true) {
-            // Retourne le chemin du fichier PDF
-            return $resultat;
-        } elseif ($resultat === true) {
-            // PDF généré et envoyé par email
-            return 'facture_' . $idCommande . '.pdf';
+        if ($resultat) {
+            return $resultat; // Retourne le chemin du fichier PDF
         } else {
             error_log("❌ Erreur génération PDF");
             return false;
@@ -647,8 +645,7 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://$host/origami/' . $fichierFacture,
-                'message' => 'Facture PDF générée avec succès'
+                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
             ]
         ]);
     } else {
@@ -981,13 +978,13 @@ if ($action == 'paypal_success') {
                 <p><strong>Montant payé :</strong> <?= number_format($montant, 2, ',', ' ') ?> €</p>
                 <?php endif; ?>
                 
-                <div class="facture-options">
+                <!--<div class="facture-options">
                     <h3>📄 Votre facture</h3>
                     <p>Votre facture a été générée.</p>
                     <p>Vous pouvez :</p>
-                    <!-- <a href="<?= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>-->
-                    <a href="acheter.php?action=telecharger_facture&id_commande=<?= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
-                </div>
+                     <a href="<?//= $urlFactureHTML ?>" target="_blank" class="btn">👁️ Voir la facture HTML</a>
+                    <a href="acheter.php?action=telecharger_facture&id_commande=<?//= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
+                </div>-->
                 
                 <p>Vous recevrez un email de confirmation sous peu.</p>
                 <a href="index.html" class="btn">🏠 Retour à l'accueil</a>
@@ -1280,7 +1277,7 @@ try {
         }
 
         // URL de confirmation pointant vers acheter.php
-        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
+        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
         // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
         $recapAchatsHTML = "";
@@ -2820,21 +2817,6 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                     alert('Email invalide');
                 }
             }
-
-            // Dans index.html, après la classe OrigamiAPI
-        async function testerConnexionAPI() {
-        try {
-        const response = await fetch('acheter.php?action=get_panier');
-        const result = await response.text();
-        console.log('Test connexion API:', response.status, result.substring(0, 100));
-        return response.ok;
-        } catch (error) {
-        console.error('Erreur connexion API:', error);
-        return false;
-    }
-}
-
-
         </script>
     </body>
     </html>
