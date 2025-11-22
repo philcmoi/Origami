@@ -19,7 +19,7 @@ try {
         $stmt->execute([$email, $motDePasse]);
         
         echo "Administrateur créé avec succès!<br>";
-        echo "Email: admin@YoukiAndCo.fr<br>";
+        echo "Email: admin@origamizen.fr<br>";
         echo "Mot de passe: admin123<br>";
         echo "<strong>Attention: Changez le mot de passe après la première connexion!</strong>";
     } else {

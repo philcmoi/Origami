@@ -80,7 +80,7 @@ function generatePDFInvoice($commande, $lignesCommande) {
     $html = generateInvoiceContent($commande, $lignesCommande);
     $pdf->writeHTML($html, true, false, true, false, '');
     
-    $filename = 'facture_YoukiAndCo_' . $commande['idCommande'] . '.pdf';
+    $filename = 'facture_origamizen_' . $commande['idCommande'] . '.pdf';
     $pdf->Output($filename, 'D');
     exit;
 }
@@ -253,7 +253,7 @@ function generateInvoiceContent($commande, $lignesCommande) {
             <tr>
                 <td width="50%">
                     <div class="company-info">Youki and Co</div>
-                    <div>contact@YoukiAndCo.fr - SIRET: 123 456 789 00012</div>
+                    <div>contact@origamizen.fr - SIRET: 123 456 789 00012</div>
                 </td>
                 <td width="50%" style="text-align: right;">
                     <div class="invoice-title">FACTURE</div>
