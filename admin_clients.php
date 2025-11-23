@@ -15,7 +15,7 @@ try {
                COALESCE(SUM(cmd.montantTotal), 0) as total_achats
         FROM Client c
         LEFT JOIN Commande cmd ON c.idClient = cmd.idClient
-        WHERE c.type = 'permanent' OR (c.type IS NULL AND c.email NOT LIKE 'temp_%@origamizen.fr')
+        WHERE c.type = 'permanent' OR (c.type IS NULL AND c.email NOT LIKE 'temp_%@YoukiAndCo.fr')
         GROUP BY c.idClient
         ORDER BY c.date_creation DESC
     ");
