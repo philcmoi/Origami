@@ -60,8 +60,8 @@ $paypal_config = [
     'client_id' => 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5',
     'client_secret' => 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1',
     'environment' => 'sandbox',
-    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_success',
-    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/acheter.php?action=paypal_cancel'
+    'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_success',
+    'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/acheter.php?action=paypal_cancel'
 ];
 
 // Fonction pour obtenir l'access token PayPal
@@ -645,7 +645,7 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
+                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
             ]
         ]);
     } else {
@@ -1277,7 +1277,7 @@ try {
         }
 
         // URL de confirmation pointant vers acheter.php
-        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/Origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
+        $urlConfirmation = "http://" . $_SERVER['HTTP_HOST'] . "/origami/acheter.php?action=confirmer_commande&token=" . $tokenConfirmation;
 
         // PRÉPARER LE RÉCAPITULATIF DES ACHATS POUR L'EMAIL
         $recapAchatsHTML = "";

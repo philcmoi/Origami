@@ -222,8 +222,8 @@ function traiterPaiementPayPalCB($donnees, $paypal_config) {
             ]],
             'note_to_payer' => 'Merci pour votre commande sur Youki and Go',
             'redirect_urls' => [
-                'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=success',
-                'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=cancel'
+                'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=success',
+                'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/paiement_cb.php?commande=' . $donnees['commande']['idCommande'] . '&status=cancel'
             ]
         ];
         
@@ -514,7 +514,7 @@ function afficherConfirmationCB($commande, $reference) {
     $idCommande = $commande['idCommande'];
     
     // Générer l'URL de la facture HTML
-    $urlFactureHTML = 'http://' . $_SERVER['HTTP_HOST'] . '/Origami/admin_factures.php?action=generer&id=' . $idCommande;
+    $urlFactureHTML = 'http://' . $_SERVER['HTTP_HOST'] . '/origami/admin_factures.php?action=generer&id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>
