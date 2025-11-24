@@ -1,88 +1,58 @@
 <?php
-session_start();
+// Inclure la protection au tout début
+require_once 'admin_protection.php';
 
 require_once 'config.php';
 
-// Vérifier la connexion administrateur
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: admin_login.php');
-    exit;
-}
+// Récupérer l'ID du client depuis l'URL
+$client_id = $_GET['id'] ?? null;
 
-// Vérifier que l'ID client est présent
-if (!isset($_GET['id']) || empty($_GET['id'])) {
+if (!$client_id) {
     header('Location: admin_clients.php');
     exit;
 }
-
-$client_id = intval($_GET['id']);
-
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Récupérer les informations du client
-    $stmt_client = $pdo->prepare("
-        SELECT * FROM Client 
-        WHERE idClient = ?
+    $stmt = $pdo->prepare("
+        SELECT c.*, 
+               COUNT(cmd.idCommande) as nb_commandes,
+               COALESCE(SUM(cmd.montantTotal), 0) as total_achats,
+               MAX(cmd.dateCommande) as derniere_commande
+        FROM Client c
+        LEFT JOIN Commande cmd ON c.idClient = cmd.idClient
+        WHERE c.idClient = ?
+        GROUP BY c.idClient
     ");
-    $stmt_client->execute([$client_id]);
-    $client = $stmt_client->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$client_id]);
+    $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$client) {
-        die("Client non trouvé");
+        header('Location: admin_clients.php');
+        exit;
     }
 
-    // Récupérer les adresses du client
-    $stmt_adresses = $pdo->prepare("
-        SELECT * FROM Adresse 
-        WHERE idClient = ?
-        ORDER BY type, dateCreation DESC
-    ");
-    $stmt_adresses->execute([$client_id]);
-    $adresses = $stmt_adresses->fetchAll(PDO::FETCH_ASSOC);
-
-    // Séparer les adresses de livraison et facturation
-    $adresse_livraison = null;
-    $adresse_facturation = null;
-    
-    foreach ($adresses as $adresse) {
-        if ($adresse['type'] == 'livraison') {
-            $adresse_livraison = $adresse;
-        } elseif ($adresse['type'] == 'facturation') {
-            $adresse_facturation = $adresse;
-        }
-    }
-
-    // Récupérer les commandes du client
-    $stmt_commandes = $pdo->prepare("
-        SELECT c.*, COUNT(lc.idLigneCommande) as nb_articles
+    // Récupérer les commandes du client - CORRECTION : requête simplifiée sans jointure problématique
+    $stmt = $pdo->prepare("
+        SELECT 
+            c.idCommande,
+            c.dateCommande,
+            c.montantTotal,
+            COUNT(lc.idLigneCommande) as nb_articles
         FROM Commande c
         LEFT JOIN LigneCommande lc ON c.idCommande = lc.idCommande
         WHERE c.idClient = ?
         GROUP BY c.idCommande
         ORDER BY c.dateCommande DESC
     ");
-    $stmt_commandes->execute([$client_id]);
-    $commandes = $stmt_commandes->fetchAll(PDO::FETCH_ASSOC);
-
-    // Calculer les statistiques du client
-    $stmt_stats = $pdo->prepare("
-        SELECT 
-            COUNT(*) as total_commandes,
-            SUM(montantTotal) as total_depense,
-            AVG(montantTotal) as moyenne_commande,
-            MIN(dateCommande) as premiere_commande,
-            MAX(dateCommande) as derniere_commande
-        FROM Commande 
-        WHERE idClient = ?
-    ");
-    $stmt_stats->execute([$client_id]);
-    $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$client_id]);
+    $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    die("Erreur de base de données: " . $e->getMessage());
+    die("Erreur de connexion à la base de données: " . $e->getMessage());
 }
 ?>
 
@@ -98,309 +68,663 @@ try {
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
             color: #333;
+            line-height: 1.6;
+            font-size: 14px;
         }
-        
+
+        /* ===== HEADER OPTIMISÉ ===== */
         .header {
             background: white;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 12px 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        
+
         .logo h1 {
             color: #d40000;
-            font-size: 24px;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 8px;
+            line-height: 1.3;
         }
-        
+
         .admin-info {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
+            text-align: center;
         }
-        
+
+        .admin-info span {
+            font-size: 13px;
+            color: #666;
+        }
+
         .btn-logout {
             background: #d40000;
             color: white;
-            padding: 8px 15px;
+            padding: 8px 16px;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: inline-block;
+            transition: background 0.3s;
+            font-weight: 500;
         }
-        
+
+        .btn-logout:hover {
+            background: #b30000;
+        }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
         .container {
             display: flex;
+            flex-direction: column;
             min-height: calc(100vh - 80px);
         }
-        
-        .sidebar {
-            width: 250px;
-            background: white;
-            padding: 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-        
-        .nav-item {
+
+        /* ===== MENU MOBILE OPTIMISÉ ===== */
+        .mobile-menu-toggle {
             display: block;
+            background: #d40000;
+            color: white;
+            border: none;
             padding: 12px 15px;
-            color: #333;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 15px;
+            width: calc(100% - 30px);
+            font-size: 15px;
+            font-weight: 500;
             transition: background 0.3s;
         }
-        
+
+        .mobile-menu-toggle:hover {
+            background: #b30000;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            position: fixed;
+            top: 80px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            z-index: 99;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.active {
+            display: block;
+            transform: translateX(0);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            color: #333;
+            text-decoration: none;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-item:last-child {
+            border-bottom: none;
+        }
+
         .nav-item:hover, .nav-item.active {
             background: #d40000;
             color: white;
         }
-        
+
+        /* ===== CONTENU PRINCIPAL ===== */
         .main-content {
             flex: 1;
-            padding: 30px;
+            padding: 15px;
         }
-        
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        
-        .page-title h2 {
-            color: #333;
-            font-size: 28px;
-        }
-        
-        .breadcrumb {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .breadcrumb a {
-            color: #d40000;
-            text-decoration: none;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
+
+        /* ===== EN-TÊTE CLIENT ===== */
+        .client-header {
             background: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        
-        .stat-number {
+
+        @media (min-width: 768px) {
+            .client-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: flex-start;
+            }
+        }
+
+        .client-identity {
+            flex: 1;
+        }
+
+        .client-name {
             font-size: 24px;
             font-weight: bold;
-            color: #d40000;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-        }
-        
-        .section {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        .section h3 {
-            margin-bottom: 20px;
             color: #333;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
+            margin-bottom: 8px;
         }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        
-        .info-group {
+
+        .client-id {
+            color: #d40000;
+            font-weight: 600;
+            font-size: 16px;
             margin-bottom: 15px;
         }
-        
-        .info-label {
+
+        .client-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        @media (min-width: 480px) {
+            .client-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 18px;
             font-weight: bold;
+            color: #d40000;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
             color: #666;
+        }
+
+        .client-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 6px;
             font-size: 14px;
-            margin-bottom: 5px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
-        
-        .info-value {
+
+        .btn-primary {
+            background: #d40000;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #b30000;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-1px);
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            margin-bottom: 18px;
             color: #333;
-            font-size: 16px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        
+
+        /* ===== INFORMATIONS CLIENT ===== */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #d40000;
+        }
+
+        .info-group {
+            margin-bottom: 12px;
+        }
+
+        .info-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .info-value.empty {
+            color: #999;
+            font-style: italic;
+        }
+
+        /* ===== COMMANDES ===== */
+        .table-container {
+            display: none;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
+            background: white;
         }
-        
+
         th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
+            font-size: 14px;
         }
-        
+
         th {
             background: #f8f9fa;
             font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
         }
-        
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
+
+        tbody tr:hover {
+            background: #f8f9fa;
         }
-        
-        .status-en_attente {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-confirmee {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .status-expediee {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-livree {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
+
         .btn-action {
-            padding: 6px 12px;
-            background: #d40000;
+            padding: 8px 16px;
+            background: #17a2b8;
             color: white;
             text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-action:hover {
-            background: #b30000;
-        }
-        
-        .btn-secondary {
-            padding: 6px 12px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-secondary:hover {
-            background: #545b62;
-        }
-        
-        .type-badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .type-permanent {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .type-temporaire {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .email-confirmed {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .email-pending {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .address-card {
-            background: #f8f9fa;
-            padding: 15px;
             border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        
-        .address-type {
+            font-size: 13px;
             display: inline-block;
-            padding: 2px 8px;
-            background: #d40000;
-            color: white;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-bottom: 5px;
+            transition: background 0.3s;
         }
-        
-        .addresses-comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 20px;
+
+        .btn-action:hover {
+            background: #138496;
+            transform: translateY(-1px);
         }
-        
-        .address-column {
+
+        /* ===== VERSION MOBILE (CARTES) ===== */
+        .orders-mobile {
+            display: block;
+        }
+
+        .order-card {
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+            border-left: 4px solid #d40000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        
-        .address-title {
+
+        .order-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .order-id {
             font-weight: bold;
             color: #d40000;
+            font-size: 16px;
+        }
+
+        .order-date {
+            color: #666;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .order-info {
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
             margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
         }
-        
-        .same-address-notice {
-            background: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 5px;
+
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+            min-width: 80px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            font-size: 13px;
+            word-break: break-word;
+            padding-left: 10px;
+        }
+
+        /* ===== ACTIONS MOBILE ===== */
+        .order-actions-mobile {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-mobile {
+            padding: 10px 15px;
+            background: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
             text-align: center;
-            margin-top: 20px;
+            flex: 1;
+            font-weight: 500;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
-        
-        @media (max-width: 768px) {
-            .addresses-comparison {
+
+        .btn-mobile:hover {
+            background: #138496;
+        }
+
+        /* ===== ÉTATS ===== */
+        .no-orders {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+            font-style: italic;
+            font-size: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        /* ===== OVERLAY MENU MOBILE ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 98;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* ===== VERSION ORDINATEUR ===== */
+        @media (min-width: 1024px) {
+            /* Header desktop */
+            .header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 25px;
+            }
+
+            .logo h1 {
+                text-align: left;
+                margin-bottom: 0;
+                font-size: 22px;
+            }
+
+            .admin-info {
+                flex-direction: row;
+                text-align: left;
+                gap: 15px;
+            }
+
+            /* Layout desktop */
+            .container {
+                flex-direction: row;
+            }
+
+            .mobile-menu-toggle {
+                display: none;
+            }
+
+            .sidebar {
+                display: block;
+                position: static;
+                width: 280px;
+                height: auto;
+                padding: 0;
+                transform: none;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            .nav-item {
+                padding: 18px 25px;
+                font-size: 15px;
+            }
+
+            .main-content {
+                padding: 25px;
+                flex: 1;
+                overflow-x: auto;
+            }
+
+            /* Sections desktop */
+            .section {
+                padding: 25px;
+                margin-bottom: 25px;
+            }
+
+            .section h2 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            /* Affichage conditionnel desktop/mobile */
+            .table-container {
+                display: block;
+            }
+
+            .orders-mobile {
+                display: none;
+            }
+
+            /* Statistiques client desktop */
+            .client-stats {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+
+            .stat-item {
+                padding: 15px;
+            }
+
+            .stat-number {
+                font-size: 20px;
+            }
+        }
+
+        /* ===== AMÉLIORATIONS TRÈS PETITS ÉCRANS ===== */
+        @media (max-width: 360px) {
+            .main-content {
+                padding: 12px;
+            }
+
+            .client-header {
+                padding: 15px;
+            }
+
+            .client-name {
+                font-size: 20px;
+            }
+
+            .client-stats {
                 grid-template-columns: 1fr;
+            }
+
+            .order-card {
+                padding: 14px;
+            }
+
+            .btn-mobile {
+                padding: 9px 12px;
+                font-size: 12px;
+            }
+
+            .nav-item {
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+
+            .client-actions {
+                flex-direction: column;
+            }
+
+            .btn-primary, .btn-secondary {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* ===== AMÉLIORATIONS ÉCRANS MOYENS ===== */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-content {
+                padding: 20px;
+            }
+
+            .section {
+                padding: 25px 20px;
+            }
+        }
+
+        /* ===== ANIMATIONS ET INTERACTIONS ===== */
+        @media (hover: hover) {
+            .order-card:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        /* ===== ACCESSIBILITÉ ===== */
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar, .sidebar-overlay, .order-card {
+                transition: none;
+            }
+        }
+
+        /* ===== IMPRESSION ===== */
+        @media print {
+            .sidebar, .mobile-menu-toggle, .btn-logout, .client-actions {
+                display: none;
+            }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .main-content {
+                padding: 0;
+            }
+
+            .section, .client-header {
+                box-shadow: none;
+                border: 1px solid #ddd;
             }
         }
     </style>
@@ -408,243 +732,239 @@ try {
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Youki and Co - Administration</h1>
+            <h1>Youki and Co - Détails Client</h1>
         </div>
         <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+            <span>Connecté: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
             <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
         </div>
     </div>
-    
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        ☰ Menu Administration
+    </button>
+
     <div class="container">
-        <div class="sidebar">
-            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_clients.php" class="nav-item active">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
+        <div class="sidebar" id="sidebar">
+            <a href="admin_dashboard.php" class="nav-item">📊 Tableau de Bord</a>
+            <a href="admin_commandes.php" class="nav-item">📦 Gestion des Commandes</a>
+            <a href="admin_factures.php" class="nav-item">📄 Gestion des Factures</a>
+            <a href="admin_clients.php" class="nav-item active">👥 Gestion des Clients</a>
+            <a href="admin_produits.php" class="nav-item">🎨 Gestion des Produits</a>
         </div>
-        
+
         <div class="main-content">
-            <div class="page-header">
-                <div class="page-title">
-                    <h2>Détails du Client</h2>
-                    <div class="breadcrumb">
-                        <a href="admin_dashboard.php">Tableau de bord</a> &gt; 
-                        <a href="admin_clients.php">Clients</a> &gt; 
-                        Détails client #<?= $client_id ?>
+            <!-- En-tête du client -->
+            <div class="client-header">
+                <div class="client-identity">
+                    <div class="client-name">
+                        <?= htmlspecialchars($client['prenom'] . ' ' . $client['nom']) ?>
+                    </div>
+                    <div class="client-id">
+                        Client #<?= $client['idClient'] ?>
+                    </div>
+                    <div class="client-stats">
+                        <div class="stat-item">
+                            <div class="stat-number"><?= $client['nb_commandes'] ?></div>
+                            <div class="stat-label">Commandes</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number"><?= number_format($client['total_achats'], 2, ',', ' ') ?>€</div>
+                            <div class="stat-label">Total Achats</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">
+                                <?= $client['derniere_commande'] ? date('d/m/Y', strtotime($client['derniere_commande'])) : 'N/A' ?>
+                            </div>
+                            <div class="stat-label">Dernière commande</div>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <a href="admin_clients.php" class="btn-secondary">← Retour à la liste</a>
+                <div class="client-actions">
+                    <a href="admin_clients.php" class="btn-secondary">
+                        <span>←</span>
+                        Retour aux clients
+                    </a>
                 </div>
             </div>
-            
-            <!-- Statistiques du client -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number"><?= $stats['total_commandes'] ?? 0 ?></div>
-                    <div class="stat-label">Commandes totales</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['total_depense'] ?? 0, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Total dépensé</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['moyenne_commande'] ?? 0, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Moyenne par commande</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">
-                        <?= $stats['premiere_commande'] ? date('d/m/Y', strtotime($stats['premiere_commande'])) : 'N/A' ?>
-                    </div>
-                    <div class="stat-label">Première commande</div>
-                </div>
-            </div>
-            
+
             <!-- Informations personnelles -->
             <div class="section">
-                <h3>Informations Personnelles</h3>
+                <h2>👤 Informations Personnelles</h2>
                 <div class="info-grid">
-                    <div class="info-group">
-                        <div class="info-label">ID Client</div>
-                        <div class="info-value">#<?= $client_id ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Nom complet</div>
-                        <div class="info-value"><?= htmlspecialchars($client['prenom'] . ' ' . $client['nom']) ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">
-                            <?= htmlspecialchars($client['email']) ?>
-                            <?php if ($client['email_confirme'] == 1): ?>
-                                <span class="email-confirmed">✓ Confirmé</span>
-                            <?php else: ?>
-                                <span class="email-pending">✗ Non confirmé</span>
-                            <?php endif; ?>
+                    <div class="info-card">
+                        <div class="info-group">
+                            <div class="info-label">Email</div>
+                            <div class="info-value"><?= htmlspecialchars($client['email']) ?></div>
                         </div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Téléphone</div>
-                        <div class="info-value"><?= htmlspecialchars($client['telephone'] ?? 'Non renseigné') ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Type de compte</div>
-                        <div class="info-value">
-                            <span class="type-badge type-<?= $client['type'] ?? 'temporaire' ?>">
-                                <?= $client['type'] ?? 'temporaire' ?>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Date d'inscription</div>
-                        <div class="info-value"><?= date('d/m/Y à H:i', strtotime($client['date_creation'])) ?></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Adresses -->
-<div class="section">
-    <h3>Adresses</h3>
-    <?php if (count($adresses) > 0): ?>
-        <?php 
-        $has_livraison = !is_null($adresse_livraison);
-        $has_facturation = !is_null($adresse_facturation);
-        $same_address = $has_livraison && $has_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse'];
-        ?>
-        
-        <!-- Affichage côte à côte pour montrer les deux adresses séparément -->
-        <div class="addresses-comparison">
-            <!-- Colonne Livraison -->
-            <div class="address-column">
-                <div class="address-title">
-                    📍 Adresse de Livraison 
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la facturation)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_livraison): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_livraison['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['telephone']) ?>
-                        <?php if (!empty($adresse_livraison['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_livraison['societe']) ?>
-                        <?php endif; ?>
-                        <?php if (!empty($adresse_livraison['instructions'])): ?>
-                            <br>Instructions: <?= htmlspecialchars($adresse_livraison['instructions']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de livraison enregistrée</p>
-                <?php endif; ?>
-            </div>
-            
-            <!-- Colonne Facturation -->
-            <div class="address-column">
-                <div class="address-title">
-                    📄 Adresse de Facturation
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la livraison)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_facturation): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_facturation['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['telephone']) ?>
-                        <?php if (!empty($adresse_facturation['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_facturation['societe']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de facturation enregistrée</p>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <!-- Affichage des adresses supplémentaires s'il y en a -->
-        <?php 
-        $adresses_supplementaires = array_filter($adresses, function($adresse) use ($adresse_livraison, $adresse_facturation) {
-            return $adresse['idAdresse'] != ($adresse_livraison['idAdresse'] ?? null) && 
-                   $adresse['idAdresse'] != ($adresse_facturation['idAdresse'] ?? null);
-        });
-        ?>
-        
-        <?php if (count($adresses_supplementaires) > 0): ?>
-            <div style="margin-top: 30px;">
-                <h4 style="margin-bottom: 15px; color: #666;">Adresses supplémentaires</h4>
-                <div class="info-grid">
-                    <?php foreach ($adresses_supplementaires as $adresse): ?>
-                        <div class="address-card">
-                            <span class="address-type"><?= $adresse['type'] ?? 'livraison' ?></span>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']) ?></strong><br>
-                                <?= htmlspecialchars($adresse['adresse']) ?><br>
-                                <?= htmlspecialchars($adresse['codePostal'] . ' ' . $adresse['ville']) ?><br>
-                                <?= htmlspecialchars($adresse['pays']) ?><br>
-                                <?= htmlspecialchars($adresse['telephone']) ?>
-                                <?php if (!empty($adresse['societe'])): ?>
-                                    <br>Société: <?= htmlspecialchars($adresse['societe']) ?>
-                                <?php endif; ?>
-                                <?php if (!empty($adresse['instructions']) && $adresse['type'] == 'livraison'): ?>
-                                    <br>Instructions: <?= htmlspecialchars($adresse['instructions']) ?>
-                                <?php endif; ?>
+                        <div class="info-group">
+                            <div class="info-label">Téléphone</div>
+                            <div class="info-value <?= empty($client['telephone']) ? 'empty' : '' ?>">
+                                <?= !empty($client['telephone']) ? htmlspecialchars($client['telephone']) : 'Non renseigné' ?>
                             </div>
                         </div>
-                    <?php endforeach; ?>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-group">
+                            <div class="info-label">Date d'inscription</div>
+                            <div class="info-value"><?= date('d/m/Y à H:i', strtotime($client['dateInscription'])) ?></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Type de client</div>
+                            <div class="info-value">
+                                Client standard
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        <?php endif; ?>
-        
-    <?php else: ?>
-        <p>Aucune adresse enregistrée pour ce client.</p>
-    <?php endif; ?>
-</div>
-            
+
             <!-- Historique des commandes -->
             <div class="section">
-                <h3>Historique des Commandes</h3>
-                <?php if (count($commandes) > 0): ?>
+                <h2>📦 Historique des Commandes</h2>
+
+                <?php if (empty($commandes)): ?>
+                    <div class="no-orders">
+                        Aucune commande pour ce client.
+                    </div>
+                <?php else: ?>
+
+                <!-- Version Desktop (tableau) -->
+                <div class="table-container">
                     <table>
                         <thead>
                             <tr>
                                 <th>ID Commande</th>
                                 <th>Date</th>
-                                <th>Articles</th>
                                 <th>Montant</th>
-                                <th>Statut</th>
+                                <th>Articles</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($commandes as $commande): ?>
                             <tr>
-                                <td>#<?= $commande['idCommande'] ?></td>
+                                <td><strong>#<?= $commande['idCommande'] ?></strong></td>
                                 <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
+                                <td><strong><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</strong></td>
                                 <td><?= $commande['nb_articles'] ?> article(s)</td>
-                                <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
                                 <td>
-                                    <span class="status-badge status-<?= $commande['statut'] ?>">
-                                        <?= $commande['statut'] ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a>
+                                    <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn-action" target="_blank">Voir facture</a>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                <?php else: ?>
-                    <p>Aucune commande pour ce client.</p>
+                </div>
+
+                <!-- Version Mobile (cartes) -->
+                <div class="orders-mobile">
+                    <?php foreach ($commandes as $commande): ?>
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-id">#<?= $commande['idCommande'] ?></div>
+                            <div class="order-date"><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></div>
+                        </div>
+
+                        <div class="order-info">
+                            <div class="info-row">
+                                <span class="info-label">Montant:</span>
+                                <span class="info-value"><strong><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</strong></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Articles:</span>
+                                <span class="info-value"><?= $commande['nb_articles'] ?> article(s)</span>
+                            </div>
+                        </div>
+
+                        <div class="order-actions-mobile">
+                            <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn-mobile" target="_blank">
+                                <span>📄</span>
+                                <span>Voir facture</span>
+                            </a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
                 <?php endif; ?>
             </div>
         </div>
     </div>
+
+    <script>
+        // Gestion du menu mobile optimisée
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleMobileMenu() {
+            const isActive = sidebar.classList.contains('active');
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+            document.body.style.overflow = isActive ? '' : 'hidden';
+
+            // Animation du bouton
+            mobileMenuToggle.style.transform = isActive ? 'none' : 'scale(0.98)';
+        }
+
+        function closeMobileMenu() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            mobileMenuToggle.style.transform = 'none';
+        }
+
+        mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        sidebarOverlay.addEventListener('click', closeMobileMenu);
+
+        // Fermer le menu en cliquant sur un lien (mobile seulement)
+        sidebar.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeMobileMenu();
+                }
+            });
+        });
+
+        // Adapter au redimensionnement
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Masquer le menu au chargement sur mobile
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth < 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Empêcher le scroll quand le menu est ouvert
+        sidebar.addEventListener('touchmove', function(e) {
+            if (sidebar.classList.contains('active')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Amélioration de l'accessibilité
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                closeMobileMenu();
+                mobileMenuToggle.focus();
+            }
+        });
+
+        // Focus management pour l'accessibilité
+        mobileMenuToggle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleMobileMenu();
+            }
+        });
+    </script>
 </body>
 </html>
