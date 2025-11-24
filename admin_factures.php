@@ -26,7 +26,7 @@ try {
 // Fonction pour envoyer un email avec PHPMailer
 function envoyerEmail($destinataire, $sujet, $message, $pieceJointe = null) {
     $mail = new PHPMailer(true);
-    
+
     try {
         // Configuration du serveur SMTP
         $mail->isSMTP();
@@ -38,7 +38,7 @@ function envoyerEmail($destinataire, $sujet, $message, $pieceJointe = null) {
         $mail->Port = SMTP_PORT;
         $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
-        
+
         // Options de sécurité
         $mail->SMTPOptions = array(
             'ssl' => array(
@@ -47,29 +47,29 @@ function envoyerEmail($destinataire, $sujet, $message, $pieceJointe = null) {
                 'allow_self_signed' => true
             )
         );
-        
+
         // Destinataires - UTILISER LES CONSTANTES DE CONFIGURATION
         $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($destinataire);
         $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
-        
+
         // Pièce jointe si fournie
         if ($pieceJointe && file_exists($pieceJointe)) {
             $mail->addAttachment($pieceJointe, 'facture_' . basename($pieceJointe));
         }
-        
+
         // Contenu
         $mail->isHTML(true);
         $mail->Subject = $sujet;
         $mail->Body = $message;
         $mail->AltBody = strip_tags($message);
-        
+
         if ($mail->send()) {
             return ['success' => true, 'message' => 'Email envoyé avec succès'];
         } else {
             return ['success' => false, 'error' => 'Échec de l\'envoi sans exception'];
         }
-        
+
     } catch (Exception $e) {
         error_log("Erreur PHPMailer: " . $mail->ErrorInfo);
         return ['success' => false, 'error' => 'Erreur PHPMailer: ' . $e->getMessage()];
@@ -83,11 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'envoyer_facture':
                 $idCommande = $_POST['id_commande'] ?? null;
                 $email = $_POST['email'] ?? '';
-                
+
                 if ($idCommande && $email) {
                     // Récupérer les détails de la commande avec l'adresse de FACTURATION et vérifier le statut
                     $stmt = $pdo->prepare("
-                        SELECT 
+                        SELECT
                             c.idCommande,
                             c.dateCommande,
                             c.montantTotal,
@@ -110,18 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$idCommande]);
                     $commande = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
+
                     if ($commande) {
                         // VÉRIFIER SI LA COMMANDE EST PAYÉE
                         if ($commande['statut'] !== 'payee') {
                             $_SESSION['message_error'] = "❌ Impossible d'envoyer la facture : La commande #" . $commande['idCommande'] . " n'est pas payée (statut: " . $commande['statut'] . ")";
                             break;
                         }
-                        
+
                         // Inclure et utiliser la vraie fonction de génération PDF
                         require_once 'genererFacturePDF.php';
                         $cheminPDF = genererFacturePDF($pdo, $idCommande);
-                        
+
                         if ($cheminPDF && file_exists($cheminPDF)) {
                             // Générer le contenu HTML de l'email
                             $sujet = "Votre facture Youki and Co - Commande #" . $commande['idCommande'];
@@ -146,14 +146,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class='content'>
                                         <h2>Merci pour votre commande !</h2>
                                         <p>Bonjour <strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong>,</p>
-                                        
+
                                         <div class='info-box'>
                                             <h3>📦 Détails de votre commande</h3>
                                             <p><strong>Commande #" . $commande['idCommande'] . "</strong></p>
                                             <p>Date : " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
                                             <p><strong>Montant total : " . number_format($commande['montantTotal'], 2, ',', ' ') . " € TTC</strong></p>
                                         </div>
-                                        
+
                                         <p>Votre facture détaillée est jointe à cet email au format PDF.</p>
                                         <p>Nous vous remercions pour votre confiance et espérons vous revoir très bientôt !</p>
                                         <br>
@@ -169,10 +169,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </body>
                             </html>
                             ";
-                            
+
                             // Envoyer l'email avec PHPMailer et la pièce jointe PDF
                             $resultat = envoyerEmail($email, $sujet, $message, $cheminPDF);
-                            
+
                             if ($resultat['success']) {
                                 $_SESSION['message_success'] = "✅ Facture #" . $commande['idCommande'] . " envoyée avec succès à " . $email;
                             } else {
@@ -189,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
         }
-        
+
         // Rediriger pour éviter la resoumission du formulaire
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
@@ -199,10 +199,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Gestion de l'action GET pour générer une facture
 if (isset($_GET['action']) && $_GET['action'] === 'generer' && isset($_GET['id'])) {
     $idCommande = $_GET['id'];
-    
+
     // Récupérer les détails de la commande avec l'adresse de FACTURATION
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT
             c.idCommande,
             c.dateCommande,
             c.montantTotal,
@@ -225,7 +225,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'generer' && isset($_GET['id']
     ");
     $stmt->execute([$idCommande]);
     $commande = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($commande) {
         // Afficher la facture
         header('Content-Type: text/html; charset=UTF-8');
@@ -241,34 +241,42 @@ function genererFactureHTML($commande) {
     $tauxTVA = 0.20; // 20%
     $montantHT = $montantTTC / (1 + $tauxTVA);
     $montantTVA = $montantTTC - $montantHT;
-    
+
     return "
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
         <title>Facture #" . $commande['idCommande'] . " - Youki and Co</title>
         <style>
-            body { 
-                font-family: 'Helvetica Neue', Arial, sans-serif; 
-                margin: 0; 
-                padding: 0; 
+            body {
+                font-family: 'Helvetica Neue', Arial, sans-serif;
+                margin: 0;
+                padding: 0;
                 color: #333;
                 background-color: #f9f9f9;
                 line-height: 1.6;
             }
-            .container { 
-                max-width: 700px; 
-                background: white; 
-                padding: 30px; 
+            .container {
+                max-width: 700px;
+                background: white;
+                padding: 20px;
                 margin: 0 auto;
                 border-radius: 8px;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
-            .header { 
-                text-align: center; 
-                color: #d40000; 
-                margin-bottom: 25px; 
+            @media (max-width: 768px) {
+                .container {
+                    padding: 15px;
+                    margin: 10px;
+                    max-width: none;
+                }
+            }
+            .header {
+                text-align: center;
+                color: #d40000;
+                margin-bottom: 25px;
                 border-bottom: 2px solid #f0f0f0;
                 padding-bottom: 20px;
             }
@@ -278,11 +286,22 @@ function genererFactureHTML($commande) {
                 gap: 20px;
                 margin-bottom: 25px;
             }
+            @media (max-width: 768px) {
+                .info-section {
+                    grid-template-columns: 1fr;
+                    gap: 15px;
+                }
+            }
             .info-box {
                 background: #f8f9fa;
-                padding: 20px;
+                padding: 15px;
                 border-radius: 8px;
                 border: 1px solid #e9ecef;
+            }
+            @media (max-width: 480px) {
+                .info-box {
+                    padding: 12px;
+                }
             }
             .info-box h3 {
                 margin-top: 0;
@@ -303,18 +322,37 @@ function genererFactureHTML($commande) {
                 background: white;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
+            @media (max-width: 768px) {
+                .table-facture {
+                    display: block;
+                    overflow-x: auto;
+                    white-space: nowrap;
+                }
+            }
             .table-facture th {
                 background: #d40000;
                 color: white;
-                padding: 15px;
+                padding: 12px;
                 text-align: left;
                 font-weight: bold;
                 font-size: 14px;
             }
+            @media (max-width: 480px) {
+                .table-facture th {
+                    padding: 8px;
+                    font-size: 12px;
+                }
+            }
             .table-facture td {
-                padding: 15px;
+                padding: 12px;
                 border-bottom: 1px solid #ddd;
                 font-size: 14px;
+            }
+            @media (max-width: 480px) {
+                .table-facture td {
+                    padding: 8px;
+                    font-size: 12px;
+                }
             }
             .total-section {
                 margin-top: 25px;
@@ -322,6 +360,11 @@ function genererFactureHTML($commande) {
                 background: #f8f9fa;
                 border-radius: 8px;
                 border: 1px solid #e9ecef;
+            }
+            @media (max-width: 480px) {
+                .total-section {
+                    padding: 15px;
+                }
             }
             .total-line {
                 display: flex;
@@ -338,6 +381,13 @@ function genererFactureHTML($commande) {
                 font-size: 16px;
                 font-weight: bold;
                 color: #d40000;
+            }
+            @media (max-width: 480px) {
+                .total-final {
+                    font-size: 14px;
+                flex-direction: column;
+                    gap: 5px;
+                }
             }
             .footer {
                 margin-top: 30px;
@@ -388,22 +438,22 @@ function genererFactureHTML($commande) {
                 <h1 style='margin: 0; color: white; font-size: 24px;'>Youki and Co</h1>
                 <p style='margin: 5px 0 0 0; opacity: 0.9;'>Créations artisanales japonaises</p>
             </div>
-            
+
             <div class='header'>
                 <h2 style='margin: 0 0 8px 0; font-size: 20px;'>FACTURE #" . $commande['idCommande'] . "</h2>
                 <p style='margin: 0; font-size: 14px;'>Date d'émission: " . date('d/m/Y', strtotime($commande['dateCommande'])) . "</p>
-                " . ($commande['statut'] === 'payee' ? 
-                    '<span class="badge">PAYÉE</span>' : 
+                " . ($commande['statut'] === 'payee' ?
+                    '<span class="badge">PAYÉE</span>' :
                     '<span class="statut-non-paye">NON PAYÉE</span>') . "
             </div>
-            
+
             <div class='info-section'>
                 <div class='info-box'>
                     <h3>👤 INFORMATIONS CLIENT</h3>
                     <div class='client-info'><strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong></div>
                     <div class='client-info'>📧 " . htmlspecialchars($commande['email']) . "</div>
                 </div>
-                
+
                 <div class='info-box'>
                     <h3>🏢 ADRESSE DE FACTURATION</h3>
                     <div class='address-block'><strong>" . htmlspecialchars($commande['prenom']) . " " . htmlspecialchars($commande['nom']) . "</strong></div>
@@ -420,7 +470,7 @@ function genererFactureHTML($commande) {
                     <div class='address-block'>" . htmlspecialchars($commande['cp_livraison']) . " " . htmlspecialchars($commande['ville_livraison']) . "</div>
                 </div>
             </div>
-            
+
             <table class='table-facture'>
                 <thead>
                     <tr>
@@ -442,29 +492,29 @@ function genererFactureHTML($commande) {
                     </tr>
                 </tbody>
             </table>
-            
+
             <div class='total-section'>
                 <h3 style='margin: 0 0 15px 0; color: #d40000; text-align: center; font-size: 16px;'>DÉTAIL DU MONTANT</h3>
-                
+
                 <div class='total-line'>
                     <span>Sous-total HT:</span>
                     <span>" . number_format($montantHT, 2, ',', ' ') . " €</span>
                 </div>
-                
+
                 <div class='total-line'>
                     <span>TVA (" . ($tauxTVA * 100) . "%):</span>
                     <span>" . number_format($montantTVA, 2, ',', ' ') . " €</span>
                 </div>
-                
+
                 <div class='total-final'>
                     <span>TOTAL TTC:</span>
                     <span>" . number_format($montantTTC, 2, ',', ' ') . " €</span>
                 </div>
             </div>
-            
+
             <div class='footer'>
                 <p style='margin: 0 0 8px 0; font-weight: bold; font-size: 14px;'>Youki and Co - Créations artisanales japonaises</p>
-                <p style='margin: 4px 0;'>📧 contact@origamizen.fr | 📞 +33 1 23 45 67 89</p>
+                <p style='margin: 4px 0;'>📧 contact@YoukiAndCo.fr | 📞 +33 1 23 45 67 89</p>
                 <p style='margin: 4px 0;'>123 Rue du Papier, 75000 Paris, France</p>
                 <p style='margin: 4px 0;'>SIRET: 123 456 789 00012 | APE: 1234Z | TVA: FR12345678901</p>
                 <p style='margin-top: 12px; font-size: 11px; color: #999;'>
@@ -479,7 +529,7 @@ function genererFactureHTML($commande) {
 
 // Récupérer la liste des commandes avec l'adresse de FACTURATION
 $stmt = $pdo->prepare("
-    SELECT 
+    SELECT
         c.idCommande,
         c.dateCommande,
         c.montantTotal,
@@ -513,33 +563,58 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
             color: #333;
         }
-        
+
         .header {
             background: white;
-            padding: 20px;
+            padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+                padding: 15px;
+            }
+        }
+
         .logo h1 {
             color: #d40000;
             font-size: 24px;
         }
-        
+
+        @media (max-width: 480px) {
+            .logo h1 {
+                font-size: 20px;
+            }
+        }
+
         .admin-info {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        
+
+        @media (max-width: 480px) {
+            .admin-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
         .btn-logout {
             background: #d40000;
             color: white;
@@ -547,20 +622,39 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             text-decoration: none;
             border-radius: 5px;
             font-size: 14px;
+            transition: background 0.3s;
         }
-        
+
+        .btn-logout:hover {
+            background: #b30000;
+        }
+
         .container {
             display: flex;
             min-height: calc(100vh - 80px);
         }
-        
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+
         .sidebar {
             width: 250px;
             background: white;
             padding: 20px;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
         }
-        
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                order: 2;
+                padding: 15px;
+            }
+        }
+
         .nav-item {
             display: block;
             padding: 12px 15px;
@@ -570,17 +664,25 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 5px;
             transition: background 0.3s;
         }
-        
+
         .nav-item:hover, .nav-item.active {
             background: #d40000;
             color: white;
         }
-        
+
         .main-content {
             flex: 1;
-            padding: 30px;
+            padding: 20px;
+            overflow-x: auto;
         }
-        
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 15px;
+                order: 1;
+            }
+        }
+
         .message-success {
             background: #d4edda;
             color: #155724;
@@ -593,7 +695,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
             gap: 10px;
         }
-        
+
         .message-error {
             background: #f8d7da;
             color: #721c24;
@@ -606,7 +708,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
             gap: 10px;
         }
-        
+
         .table-commandes {
             width: 100%;
             border-collapse: collapse;
@@ -615,27 +717,52 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 800px;
         }
-        
+
+        @media (max-width: 768px) {
+            .table-commandes-container {
+                overflow-x: auto;
+                margin: 0 -15px;
+                padding: 0 15px;
+            }
+        }
+
         .table-commandes th {
             background: #d40000;
             color: white;
-            padding: 15px;
+            padding: 12px;
             text-align: left;
             font-weight: 600;
+            font-size: 14px;
         }
-        
+
+        @media (max-width: 480px) {
+            .table-commandes th {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+        }
+
         .table-commandes td {
-            padding: 15px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
+            font-size: 14px;
         }
-        
+
+        @media (max-width: 480px) {
+            .table-commandes td {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+        }
+
         .table-commandes tr:hover {
             background: #f8f9fa;
         }
-        
+
         .btn {
-            padding: 10px 16px;
+            padding: 8px 12px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -643,116 +770,154 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            font-size: 14px;
+            font-size: 12px;
             transition: all 0.3s;
             font-weight: 500;
+            white-space: nowrap;
         }
-        
+
+        @media (max-width: 480px) {
+            .btn {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+        }
+
         .btn-success {
             background-color: #28a745;
             color: white;
         }
-        
+
         .btn-success:hover {
             background-color: #218838;
             transform: translateY(-1px);
         }
-        
+
         .btn-primary {
             background-color: #007bff;
             color: white;
         }
-        
+
         .btn-primary:hover {
             background-color: #0056b3;
             transform: translateY(-1px);
         }
-        
+
         .btn-warning {
             background-color: #ffc107;
             color: #212529;
         }
-        
+
         .btn-warning:hover {
             background-color: #e0a800;
             transform: translateY(-1px);
         }
-        
+
         .btn-disabled {
             background-color: #6c757d;
             color: white;
             cursor: not-allowed;
             opacity: 0.6;
         }
-        
+
         .btn-disabled:hover {
             background-color: #6c757d;
             transform: none;
         }
-        
+
         .statut {
-            padding: 6px 12px;
+            padding: 4px 8px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             text-transform: uppercase;
+            white-space: nowrap;
         }
-        
+
+        @media (max-width: 480px) {
+            .statut {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+        }
+
         .statut-payee { background: #d4edda; color: #155724; }
         .statut-en_attente { background: #fff3cd; color: #856404; }
         .statut-expediee { background: #cce7ff; color: #004085; }
         .statut-annulee { background: #f8d7da; color: #721c24; }
-        
+
         .form-inline {
             display: inline;
         }
-        
+
         .actions-cell {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
-        
+
+        @media (max-width: 480px) {
+            .actions-cell {
+                gap: 4px;
+                flex-direction: column;
+            }
+        }
+
         .page-title {
             color: #d40000;
             margin-bottom: 20px;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 10px;
+            font-size: 24px;
         }
-        
+
+        @media (max-width: 480px) {
+            .page-title {
+                font-size: 20px;
+                text-align: center;
+            }
+        }
+
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-        
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+
         .stat-card {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             text-align: center;
         }
-        
+
         .stat-card h3 {
             color: #d40000;
             margin-bottom: 10px;
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
         }
-        
+
         .stat-card .number {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #333;
         }
-        
+
         .tooltip {
             position: relative;
             display: inline-block;
         }
-        
+
         .tooltip .tooltiptext {
             visibility: hidden;
             width: 200px;
@@ -771,10 +936,59 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-size: 12px;
             font-weight: normal;
         }
-        
+
         .tooltip:hover .tooltiptext {
             visibility: visible;
             opacity: 1;
+        }
+
+        /* Styles pour les écrans très petits */
+        @media (max-width: 360px) {
+            .header {
+                padding: 10px;
+            }
+
+            .main-content {
+                padding: 10px;
+            }
+
+            .table-commandes {
+                min-width: 600px;
+            }
+
+            .btn {
+                padding: 5px 8px;
+                font-size: 10px;
+            }
+        }
+
+        /* Menu mobile */
+        .mobile-menu-toggle {
+            display: none;
+            background: #d40000;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 15px;
+            width: 100%;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .sidebar.active {
+                display: block;
+            }
         }
     </style>
 </head>
@@ -788,16 +1002,18 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <a href="admin_logout.php" class="btn-logout">Déconnexion</a>
         </div>
     </div>
-    
+
     <div class="container">
-        <div class="sidebar">
+        <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰ Menu Administration</button>
+
+        <div class="sidebar" id="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
             <a href="admin_factures.php" class="nav-item active">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
             <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
         </div>
-        
+
         <div class="main-content">
             <h1 class="page-title">📄 Administration des Factures</h1>
 
@@ -843,69 +1059,71 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <table class="table-commandes">
-                <thead>
-                    <tr>
-                        <th>ID Commande</th>
-                        <th>Date</th>
-                        <th>Client</th>
-                        <th>Montant TTC</th>
-                        <th>Statut</th>
-                        <th>Adresse Facturation</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($commandes as $commande): ?>
+            <div class="table-commandes-container">
+                <table class="table-commandes">
+                    <thead>
                         <tr>
-                            <td><strong>#<?= $commande['idCommande'] ?></strong></td>
-                            <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
-                            <td>
-                                <strong><?= htmlspecialchars($commande['prenom']) ?> <?= htmlspecialchars($commande['nom']) ?></strong><br>
-                                <small>📧 <?= htmlspecialchars($commande['email']) ?></small>
-                            </td>
-                            <td><strong><?= number_format($commande['montantTotal'], 2, ',', ' ') ?> € TTC</strong></td>
-                            <td>
-                                <span class="statut statut-<?= $commande['statut'] ?>">
-                                    <?= $commande['statut'] ?>
-                                </span>
-                            </td>
-                            <td>
-                                <?= htmlspecialchars($commande['adresse_facturation']) ?><br>
-                                <small><?= htmlspecialchars($commande['ville_facturation']) ?></small>
-                            </td>
-                            <td>
-                                <div class="actions-cell">
-                                    <?php if ($commande['statut'] === 'payee'): ?>
-                                        <form method="POST" class="form-inline">
-                                            <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
-                                            <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
-                                            <input type="hidden" name="action" value="envoyer_facture">
-                                            <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
-                                                📧 Envoyer
-                                            </button>
-                                        </form>
-                                    <?php else: ?>
-                                        <div class="tooltip">
-                                            <button type="button" class="btn btn-disabled">
-                                                📧 Envoyer
-                                            </button>
-                                            <span class="tooltiptext">La facture ne peut être envoyée que pour les commandes payées</span>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn btn-primary" target="_blank">
-                                        👁️ Voir
-                                    </a>
-                                    <a href="generer_facture.php?id=<?= $commande['idCommande'] ?>" class="btn btn-warning" target="_blank">
-                                        📄 PDF
-                                    </a>
-                                </div>
-                            </td>
+                            <th>ID Commande</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th>Montant TTC</th>
+                            <th>Statut</th>
+                            <th>Adresse Facturation</th>
+                            <th>Actions</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($commandes as $commande): ?>
+                            <tr>
+                                <td><strong>#<?= $commande['idCommande'] ?></strong></td>
+                                <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
+                                <td>
+                                    <strong><?= htmlspecialchars($commande['prenom']) ?> <?= htmlspecialchars($commande['nom']) ?></strong><br>
+                                    <small>📧 <?= htmlspecialchars($commande['email']) ?></small>
+                                </td>
+                                <td><strong><?= number_format($commande['montantTotal'], 2, ',', ' ') ?> € TTC</strong></td>
+                                <td>
+                                    <span class="statut statut-<?= $commande['statut'] ?>">
+                                        <?= $commande['statut'] ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($commande['adresse_facturation']) ?><br>
+                                    <small><?= htmlspecialchars($commande['ville_facturation']) ?></small>
+                                </td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <?php if ($commande['statut'] === 'payee'): ?>
+                                            <form method="POST" class="form-inline">
+                                                <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
+                                                <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
+                                                <input type="hidden" name="action" value="envoyer_facture">
+                                                <button type="submit" class="btn btn-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
+                                                    📧 Envoyer
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <div class="tooltip">
+                                                <button type="button" class="btn btn-disabled">
+                                                    📧 Envoyer
+                                                </button>
+                                                <span class="tooltiptext">La facture ne peut être envoyée que pour les commandes payées</span>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn btn-primary" target="_blank">
+                                            👁️ Voir
+                                        </a>
+                                        <a href="generer_facture.php?id=<?= $commande['idCommande'] ?>" class="btn btn-warning" target="_blank">
+                                            📄 PDF
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -919,6 +1137,23 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 setTimeout(() => message.remove(), 500);
             });
         }, 5000);
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
+
+            if (window.innerWidth <= 768 && sidebar.classList.contains('active') &&
+                !sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html>
