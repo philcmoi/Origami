@@ -2,8 +2,8 @@
 // config.php
 $host = 'localhost';
 $dbname = 'origami'; // Le nom de votre base de données
-$username = 'root';   // Votre utilisateur MySQL (root par défaut sur WAMP)
-$password = '';       // Votre mot de passe MySQL (vide par défaut sur WAMP)
+$username = 'Philippe';   // Votre utilisateur MySQL (root par défaut sur WAMP)
+$password = 'l@99339R';       // Votre mot de passe MySQL (vide par défaut sur WAMP)
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
