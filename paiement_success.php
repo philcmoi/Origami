@@ -66,7 +66,7 @@ $reference = $_GET['reference'] ?? '';
             <p><strong>Statut :</strong> Paiement confirmé</p>
         </div>
         
-        <p>Vous recevrez un email de confirmation sous peu.</p>
+        <p>Vous recevrez votre facture juste aprés.</p>
         <p>Votre commande est en cours de préparation.</p>
         
         <a href="index.html" class="btn">Retour à l'accueil</a>

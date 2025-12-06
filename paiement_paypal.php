@@ -141,8 +141,8 @@ function creerPaiementPayPal($commande, $paypal_config) {
                 'invoice_number' => 'CMD-' . $commande['idCommande'] . '-' . time()
             ]],
             'redirect_urls' => [
-                'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/paiement_paypal.php?commande=' . $commande['idCommande'] . '&status=success',
-                'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/origami/paiement_paypal.php?commande=' . $commande['idCommande'] . '&status=cancel'
+                'return_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/paiement_paypal.php?commande=' . $commande['idCommande'] . '&status=success',
+                'cancel_url' => 'http://' . $_SERVER['HTTP_HOST'] . '/paiement_paypal.php?commande=' . $commande['idCommande'] . '&status=cancel'
             ]
         ];
         
@@ -413,7 +413,7 @@ function envoyerEmailConfirmationPayPal($commande, $reference) {
 // Fonction pour afficher la confirmation PayPal
 function afficherConfirmationPayPal($commande, $reference) {
     $idCommande = $commande['idCommande'];
-    $urlFactureHTML = 'http://' . $_SERVER['HTTP_HOST'] . '/origami/facture.php?id=' . $idCommande;
+    $urlFactureHTML = 'http://' . $_SERVER['HTTP_HOST'] . '/facture.php?id=' . $idCommande;
     
     ?>
     <!DOCTYPE html>
