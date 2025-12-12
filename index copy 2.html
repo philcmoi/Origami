@@ -1096,9 +1096,9 @@
       // CONFIGURATION AVEC BASE DE DONNÉES - VERSION CORRIGÉE
       // ==============================================
 
-      // CORRECTION IMPORTANTE : Ajouter // devant les URLs
-      const API_PRODUITS_URL = "/api/produits.php?action=featured&limit=4";
-      const API_PANIER_URL = "/api/panier.php";
+      // CORRECTION IMPORTANTE : Ajouter /sean/ devant les URLs
+      const API_PRODUITS_URL = "/sean/api/produits.php?action=featured&limit=4";
+      const API_PANIER_URL = "/sean/api/panier.php";
 
       console.log("=== CONFIGURATION AVEC BASE DE DONNÉES ===");
       console.log("URL API Produits:", API_PRODUITS_URL);
@@ -1469,7 +1469,7 @@
 
           // Image du produit - CORRECTION : chemin complet
           const productImage =
-            "//" + (product.image || "img/default-product.jpg");
+            "/sean/" + (product.image || "img/default-product.jpg");
 
           // État du stock
           const stockQuantity = product.quantite_stock || 0;
@@ -1491,7 +1491,7 @@
               <div class="product-image">
                 <img src="${productImage}"
                      alt="${product.nom}"
-                     onerror="this.onerror=null;this.src='/img/default-product.jpg'">
+                     onerror="this.onerror=null;this.src='/sean/img/default-product.jpg'">
                 <div class="product-overlay">
                   <i class="fas fa-eye"></i>
                 </div>
@@ -1534,7 +1534,7 @@
                     <i class="fas fa-cart-plus"></i> 
                     ${isDisabled ? "Épuisé" : "Ajouter"}
                   </button>
-                  <a href="/produitsprincipale.php?categorie=${encodeURIComponent(
+                  <a href="/sean/produitsprincipale.php?categorie=${encodeURIComponent(
                     product.categorie_nom || ""
                   )}" 
                      class="btn-view">

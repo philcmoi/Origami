@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmation de commande - HEURE DU CADEAU</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/panier.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      .order-confirmation {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 40px 20px;
+      }
+
+      .confirmation-card {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .confirmation-icon {
+        font-size: 5rem;
+        color: #27ae60;
+        margin-bottom: 30px;
+        animation: bounce 1s ease infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .confirmation-title {
+        color: #27ae60;
+        margin-bottom: 20px;
+      }
+
+      .confirmation-message {
+        color: #7f8c8d;
+        margin-bottom: 40px;
+        line-height: 1.6;
+      }
+
+      .order-details {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 30px;
+        margin: 40px 0;
+        text-align: left;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .detail-row:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #2c3e50;
+      }
+
+      .detail-label {
+        color: #7f8c8d;
+      }
+
+      .detail-value {
+        color: #2c3e50;
+        font-weight: 500;
+      }
+
+      .order-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 40px;
+        flex-wrap: wrap;
+      }
+
+      .btn-download {
+        background: #3498db;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+      }
+
+      .btn-download:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+      }
+
+      .whats-next {
+        margin-top: 40px;
+        padding-top: 40px;
+        border-top: 2px solid #e9ecef;
+      }
+
+      .timeline {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        position: relative;
+      }
+
+      .timeline::before {
+        content: "";
+        position: absolute;
+        top: 20px;
+        left: 10%;
+        right: 10%;
+        height: 3px;
+        background: #e9ecef;
+        z-index: 0;
+      }
+
+      .timeline-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1;
+      }
+
+      .timeline-icon {
+        width: 40px;
+        height: 40px;
+        background: #e9ecef;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #7f8c8d;
+        margin-bottom: 10px;
+      }
+
+      .timeline-step.active .timeline-icon {
+        background: #3498db;
+        color: white;
+      }
+
+      .timeline-step.completed .timeline-icon {
+        background: #27ae60;
+        color: white;
+      }
+
+      .timeline-label {
+        font-size: 0.9rem;
+        color: #7f8c8d;
+        text-align: center;
+      }
+
+      .timeline-step.active .timeline-label {
+        color: #3498db;
+        font-weight: 600;
+      }
+
+      @media (max-width: 768px) {
+        .confirmation-card {
+          padding: 25px;
+        }
+
+        .timeline {
+          flex-direction: column;
+          gap: 30px;
+        }
+
+        .timeline::before {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container header-container">
+        <a href="index.html" class="logo">
+          <i class="fas fa-gift logo-icon"></i>
+          <span class="logo-text"
+            >HEURE<span class="logo-highlight">DU CADEAU</span></span
+          >
+        </a>
+      </div>
+    </header>
+
+    <!-- Confirmation -->
+    <main class="order-confirmation">
+      <div class="confirmation-card">
+        <div class="confirmation-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+
+        <h1 class="confirmation-title">Merci pour votre commande !</h1>
+
+        <p class="confirmation-message">
+          Votre commande a été confirmée avec succès. Un email de confirmation
+          vous a été envoyé avec tous les détails. Vous pouvez suivre l'état de
+          votre commande dans votre espace client.
+        </p>
+
+        <div class="order-details">
+          <h3 style="margin-bottom: 20px; color: #2c3e50">
+            <i class="fas fa-receipt"></i> Détails de la commande
+          </h3>
+
+          <div class="detail-row">
+            <span class="detail-label">Numéro de commande</span>
+            <span class="detail-value" id="orderNumber"
+              >CMD-20251210-001234</span
+            >
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">Date de commande</span>
+            <span class="detail-value" id="orderDate">10 décembre 2025</span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">Montant total</span>
+            <span class="detail-value" id="orderTotal">89,90 €</span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">Mode de paiement</span>
+            <span class="detail-value" id="paymentMethod">Carte bancaire</span>
+          </div>
+
+          <div class="detail-row">
+            <span class="detail-label">Statut</span>
+            <span class="detail-value" id="orderStatus" style="color: #27ae60">
+              <i class="fas fa-check-circle"></i> Confirmée
+            </span>
+          </div>
+        </div>
+
+        <div class="whats-next">
+          <h3 style="margin-bottom: 20px; color: #2c3e50">
+            <i class="fas fa-clock"></i> Prochaines étapes
+          </h3>
+
+          <div class="timeline">
+            <div class="timeline-step completed">
+              <div class="timeline-icon">
+                <i class="fas fa-check"></i>
+              </div>
+              <span class="timeline-label">Commande<br />confirmée</span>
+            </div>
+
+            <div class="timeline-step active">
+              <div class="timeline-icon">
+                <i class="fas fa-box"></i>
+              </div>
+              <span class="timeline-label">En préparation</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-icon">
+                <i class="fas fa-shipping-fast"></i>
+              </div>
+              <span class="timeline-label">Expédiée</span>
+            </div>
+
+            <div class="timeline-step">
+              <div class="timeline-icon">
+                <i class="fas fa-home"></i>
+              </div>
+              <span class="timeline-label">Livrée</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-actions">
+          <a href="index.html" class="btn btn-primary">
+            <i class="fas fa-shopping-bag"></i> Continuer mes achats
+          </a>
+
+          <a href="#" class="btn-download" onclick="window.print()">
+            <i class="fas fa-print"></i> Imprimer la confirmation
+          </a>
+
+          <a href="contact.html" class="btn btn-secondary">
+            <i class="fas fa-headset"></i> Contactez-nous
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-bottom">
+          <p>&copy; 2025 HEURE DU CADEAU. Tous droits réservés.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Récupérer l'ID de commande depuis l'URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderId = urlParams.get("id");
+
+      if (orderId) {
+        // Charger les détails de la commande depuis l'API
+        fetch(`/api/paiement.php?action=get_order&id=${orderId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success && data.order) {
+              updateOrderDetails(data.order);
+            }
+          })
+          .catch((error) => {
+            console.error("Erreur chargement commande:", error);
+          });
+      }
+
+      function updateOrderDetails(order) {
+        document.getElementById("orderNumber").textContent =
+          order.numero_commande || "CMD-" + orderId;
+        document.getElementById("orderDate").textContent = formatDate(
+          order.date_commande
+        );
+        document.getElementById("orderTotal").textContent =
+          order.total_ttc + " €";
+        document.getElementById("paymentMethod").textContent =
+          order.mode_paiement === "paypal" ? "PayPal" : "Carte bancaire";
+      }
+
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("fr-FR", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    </script>
+  </body>
+</html>
