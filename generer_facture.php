@@ -70,8 +70,8 @@ function generatePDFInvoice($commande, $lignesCommande) {
     require_once('tcpdf/tcpdf.php');
     
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-    $pdf->SetCreator('Yougi and Go');
-    $pdf->SetAuthor('Yougi and Go');
+    $pdf->SetCreator('Youki and Co');
+    $pdf->SetAuthor('Youki and Co');
     $pdf->SetTitle('Facture #' . $commande['idCommande']);
     
     $pdf->SetMargins(15, 25, 15);
@@ -264,8 +264,9 @@ function generateInvoiceContent($commande, $lignesCommande) {
         </table>
     </div>
 
+    <!-- NOM ET PRÉNOM (remplace CLIENT) -->
     <div style="margin-bottom: 20px;">
-        <div style="font-weight: bold; margin-bottom: 10px; color: #d40000;">CLIENT</div>
+        <div style="font-weight: bold; margin-bottom: 10px; color: #d40000;">NOM ET PRÉNOM</div>
         <div><strong>' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '</strong></div>
         <div>📧 ' . htmlspecialchars($commande['client_email']) . '</div>
         ' . ($commande['client_telephone'] ? '<div>📞 ' . htmlspecialchars($commande['client_telephone']) . '</div>' : '') . '

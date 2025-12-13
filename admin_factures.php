@@ -568,101 +568,120 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
             color: #333;
+            line-height: 1.6;
+            font-size: 14px;
         }
 
+        /* ===== HEADER OPTIMISÉ ===== */
         .header {
             background: white;
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                text-align: center;
-                padding: 15px;
-            }
+            padding: 12px 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .logo h1 {
             color: #d40000;
-            font-size: 24px;
-        }
-
-        @media (max-width: 480px) {
-            .logo h1 {
-                font-size: 20px;
-            }
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 8px;
+            line-height: 1.3;
         }
 
         .admin-info {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+            gap: 8px;
+            text-align: center;
         }
 
-        @media (max-width: 480px) {
-            .admin-info {
-                flex-direction: column;
-                gap: 10px;
-            }
+        .admin-info span {
+            font-size: 13px;
+            color: #666;
         }
 
         .btn-logout {
             background: #d40000;
             color: white;
-            padding: 8px 15px;
+            padding: 8px 16px;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: inline-block;
             transition: background 0.3s;
+            font-weight: 500;
         }
 
         .btn-logout:hover {
             background: #b30000;
         }
 
+        /* ===== LAYOUT PRINCIPAL ===== */
         .container {
             display: flex;
+            flex-direction: column;
             min-height: calc(100vh - 80px);
         }
 
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
+        /* ===== MENU MOBILE OPTIMISÉ ===== */
+        .mobile-menu-toggle {
+            display: block;
+            background: #d40000;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 15px;
+            width: calc(100% - 30px);
+            font-size: 15px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: #b30000;
         }
 
         .sidebar {
-            width: 250px;
             background: white;
-            padding: 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            position: fixed;
+            top: 80px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            z-index: 99;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
         }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                order: 2;
-                padding: 15px;
-            }
+        .sidebar.active {
+            display: block;
+            transform: translateX(0);
         }
 
         .nav-item {
-            display: block;
-            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
             color: #333;
             text-decoration: none;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            transition: background 0.3s;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-item:last-child {
+            border-bottom: none;
         }
 
         .nav-item:hover, .nav-item.active {
@@ -670,19 +689,13 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: white;
         }
 
+        /* ===== CONTENU PRINCIPAL ===== */
         .main-content {
             flex: 1;
-            padding: 20px;
-            overflow-x: auto;
+            padding: 15px;
         }
 
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 15px;
-                order: 1;
-            }
-        }
-
+        /* ===== MESSAGES ===== */
         .message-success {
             background: #d4edda;
             color: #155724;
@@ -709,55 +722,110 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             gap: 10px;
         }
 
-        .table-commandes {
+        /* ===== STATISTIQUES RESPONSIVES ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 400px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            text-align: center;
+            border-left: 4px solid #d40000;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d40000;
+            margin-bottom: 6px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            margin-bottom: 18px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* ===== TABLEAU DES FACTURES ===== */
+        .table-container {
+            display: block;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 1200px) {
+            .orders-mobile {
+                display: none;
+            }
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
             background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             min-width: 800px;
         }
 
-        @media (max-width: 768px) {
-            .table-commandes-container {
-                overflow-x: auto;
-                margin: 0 -15px;
-                padding: 0 15px;
-            }
-        }
-
-        .table-commandes th {
-            background: #d40000;
-            color: white;
+        th, td {
             padding: 12px;
             text-align: left;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        @media (max-width: 480px) {
-            .table-commandes th {
-                padding: 10px 8px;
-                font-size: 12px;
-            }
-        }
-
-        .table-commandes td {
-            padding: 12px;
             border-bottom: 1px solid #eee;
             font-size: 14px;
         }
 
-        @media (max-width: 480px) {
-            .table-commandes td {
-                padding: 10px 8px;
-                font-size: 12px;
-            }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
         }
 
-        .table-commandes tr:hover {
+        tbody tr:hover {
             background: #f8f9fa;
         }
 
@@ -878,41 +946,6 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-        }
-
-        .stat-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            color: #d40000;
-            margin-bottom: 10px;
-            font-size: 13px;
-            text-transform: uppercase;
-        }
-
-        .stat-card .number {
-            font-size: 20px;
-            font-weight: bold;
-            color: #333;
-        }
-
         .tooltip {
             position: relative;
             display: inline-block;
@@ -942,52 +975,373 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             opacity: 1;
         }
 
-        /* Styles pour les écrans très petits */
-        @media (max-width: 360px) {
-            .header {
-                padding: 10px;
-            }
-
-            .main-content {
-                padding: 10px;
-            }
-
-            .table-commandes {
-                min-width: 600px;
-            }
-
-            .btn {
-                padding: 5px 8px;
-                font-size: 10px;
-            }
+        /* ===== VERSION MOBILE (CARTES) ===== */
+        .orders-mobile {
+            display: block;
         }
 
-        /* Menu mobile */
-        .mobile-menu-toggle {
-            display: none;
+        .order-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+            border-left: 4px solid #d40000;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .order-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .order-id {
+            font-weight: bold;
+            color: #d40000;
+            font-size: 16px;
+        }
+
+        .order-date {
+            color: #666;
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .order-info {
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 13px;
+            min-width: 70px;
+        }
+
+        .info-value {
+            flex: 1;
+            text-align: right;
+            font-size: 13px;
+            word-break: break-word;
+            padding-left: 10px;
+        }
+
+        /* ===== STATUTS MOBILE ===== */
+        .mobile-status {
+            text-align: center;
+            margin: 15px 0;
+            padding: 12px;
+            background: rgba(212, 0, 0, 0.05);
+            border-radius: 8px;
+        }
+
+        .status-text {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .status-en_attente { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .status-payee { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-expediee { background: #d1ecf1; color: #0c5460; border: 1px solid #b8daff; }
+        .status-annulee { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* ===== ACTIONS MOBILE ===== */
+        .order-actions-mobile {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-mobile {
+            padding: 10px 15px;
             background: #d40000;
             color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-bottom: 15px;
-            width: 100%;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
             text-align: center;
+            flex: 1;
+            font-weight: 500;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
-        @media (max-width: 768px) {
-            .mobile-menu-toggle {
-                display: block;
+        .btn-mobile:hover {
+            background: #b30000;
+        }
+
+        .btn-mobile-success {
+            background: #28a745;
+        }
+
+        .btn-mobile-success:hover {
+            background: #218838;
+        }
+
+        .btn-mobile-primary {
+            background: #007bff;
+        }
+
+        .btn-mobile-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-mobile-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-mobile-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-mobile-disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-mobile-disabled:hover {
+            background: #6c757d;
+        }
+
+        /* ===== ÉTATS ===== */
+        .no-orders {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+            font-style: italic;
+            font-size: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        /* ===== OVERLAY MENU MOBILE ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 98;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* ===== VERSION ORDINATEUR ===== */
+        @media (min-width: 1024px) {
+            /* Header desktop */
+            .header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 25px;
             }
 
-            .sidebar {
+            .logo h1 {
+                text-align: left;
+                margin-bottom: 0;
+                font-size: 22px;
+            }
+
+            .admin-info {
+                flex-direction: row;
+                text-align: left;
+                gap: 15px;
+            }
+
+            /* Layout desktop */
+            .container {
+                flex-direction: row;
+            }
+
+            .mobile-menu-toggle {
                 display: none;
             }
 
-            .sidebar.active {
+            .sidebar {
                 display: block;
+                position: static;
+                width: 280px;
+                height: auto;
+                padding: 0;
+                transform: none;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            .nav-item {
+                padding: 18px 25px;
+                font-size: 15px;
+            }
+
+            .main-content {
+                padding: 25px;
+                flex: 1;
+                overflow-x: auto;
+            }
+
+            /* Statistiques desktop */
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 25px;
+                margin-bottom: 30px;
+            }
+
+            .stat-card {
+                padding: 30px 20px;
+            }
+
+            .stat-number {
+                font-size: 32px;
+            }
+
+            .stat-label {
+                font-size: 14px;
+            }
+
+            /* Sections desktop */
+            .section {
+                padding: 25px;
+                margin-bottom: 25px;
+            }
+
+            .section h2 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            /* Affichage conditionnel desktop/mobile */
+            .table-container {
+                display: block;
+            }
+
+            .orders-mobile {
+                display: none;
+            }
+        }
+
+        /* ===== AMÉLIORATIONS TRÈS PETITS ÉCRANS ===== */
+        @media (max-width: 360px) {
+            .main-content {
+                padding: 12px;
+            }
+
+            .stat-card {
+                padding: 18px 12px;
+            }
+
+            .stat-number {
+                font-size: 22px;
+            }
+
+            .order-card {
+                padding: 14px;
+            }
+
+            .btn-mobile {
+                padding: 9px 12px;
+                font-size: 12px;
+            }
+
+            .nav-item {
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+        }
+
+        /* ===== AMÉLIORATIONS ÉCRANS MOYENS ===== */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-content {
+                padding: 20px;
+            }
+
+            .section {
+                padding: 25px 20px;
+            }
+
+            .stat-card {
+                padding: 25px 20px;
+            }
+        }
+
+        /* ===== ANIMATIONS ET INTERACTIONS ===== */
+        @media (hover: hover) {
+            .stat-card:hover, .order-card:hover {
+                transform: translateY(-2px);
+            }
+        }
+
+        /* ===== ACCESSIBILITÉ ===== */
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar, .sidebar-overlay, .stat-card, .order-card {
+                transition: none;
+            }
+        }
+
+        /* ===== IMPRESSION ===== */
+        @media print {
+            .sidebar, .mobile-menu-toggle, .btn-logout, .btn, .btn-mobile {
+                display: none;
+            }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .main-content {
+                padding: 0;
+            }
+
+            .stat-card, .section {
+                box-shadow: none;
+                border: 1px solid #ddd;
             }
         }
     </style>
@@ -998,20 +1352,24 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
-            <a href="admin_logout.php" class="btn-logout">Déconnexion</a>
+            <span>Connecté: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+            <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
         </div>
     </div>
 
-    <div class="container">
-        <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰ Menu Administration</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        ☰ Menu Administration
+    </button>
+
+    <div class="container">
         <div class="sidebar" id="sidebar">
-            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item active">Gestion des Factures</a>
-            <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
+            <a href="admin_dashboard.php" class="nav-item">📊 Tableau de Bord</a>
+            <a href="admin_commandes.php" class="nav-item">📦 Gestion des Commandes</a>
+            <a href="admin_factures.php" class="nav-item active">📄 Gestion des Factures</a>
+            <a href="admin_clients.php" class="nav-item">👥 Gestion des Clients</a>
+            <a href="admin_produits.php" class="nav-item">🎨 Gestion des Produits</a>
         </div>
 
         <div class="main-content">
@@ -1042,38 +1400,48 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- Statistiques rapides -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>Total Factures</h3>
-                    <div class="number"><?= count($commandes) ?></div>
+                    <div class="stat-number"><?= count($commandes) ?></div>
+                    <div class="stat-label">Total Factures</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Factures Payées</h3>
-                    <div class="number">
+                    <div class="stat-number">
                         <?= count(array_filter($commandes, function($cmd) { return $cmd['statut'] === 'payee'; })) ?>
                     </div>
+                    <div class="stat-label">Factures Payées</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Chiffre d'Affaires</h3>
-                    <div class="number">
+                    <div class="stat-number">
                         <?= number_format(array_sum(array_column($commandes, 'montantTotal')), 2, ',', ' ') ?> €
                     </div>
+                    <div class="stat-label">Chiffre d'Affaires</div>
                 </div>
             </div>
 
-            <div class="table-commandes-container">
-                <table class="table-commandes">
-                    <thead>
-                        <tr>
-                            <th>ID Commande</th>
-                            <th>Date</th>
-                            <th>Client</th>
-                            <th>Montant TTC</th>
-                            <th>Statut</th>
-                            <th>Adresse Facturation</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($commandes as $commande): ?>
+            <div class="section">
+                <h2>📋 Liste des Factures (<?= count($commandes) ?>)</h2>
+
+                <?php if (empty($commandes)): ?>
+                    <div class="no-orders">
+                        Aucune facture disponible.
+                    </div>
+                <?php else: ?>
+
+                <!-- Version Desktop (tableau) -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Commande</th>
+                                <th>Date</th>
+                                <th>Client</th>
+                                <th>Montant TTC</th>
+                                <th>Statut</th>
+                                <th>Adresse Facturation</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($commandes as $commande): ?>
                             <tr>
                                 <td><strong>#<?= $commande['idCommande'] ?></strong></td>
                                 <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
@@ -1120,14 +1488,157 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </div>
                                 </td>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Version Mobile (cartes) -->
+                <div class="orders-mobile">
+                    <?php foreach ($commandes as $commande): ?>
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-id">#<?= $commande['idCommande'] ?></div>
+                            <div class="order-date"><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></div>
+                        </div>
+
+                        <div class="order-info">
+                            <div class="info-row">
+                                <span class="info-label">Client:</span>
+                                <span class="info-value"><?= htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']) ?></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Email:</span>
+                                <span class="info-value"><?= htmlspecialchars($commande['email']) ?></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Montant:</span>
+                                <span class="info-value"><strong><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€ TTC</strong></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Adresse:</span>
+                                <span class="info-value"><?= htmlspecialchars($commande['adresse_facturation']) ?>, <?= htmlspecialchars($commande['ville_facturation']) ?></span>
+                            </div>
+                        </div>
+
+                        <div class="mobile-status">
+                            <div class="status-text">Statut de la commande</div>
+                            <span class="status-badge status-<?= $commande['statut'] ?>">
+                                <?= $commande['statut'] ?>
+                            </span>
+                        </div>
+
+                        <div class="order-actions-mobile">
+                            <a href="admin_factures.php?action=generer&id=<?= $commande['idCommande'] ?>" class="btn-mobile btn-mobile-primary" target="_blank">
+                                <span>👁️</span>
+                                <span>Voir</span>
+                            </a>
+                            <a href="generer_facture.php?id=<?= $commande['idCommande'] ?>" class="btn-mobile btn-mobile-warning" target="_blank">
+                                <span>📄</span>
+                                <span>PDF</span>
+                            </a>
+
+                            <?php if ($commande['statut'] === 'payee'): ?>
+                                <form method="POST" class="form-inline" style="flex: 1;">
+                                    <input type="hidden" name="id_commande" value="<?= $commande['idCommande'] ?>">
+                                    <input type="hidden" name="email" value="<?= htmlspecialchars($commande['email']) ?>">
+                                    <input type="hidden" name="action" value="envoyer_facture">
+                                    <button type="submit" class="btn-mobile btn-mobile-success" onclick="return confirm('Envoyer la facture #<?= $commande['idCommande'] ?> à <?= htmlspecialchars($commande['email']) ?> ?')">
+                                        <span>📧</span>
+                                        <span>Envoyer</span>
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <div class="tooltip" style="flex: 1;">
+                                    <button type="button" class="btn-mobile btn-mobile-disabled">
+                                        <span>📧</span>
+                                        <span>Envoyer</span>
+                                    </button>
+                                    <span class="tooltiptext">La facture ne peut être envoyée que pour les commandes payées</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
     <script>
+        // Gestion du menu mobile optimisée (identique à admin_dashboard.php)
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleMobileMenu() {
+            const isActive = sidebar.classList.contains('active');
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+            document.body.style.overflow = isActive ? '' : 'hidden';
+
+            // Animation du bouton
+            mobileMenuToggle.style.transform = isActive ? 'none' : 'scale(0.98)';
+        }
+
+        function closeMobileMenu() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            mobileMenuToggle.style.transform = 'none';
+        }
+
+        mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        sidebarOverlay.addEventListener('click', closeMobileMenu);
+
+        // Fermer le menu en cliquant sur un lien (mobile seulement)
+        sidebar.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeMobileMenu();
+                }
+            });
+        });
+
+        // Adapter au redimensionnement
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Masquer le menu au chargement sur mobile
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth < 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Empêcher le scroll quand le menu est ouvert
+        sidebar.addEventListener('touchmove', function(e) {
+            if (sidebar.classList.contains('active')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Amélioration de l'accessibilité
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                closeMobileMenu();
+                mobileMenuToggle.focus();
+            }
+        });
+
+        // Focus management pour l'accessibilité
+        mobileMenuToggle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleMobileMenu();
+            }
+        });
+
         // Auto-hide messages after 5 seconds
         setTimeout(function() {
             const messages = document.querySelectorAll('.message-success, .message-error');
@@ -1137,23 +1648,6 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 setTimeout(() => message.remove(), 500);
             });
         }, 5000);
-
-        // Toggle sidebar on mobile
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('active');
-        }
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggleBtn = document.querySelector('.mobile-menu-toggle');
-
-            if (window.innerWidth <= 768 && sidebar.classList.contains('active') &&
-                !sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
-                sidebar.classList.remove('active');
-            }
-        });
     </script>
 </body>
 </html>

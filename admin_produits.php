@@ -21,9 +21,9 @@ try {
                 if ($nom && $description && $prixHorsTaxe > 0) {
                     $stmt = $pdo->prepare("INSERT INTO Origami (nom, description, photo, prixHorsTaxe) VALUES (?, ?, ?, ?)");
                     $stmt->execute([$nom, $description, $photo, $prixHorsTaxe]);
-                    $success = "Produit ajouté avec succès!";
+                    $_SESSION['message_success'] = "Produit ajouté avec succès!";
                 } else {
-                    $error = "Tous les champs obligatoires doivent être remplis";
+                    $_SESSION['message_error'] = "Tous les champs obligatoires doivent être remplis";
                 }
                 break;
 
@@ -37,9 +37,9 @@ try {
                 if ($idOrigami && $nom && $description && $prixHorsTaxe > 0) {
                     $stmt = $pdo->prepare("UPDATE Origami SET nom = ?, description = ?, photo = ?, prixHorsTaxe = ? WHERE idOrigami = ?");
                     $stmt->execute([$nom, $description, $photo, $prixHorsTaxe, $idOrigami]);
-                    $success = "Produit modifié avec succès!";
+                    $_SESSION['message_success'] = "Produit modifié avec succès!";
                 } else {
-                    $error = "Tous les champs obligatoires doivent être remplis";
+                    $_SESSION['message_error'] = "Tous les champs obligatoires doivent être remplis";
                 }
                 break;
 
@@ -54,16 +54,16 @@ try {
                     if ($count == 0) {
                         $stmt = $pdo->prepare("DELETE FROM Origami WHERE idOrigami = ?");
                         $stmt->execute([$idOrigami]);
-                        $success = "Produit supprimé avec succès!";
+                        $_SESSION['message_success'] = "Produit supprimé avec succès!";
                     } else {
-                        $error = "Impossible de supprimer ce produit : il est associé à des commandes";
+                        $_SESSION['message_error'] = "Impossible de supprimer ce produit : il est associé à des commandes";
                     }
                 }
                 break;
         }
 
         // Recharger la page pour voir les modifications
-        header('Location: admin_produits.php');
+        header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
     }
 
@@ -91,174 +91,245 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Produits - Youki and Co</title>
     <style>
-        /* Styles spécifiques à la gestion des produits */
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        @media (max-width: 768px) {
-            .product-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: 15px;
-            }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            font-size: 14px;
         }
 
-        @media (max-width: 480px) {
-            .product-grid {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-        }
-
-        .product-card {
+        /* ===== HEADER OPTIMISÉ ===== */
+        .header {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
-            transition: transform 0.3s;
+            padding: 12px 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        .product-card:hover {
-            transform: translateY(-5px);
+        .logo h1 {
+            color: #d40000;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 8px;
+            line-height: 1.3;
         }
 
-        .product-image {
-            height: 200px;
-            background: #f8f9fa;
+        .admin-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .admin-info span {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .btn-logout {
+            background: #d40000;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            display: inline-block;
+            transition: background 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-logout:hover {
+            background: #b30000;
+        }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* ===== MENU MOBILE OPTIMISÉ ===== */
+        .mobile-menu-toggle {
+            display: block;
+            background: #d40000;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 15px;
+            width: calc(100% - 30px);
+            font-size: 15px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .mobile-menu-toggle:hover {
+            background: #b30000;
+        }
+
+        .sidebar {
+            background: white;
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: none;
+            position: fixed;
+            top: 80px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            z-index: 99;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.active {
+            display: block;
+            transform: translateX(0);
+        }
+
+        .nav-item {
             display: flex;
             align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        @media (max-width: 480px) {
-            .product-image {
-                height: 180px;
-            }
-        }
-
-        .product-image img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: cover;
-        }
-
-        .product-info {
-            padding: 20px;
-        }
-
-        @media (max-width: 480px) {
-            .product-info {
-                padding: 15px;
-            }
-        }
-
-        .product-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
+            gap: 12px;
+            padding: 16px 20px;
             color: #333;
-        }
-
-        @media (max-width: 480px) {
-            .product-name {
-                font-size: 16px;
-            }
-        }
-
-        .product-description {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 15px;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .product-price {
-            font-size: 20px;
-            font-weight: bold;
-            color: #d40000;
-            margin-bottom: 15px;
-        }
-
-        @media (max-width: 480px) {
-            .product-price {
-                font-size: 18px;
-            }
-        }
-
-        .product-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 480px) {
-            .product-actions {
-                flex-direction: column;
-            }
-        }
-
-        .btn-edit, .btn-delete {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
             text-decoration: none;
-            font-size: 14px;
-            text-align: center;
-            flex: 1;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
         }
 
-        @media (max-width: 480px) {
-            .btn-edit, .btn-delete {
-                padding: 10px 15px;
-                font-size: 14px;
-            }
+        .nav-item:last-child {
+            border-bottom: none;
         }
 
-        .btn-edit {
-            background: #ffc107;
-            color: black;
-        }
-
-        .btn-edit:hover {
-            background: #e0a800;
-        }
-
-        .btn-delete {
-            background: #dc3545;
+        .nav-item:hover, .nav-item.active {
+            background: #d40000;
             color: white;
         }
 
-        .btn-delete:hover {
-            background: #c82333;
+        /* ===== CONTENU PRINCIPAL ===== */
+        .main-content {
+            flex: 1;
+            padding: 15px;
         }
 
+        /* ===== MESSAGES ===== */
+        .message-success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+            border-left: 5px solid #28a745;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            border-left: 5px solid #dc3545;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ===== STATISTIQUES RESPONSIVES ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 400px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            text-align: center;
+            border-left: 4px solid #d40000;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d40000;
+            margin-bottom: 6px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            background: white;
+            padding: 20px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            margin-bottom: 18px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 12px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* ===== FORMULAIRE ===== */
         .form-container {
             background: white;
-            padding: 30px;
+            padding: 20px 15px;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .form-container {
-                padding: 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .form-container {
-                padding: 15px;
-            }
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
         }
 
         .form-group {
@@ -270,6 +341,7 @@ try {
             margin-bottom: 5px;
             font-weight: 500;
             color: #333;
+            font-size: 14px;
         }
 
         .form-group input, .form-group textarea {
@@ -279,13 +351,7 @@ try {
             border-radius: 5px;
             font-size: 16px;
             transition: border-color 0.3s;
-        }
-
-        @media (max-width: 480px) {
-            .form-group input, .form-group textarea {
-                padding: 10px;
-                font-size: 16px; /* Empêche le zoom sur iOS */
-            }
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .form-group input:focus, .form-group textarea:focus {
@@ -307,12 +373,13 @@ try {
         .btn-submit {
             background: #d40000;
             color: white;
-            padding: 12px 30px;
+            padding: 12px 24px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             transition: background 0.3s;
+            font-weight: 500;
         }
 
         .btn-submit:hover {
@@ -322,281 +389,460 @@ try {
         .btn-cancel {
             background: #6c757d;
             color: white;
-            padding: 12px 30px;
+            padding: 12px 24px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             transition: background 0.3s;
+            font-weight: 500;
         }
 
         .btn-cancel:hover {
             background: #5a6268;
         }
 
-        @media (max-width: 480px) {
-            .btn-submit, .btn-cancel {
-                padding: 12px 20px;
-                font-size: 14px;
-                flex: 1;
-            }
-
-            .form-actions {
-                flex-direction: column;
-            }
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 5px;
+        /* ===== GRILLE DE PRODUITS ===== */
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* Reprendre les styles de base avec améliorations responsive */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; }
-
-        .header {
-            background: white;
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                text-align: center;
-                padding: 15px;
+        @media (min-width: 576px) {
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        .logo h1 {
+        @media (min-width: 992px) {
+            .product-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .product-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid #eee;
+        }
+
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            height: 180px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (max-width: 576px) {
+            .product-image {
+                height: 160px;
+            }
+        }
+
+        .product-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 15px;
+        }
+
+        .product-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            line-height: 1.3;
+        }
+
+        .product-description {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-price {
+            font-size: 18px;
+            font-weight: bold;
             color: #d40000;
+            margin-bottom: 15px;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-edit, .btn-delete {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 13px;
+            text-align: center;
+            flex: 1;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-edit:hover {
+            background: #e0a800;
+            transform: translateY(-1px);
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        /* ===== PAGE TITLE ===== */
+        .page-title {
+            color: #d40000;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
             font-size: 24px;
         }
 
         @media (max-width: 480px) {
-            .logo h1 {
+            .page-title {
                 font-size: 20px;
+                text-align: center;
             }
         }
 
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+        /* ===== OVERLAY MENU MOBILE ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 98;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        @media (max-width: 480px) {
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* ===== VERSION ORDINATEUR ===== */
+        @media (min-width: 1024px) {
+            /* Header desktop */
+            .header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 25px;
+            }
+
+            .logo h1 {
+                text-align: left;
+                margin-bottom: 0;
+                font-size: 22px;
+            }
+
             .admin-info {
-                flex-direction: column;
-                gap: 10px;
+                flex-direction: row;
+                text-align: left;
+                gap: 15px;
             }
-        }
 
-        .btn-logout {
-            background: #d40000;
-            color: white;
-            padding: 8px 15px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-
-        .btn-logout:hover {
-            background: #b30000;
-        }
-
-        .container {
-            display: flex;
-            min-height: calc(100vh - 80px);
-        }
-
-        @media (max-width: 768px) {
+            /* Layout desktop */
             .container {
-                flex-direction: column;
+                flex-direction: row;
             }
-        }
 
-        .sidebar {
-            width: 250px;
-            background: white;
-            padding: 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                order: 2;
-                padding: 15px;
+            .mobile-menu-toggle {
                 display: none;
             }
 
-            .sidebar.active {
+            .sidebar {
                 display: block;
+                position: static;
+                width: 280px;
+                height: auto;
+                padding: 0;
+                transform: none;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
-        }
 
-        .nav-item {
-            display: block;
-            padding: 12px 15px;
-            color: #333;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            transition: background 0.3s;
-        }
+            .nav-item {
+                padding: 18px 25px;
+                font-size: 15px;
+            }
 
-        .nav-item:hover, .nav-item.active {
-            background: #d40000;
-            color: white;
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 30px;
-        }
-
-        @media (max-width: 768px) {
             .main-content {
-                padding: 20px;
-                order: 1;
+                padding: 25px;
+                flex: 1;
+                overflow-x: auto;
             }
-        }
 
-        @media (max-width: 480px) {
-            .main-content {
-                padding: 15px;
+            /* Statistiques desktop */
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 25px;
+                margin-bottom: 30px;
             }
-        }
 
-        .section h2 {
-            color: #d40000;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
+            .stat-card {
+                padding: 30px 20px;
+            }
 
-        @media (max-width: 480px) {
+            .stat-number {
+                font-size: 32px;
+            }
+
+            .stat-label {
+                font-size: 14px;
+            }
+
+            /* Sections desktop */
+            .section {
+                padding: 25px;
+                margin-bottom: 25px;
+            }
+
+            .form-container {
+                padding: 25px;
+            }
+
             .section h2 {
                 font-size: 20px;
-                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            /* Formulaires desktop */
+            .form-group input, .form-group textarea {
+                font-size: 14px;
+                padding: 10px 12px;
+            }
+
+            .btn-submit, .btn-cancel {
+                padding: 12px 30px;
+                font-size: 15px;
             }
         }
 
-        /* Menu mobile */
-        .mobile-menu-toggle {
-            display: none;
-            background: #d40000;
-            color: white;
-            border: none;
-            padding: 12px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-bottom: 15px;
-            width: 100%;
-            text-align: center;
-            transition: background 0.3s;
-        }
+        /* ===== AMÉLIORATIONS TRÈS PETITS ÉCRANS ===== */
+        @media (max-width: 360px) {
+            .main-content {
+                padding: 12px;
+            }
 
-        .mobile-menu-toggle:hover {
-            background: #b30000;
-        }
+            .stat-card {
+                padding: 18px 12px;
+            }
 
-        @media (max-width: 768px) {
-            .mobile-menu-toggle {
-                display: block;
+            .stat-number {
+                font-size: 22px;
+            }
+
+            .product-card {
+                padding: 14px;
+            }
+
+            .btn-edit, .btn-delete {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .nav-item {
+                padding: 14px 16px;
+                font-size: 14px;
             }
         }
 
-        /* Message vide */
+        /* ===== AMÉLIORATIONS ÉCRANS MOYENS ===== */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-content {
+                padding: 20px;
+            }
+
+            .section, .form-container {
+                padding: 25px 20px;
+            }
+
+            .stat-card {
+                padding: 25px 20px;
+            }
+        }
+
+        /* ===== ÉTATS VIDES ===== */
         .empty-state {
             text-align: center;
-            padding: 40px;
-            background: white;
+            padding: 40px 20px;
+            color: #6c757d;
+            font-style: italic;
+            font-size: 15px;
+            background: #f8f9fa;
             border-radius: 10px;
+            margin: 20px 0;
             grid-column: 1 / -1;
         }
 
-        @media (max-width: 480px) {
-            .empty-state {
-                padding: 30px 20px;
+        /* ===== ANIMATIONS ET INTERACTIONS ===== */
+        @media (hover: hover) {
+            .stat-card:hover, .product-card:hover {
+                transform: translateY(-2px);
             }
         }
 
-        .empty-state p {
-            color: #666;
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-
-        @media (max-width: 480px) {
-            .empty-state p {
-                font-size: 16px;
+        /* ===== ACCESSIBILITÉ ===== */
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar, .sidebar-overlay, .stat-card, .product-card {
+                transition: none;
             }
         }
 
-        .empty-state p:last-child {
-            color: #999;
-            font-size: 14px;
+        /* ===== IMPRESSION ===== */
+        @media print {
+            .sidebar, .mobile-menu-toggle, .btn-logout, .btn-edit, .btn-delete, .btn-submit, .btn-cancel {
+                display: none;
+            }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .main-content {
+                padding: 0;
+            }
+
+            .stat-card, .section, .form-container, .product-card {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">
-            <h1>Youki and Co - Gestion des Produits</h1>
+            <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+            <span>Connecté: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
             <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
         </div>
     </div>
 
-    <div class="container">
-        <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰ Menu Administration</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        ☰ Menu Administration
+    </button>
+
+    <div class="container">
         <div class="sidebar" id="sidebar">
-            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item">Gestion des Factures</a>
-            <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item active">Gestion des Produits</a>
+            <a href="admin_dashboard.php" class="nav-item">📊 Tableau de Bord</a>
+            <a href="admin_commandes.php" class="nav-item">📦 Gestion des Commandes</a>
+            <a href="admin_factures.php" class="nav-item">📄 Gestion des Factures</a>
+            <a href="admin_clients.php" class="nav-item">👥 Gestion des Clients</a>
+            <a href="admin_produits.php" class="nav-item active">🎨 Gestion des Produits</a>
         </div>
 
         <div class="main-content">
-            <?php if (isset($success)): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <h1 class="page-title">🎨 Gestion des Produits</h1>
+
+            <?php if (isset($_SESSION['message_success'])): ?>
+                <div class="message-success">
+                    <span style="font-size: 18px;">✅</span>
+                    <div>
+                        <strong>Succès!</strong><br>
+                        <?= $_SESSION['message_success'] ?>
+                    </div>
+                </div>
+                <?php unset($_SESSION['message_success']); ?>
             <?php endif; ?>
 
-            <?php if (isset($error)): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
+            <?php if (isset($_SESSION['message_error'])): ?>
+                <div class="message-error">
+                    <span style="font-size: 18px;">❌</span>
+                    <div>
+                        <strong>Erreur!</strong><br>
+                        <?= $_SESSION['message_error'] ?>
+                    </div>
+                </div>
+                <?php unset($_SESSION['message_error']); ?>
             <?php endif; ?>
+
+            <!-- Statistiques rapides -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number"><?= count($produits) ?></div>
+                    <div class="stat-label">Total Produits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">
+                        <?php
+                        $prixMoyen = count($produits) > 0 
+                            ? array_sum(array_column($produits, 'prixHorsTaxe')) / count($produits) 
+                            : 0;
+                        echo number_format($prixMoyen, 2, ',', ' ') . '€';
+                        ?>
+                    </div>
+                    <div class="stat-label">Prix Moyen HT</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">
+                        <?php
+                        $produitsAvecImage = count(array_filter($produits, function($p) {
+                            return !empty($p['photo']);
+                        }));
+                        echo $produitsAvecImage . '/' . count($produits);
+                        ?>
+                    </div>
+                    <div class="stat-label">Avec Image</div>
+                </div>
+            </div>
 
             <div class="form-container">
                 <h2><?= $produitEdit ? 'Modifier le Produit' : 'Ajouter un Nouveau Produit' ?></h2>
@@ -663,15 +909,14 @@ try {
                         <div class="product-info">
                             <div class="product-name"><?= htmlspecialchars($produit['nom']) ?></div>
                             <div class="product-description"><?= htmlspecialchars($produit['description']) ?></div>
-                            <div class="product-price"><?= number_format($produit['prixHorsTaxe'], 2, ',', ' ') ?>€</div>
+                            <div class="product-price"><?= number_format($produit['prixHorsTaxe'], 2, ',', ' ') ?>€ HT</div>
 
                             <div class="product-actions">
                                 <a href="admin_produits.php?edit=<?= $produit['idOrigami'] ?>" class="btn-edit">Modifier</a>
 
                                 <form method="POST" style="display: inline; width: 100%;">
                                     <input type="hidden" name="idOrigami" value="<?= $produit['idOrigami'] ?>">
-                                    <button type="submit" name="action" value="supprimer" class="btn-delete"
-                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')">
+                                    <button type="submit" name="action" value="supprimer" class="btn-delete">
                                         Supprimer
                                     </button>
                                 </form>
@@ -692,6 +937,77 @@ try {
     </div>
 
     <script>
+        // Gestion du menu mobile optimisée (identique à admin_dashboard.php)
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleMobileMenu() {
+            const isActive = sidebar.classList.contains('active');
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+            document.body.style.overflow = isActive ? '' : 'hidden';
+
+            // Animation du bouton
+            mobileMenuToggle.style.transform = isActive ? 'none' : 'scale(0.98)';
+        }
+
+        function closeMobileMenu() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            mobileMenuToggle.style.transform = 'none';
+        }
+
+        mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+        sidebarOverlay.addEventListener('click', closeMobileMenu);
+
+        // Fermer le menu en cliquant sur un lien (mobile seulement)
+        sidebar.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeMobileMenu();
+                }
+            });
+        });
+
+        // Adapter au redimensionnement
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Masquer le menu au chargement sur mobile
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth < 1024) {
+                closeMobileMenu();
+            }
+        });
+
+        // Empêcher le scroll quand le menu est ouvert
+        sidebar.addEventListener('touchmove', function(e) {
+            if (sidebar.classList.contains('active')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Amélioration de l'accessibilité
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+                closeMobileMenu();
+                mobileMenuToggle.focus();
+            }
+        });
+
+        // Focus management pour l'accessibilité
+        mobileMenuToggle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleMobileMenu();
+            }
+        });
+
         // Confirmation avant suppression
         document.addEventListener('DOMContentLoaded', function() {
             const deleteButtons = document.querySelectorAll('.btn-delete');
@@ -704,30 +1020,13 @@ try {
             });
         });
 
-        // Toggle sidebar on mobile
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('active');
-        }
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggleBtn = document.querySelector('.mobile-menu-toggle');
-
-            if (window.innerWidth <= 768 && sidebar.classList.contains('active') &&
-                !sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
-                sidebar.classList.remove('active');
-            }
-        });
-
-        // Auto-hide alerts after 5 seconds
+        // Auto-hide messages after 5 seconds
         setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                alert.style.transition = 'opacity 0.5s ease';
-                alert.style.opacity = '0';
-                setTimeout(() => alert.remove(), 500);
+            const messages = document.querySelectorAll('.message-success, .message-error');
+            messages.forEach(message => {
+                message.style.transition = 'opacity 0.5s ease';
+                message.style.opacity = '0';
+                setTimeout(() => message.remove(), 500);
             });
         }, 5000);
     </script>
