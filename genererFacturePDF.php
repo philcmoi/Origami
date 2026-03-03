@@ -107,7 +107,7 @@ function genererFacturePDF($pdo, $idCommande) {
         // Information du document
         $pdf->SetCreator('Youki and Co');
         $pdf->SetAuthor('Youki and Co');
-        $pdf->SetTitle('Facture - ' . ($commande['client_prenom'] ?? '') . ' ' . ($commande['client_nom'] ?? ''));
+        $pdf->SetTitle('Facture - ' . ($commande['client_nom'] ?? '') . ' ' . ($commande['client_prenom'] ?? ''));
         $pdf->SetSubject('Facture');
         
         // Marges simplifiées
@@ -122,7 +122,7 @@ function genererFacturePDF($pdo, $idCommande) {
         $pdf->AddPage();
         
         // Nom complet du client (avec vérification)
-        $nomCompletClient = ($commande['client_prenom'] ?? '') . ' ' . ($commande['client_nom'] ?? '');
+        $nomCompletClient = ($commande['client_nom'] ?? '') . ' ' . ($commande['client_prenom'] ?? '');
         if (empty(trim($nomCompletClient))) {
             $nomCompletClient = 'Client non spécifié';
             error_log("⚠️ Nom client vide pour commande: " . $idCommande);

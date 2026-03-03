@@ -245,45 +245,9 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
         error_log("🔍 Début du nettoyage des clients temporaires et zombies");
         $countTotal = 0;
 
-        // 1. D'ABORD NETTOYER LES PANIERS ORPHELINS ET CEUX DES CLIENTS TEMPORAIRES
+        // 1. Nettoyage des clients temporaires anciens (avec ou sans colonne type)
         try {
-            // Supprimer les lignes de panier des clients temporaires
-            $stmt = $pdo->prepare("
-                DELETE lp FROM LignePanier lp
-                JOIN Panier p ON lp.idPanier = p.idPanier
-                JOIN Client c ON p.idClient = c.idClient
-                WHERE (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr' OR c.email LIKE 'temp_%@YoukiAndCO.fr')
-                AND c.date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
-            ");
-            $stmt->execute();
-            $countLignes = $stmt->rowCount();
-            if ($countLignes > 0) {
-                error_log("📝 Lignes panier temporaires supprimées: " . $countLignes);
-            }
-        } catch (Exception $e) {
-            error_log("⚠️ Erreur nettoyage lignes panier temporaires: " . $e->getMessage());
-        }
-
-        try {
-            // Supprimer les paniers des clients temporaires
-            $stmt = $pdo->prepare("
-                DELETE p FROM Panier p
-                JOIN Client c ON p.idClient = c.idClient
-                WHERE (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr' OR c.email LIKE 'temp_%@YoukiAndCO.fr')
-                AND c.date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
-            ");
-            $stmt->execute();
-            $countPaniers = $stmt->rowCount();
-            if ($countPaniers > 0) {
-                error_log("🛒 Paniers temporaires supprimés: " . $countPaniers);
-            }
-        } catch (Exception $e) {
-            error_log("⚠️ Erreur nettoyage paniers temporaires: " . $e->getMessage());
-        }
-
-        // 2. MAINTENANT NETTOYER LES CLIENTS TEMPORAIRES ANCIENS
-        try {
-            $stmt = $pdo->prepare("DELETE FROM Client WHERE (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr' OR email LIKE 'temp_%@YoukiAndCO.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmt = $pdo->prepare("DELETE FROM Client WHERE (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
             $stmt->execute();
             $countTemp = $stmt->rowCount();
             $countTotal += $countTemp;
@@ -292,9 +256,9 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
             }
         } catch (Exception $e) {
             // Si colonne type manquante, nettoyer par email et date
-            error_log("⚠️ Colonne type manquante, utilisation alternative");
+            error_log("Colonne type manquante, utilisation alternative");
             try {
-                $stmt = $pdo->prepare("DELETE FROM Client WHERE (email LIKE 'temp_%@origamizen.fr' OR email LIKE 'temp_%@YoukiAndCO.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
                 $stmt->execute();
                 $countTemp = $stmt->rowCount();
                 $countTotal += $countTemp;
@@ -303,8 +267,8 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
                 }
             } catch (Exception $e2) {
                 // Si date_creation manquante, nettoyer seulement par email
-                error_log("⚠️ Colonne date_creation manquante, nettoyage par email uniquement");
-                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr' OR email LIKE 'temp_%@YoukiAndCO.fr'");
+                error_log("Colonne date_creation manquante, nettoyage par email uniquement");
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr'");
                 $stmt->execute();
                 $countTemp = $stmt->rowCount();
                 $countTotal += $countTemp;
@@ -314,7 +278,7 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
             }
         }
 
-        // 3. NETTOYER LES CLIENTS ZOMBIES (SANS PAPIER NI COMMANDE)
+        // 2. Nettoyer les clients sans panier ni commande (zombis) - plus agressif (2 heures)
         try {
             $stmt = $pdo->prepare("
                 DELETE c FROM Client c 
@@ -323,7 +287,7 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
                 WHERE p.idPanier IS NULL 
                 AND cmd.idCommande IS NULL 
                 AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
-                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr' OR c.email LIKE 'temp_%@YoukiAndCO.fr')
+                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr')
             ");
             $stmt->execute();
             $countZombies = $stmt->rowCount();
@@ -332,52 +296,49 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
                 error_log("🧟 Clients zombies supprimés: " . $countZombies);
             }
         } catch (Exception $e) {
-            error_log("⚠️ Erreur nettoyage zombies: " . $e->getMessage());
+            error_log("Erreur nettoyage zombies: " . $e->getMessage());
         }
 
-        // 4. NETTOYAGE FINAL DES PAPIERS ET LIGNES ORPHELINES
+        // 3. Nettoyer les paniers orphelins (sans client)
         try {
-            // Paniers orphelins (sans client)
             $stmt = $pdo->prepare("
                 DELETE p FROM Panier p 
                 LEFT JOIN Client c ON p.idClient = c.idClient 
                 WHERE c.idClient IS NULL
             ");
             $stmt->execute();
-            $countPaniersOrphelins = $stmt->rowCount();
-            if ($countPaniersOrphelins > 0) {
-                error_log("🛒 Paniers orphelins supprimés: " . $countPaniersOrphelins);
+            $countPaniers = $stmt->rowCount();
+            if ($countPaniers > 0) {
+                error_log("🛒 Paniers orphelins supprimés: " . $countPaniers);
             }
         } catch (Exception $e) {
-            error_log("⚠️ Erreur nettoyage paniers orphelins: " . $e->getMessage());
+            error_log("Erreur nettoyage paniers orphelins: " . $e->getMessage());
         }
 
+        // 4. Nettoyer les lignes de panier orphelines
         try {
-            // Lignes de panier orphelines
             $stmt = $pdo->prepare("
                 DELETE lp FROM LignePanier lp 
                 LEFT JOIN Panier p ON lp.idPanier = p.idPanier 
                 WHERE p.idPanier IS NULL
             ");
             $stmt->execute();
-            $countLignesOrphelines = $stmt->rowCount();
-            if ($countLignesOrphelines > 0) {
-                error_log("📝 Lignes panier orphelines supprimées: " . $countLignesOrphelines);
+            $countLignes = $stmt->rowCount();
+            if ($countLignes > 0) {
+                error_log("📝 Lignes panier orphelines supprimées: " . $countLignes);
             }
         } catch (Exception $e) {
-            error_log("⚠️ Erreur nettoyage lignes panier orphelines: " . $e->getMessage());
+            error_log("Erreur nettoyage lignes panier: " . $e->getMessage());
         }
 
         if ($countTotal > 0) {
-            error_log("✅ Nettoyage terminé: " . $countTotal . " clients nettoyés");
-        } else {
-            error_log("✅ Nettoyage terminé: aucun client à nettoyer");
+            error_log("✅ Nettoyage terminé: " . $countTotal . " éléments nettoyés");
         }
 
         return $countTotal;
 
     } catch (Exception $e) {
-        error_log("❌ Erreur critique lors du nettoyage: " . $e->getMessage());
+        error_log("❌ Erreur lors du nettoyage: " . $e->getMessage());
         return 0;
     }
 }
@@ -1025,7 +986,7 @@ if ($action == 'paypal_success') {
                     <a href="acheter.php?action=telecharger_facture&id_commande=<?//= $commande_id ?>" class="btn btn-success">📥 Télécharger PDF</a>
                 </div>-->
                 
-                <p>Vous recevrez un email de paiement sous peu.</p>
+                <p>Vous recevrez un email de confirmation sous peu.</p>
                 <a href="index.html" class="btn">🏠 Retour à l'accueil</a>
             </div>
         </body>

@@ -6,6 +6,9 @@ function envoyerFactureAuto($pdo, $idCommande) {
     require_once 'PHPMailer/src/PHPMailer.php';
     require_once 'PHPMailer/src/SMTP.php';
     
+    use PHPMailer\PHPMailer\PHPMailer;
+    use PHPMailer\PHPMailer\Exception;
+    
     // Vérifier que la commande est payée
     $stmt = $pdo->prepare("SELECT statut FROM Commande WHERE idCommande = ?");
     $stmt->execute([$idCommande]);
@@ -39,45 +42,68 @@ function envoyerFactureAuto($pdo, $idCommande) {
         return false;
     }
     
-    // Préparer l'email
-    $sujet = "Votre facture Youki and Co - Commande #" . $idCommande;
+    // Email sobre avec pièce jointe
+    $sujet = "Votre facture Youki & Co - Commande #" . $idCommande;
     $message = "
+    <!DOCTYPE html>
     <html>
-    <body style='font-family: Arial, sans-serif;'>
-        <div style='max-width: 600px; margin: 0 auto;'>
-            <div style='background: #d40000; color: white; padding: 20px; text-align: center;'>
-                <h1>Youki and Co</h1>
-                <p>Créations artisanales japonaises</p>
+    <head>
+        <meta charset='UTF-8'>
+        <style>
+            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 4px; overflow: hidden; }
+            .header { background: #333; padding: 30px; text-align: center; }
+            .header h1 { margin: 0; color: white; font-weight: 300; font-size: 28px; letter-spacing: 2px; }
+            .content { padding: 40px; }
+            h2 { color: #333; font-weight: 400; margin-top: 0; }
+            p { color: #666; line-height: 1.6; margin-bottom: 20px; }
+            .info-box { background: #fafafa; padding: 25px; margin: 25px 0; border: 1px solid #f0f0f0; }
+            .info-box p { margin: 10px 0; }
+            .info-box strong { color: #333; }
+            .footer { background: #fafafa; padding: 20px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #f0f0f0; }
+            .mention { background: #f9f9f9; padding: 15px; margin: 25px 0; color: #666; font-size: 13px; text-align: center; border: 1px solid #f0f0f0; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h1>YOUKI & CO</h1>
             </div>
-            <div style='padding: 20px; background: #f9f9f9;'>
-                <h2>Merci pour votre commande !</h2>
-                <p>Bonjour <strong>" . htmlspecialchars($client['prenom']) . " " . htmlspecialchars($client['nom']) . "</strong>,</p>
+            
+            <div class='content'>
+                <h2>Bonjour " . htmlspecialchars($client['prenom'] . ' ' . $client['nom']) . ",</h2>
                 
-                <div style='background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #d40000;'>
-                    <h3 style='margin-top: 0;'>📦 Détails de votre commande</h3>
-                    <p><strong>Commande #" . $idCommande . "</strong></p>
-                    <p>Date : " . date('d/m/Y') . "</p>
-                    <p><strong>Montant total : " . number_format($client['montantTotal'], 2, ',', ' ') . " € TTC</strong></p>
+                <p>Merci pour votre commande !</p>
+                
+                <div class='info-box'>
+                    <p><strong>Commande :</strong> #" . $idCommande . "</p>
+                    <p><strong>Montant total :</strong> " . number_format($client['montantTotal'], 2, ',', ' ') . " €</p>
+                    <p><strong>Date :</strong> " . date('d/m/Y') . "</p>
                 </div>
                 
                 <p>Votre facture détaillée est jointe à cet email au format PDF.</p>
-                <p>Nous vous remercions pour votre confiance !</p>
-                <br>
-                <p>Cordialement,<br>L'équipe Youki and Co</p>
+                
+                <div class='mention'>
+                    Exonération de TVA - Art. 293 B du CGI
+                </div>
+                
+                <p>Nous vous remercions pour votre confiance.</p>
+                
+                <p>Cordialement,<br>L'équipe Youki & Co</p>
             </div>
-            <div style='padding: 20px; text-align: center; color: #666; font-size: 12px; background: #f0f0f0;'>
-                <p><strong>Youki and Co - Créations artisanales japonaises</strong></p>
-                <p>📧 " . SMTP_FROM_EMAIL . " | 📞 +33 1 23 45 67 89</p>
+            
+            <div class='footer'>
+                Youki & Co - Créations artisanales japonaises<br>
+                contact@youkiandco.fr
             </div>
         </div>
     </body>
     </html>
     ";
     
-    // Envoyer l'email avec PHPMailer
+    // Envoyer l'email
     $mail = new PHPMailer(true);
     try {
-        // Configuration SMTP
         $mail->isSMTP();
         $mail->Host = SMTP_HOST;
         $mail->SMTPAuth = true;
@@ -85,7 +111,6 @@ function envoyerFactureAuto($pdo, $idCommande) {
         $mail->Password = SMTP_PASSWORD;
         $mail->SMTPSecure = SMTP_SECURE === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = SMTP_PORT;
-        $mail->SMTPDebug = 0;
         $mail->CharSet = 'UTF-8';
         
         $mail->SMTPOptions = array(
@@ -96,29 +121,27 @@ function envoyerFactureAuto($pdo, $idCommande) {
             )
         );
         
-        // Destinataires
-        $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+        $mail->setFrom(SMTP_FROM_EMAIL, 'Youki & Co');
         $mail->addAddress($client['email']);
-        $mail->addReplyTo(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+        $mail->addReplyTo(SMTP_FROM_EMAIL, 'Youki & Co');
         
         // Pièce jointe
         $mail->addAttachment($cheminFacture, 'facture_' . $idCommande . '.pdf');
         
-        // Contenu
         $mail->isHTML(true);
         $mail->Subject = $sujet;
         $mail->Body = $message;
         $mail->AltBody = strip_tags($message);
         
         if ($mail->send()) {
-            error_log("✅ Facture auto-envoyée avec succès à: " . $client['email']);
+            error_log("✅ Facture envoyée avec succès à: " . $client['email']);
             return true;
         } else {
-            error_log("❌ Erreur envoi facture auto: " . $mail->ErrorInfo);
+            error_log("❌ Erreur envoi: " . $mail->ErrorInfo);
             return false;
         }
     } catch (Exception $e) {
-        error_log("❌ Erreur PHPMailer (auto): " . $e->getMessage());
+        error_log("❌ Erreur PHPMailer: " . $e->getMessage());
         return false;
     }
 }
