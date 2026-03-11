@@ -1,224 +1,350 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HEURE DU CADEAU - Boutique de cadeaux uniques</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <title>Youki and Co - Créations artisanales japonaises</title>
     <style>
-      /* Styles pour les produits dans l'accueil */
-      .featured-products .products-grid {
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f9f9f9;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      /* En-tête */
+      header {
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        position: fixed;
+        width: 100%;
+        top: 0;
+        z-index: 1000;
+      }
+
+      .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+      }
+
+      .logo {
+        font-family: "Georgia", serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #d40000;
+        text-decoration: none;
+      }
+
+      .logo span {
+        color: #333;
+      }
+
+      nav ul {
+        display: flex;
+        list-style: none;
+      }
+
+      nav ul li {
+        margin-left: 30px;
+      }
+
+      nav ul li a {
+        text-decoration: none;
+        color: #333;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: color 0.3s;
+      }
+
+      nav ul li a:hover {
+        color: #d40000;
+      }
+
+      /* Styles pour le panier */
+      #compteur-panier {
+        background: #d40000;
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+
+      /* Bannière principale */
+      .hero {
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)),
+          url("img/ai-generated-8662190_1280.png");
+        background-size: cover;
+        background-position: center;
+        height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        margin-top: 60px;
+      }
+
+      .hero-content {
+        max-width: 800px;
+        padding: 0 20px;
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 20px;
+        font-weight: 300;
+        letter-spacing: 2px;
+      }
+
+      .hero p {
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+        font-weight: 300;
+      }
+
+      .btn {
+        display: inline-block;
+        background-color: #d40000;
+        color: white;
+        padding: 12px 30px;
+        text-decoration: none;
+        border-radius: 2px;
+        font-size: 14px;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        background-color: #b30000;
+      }
+
+      .btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Section à propos */
+      .about {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+      }
+
+      .section-title {
+        text-align: center;
+        margin-bottom: 50px;
+        position: relative;
+      }
+
+      .section-title h2 {
+        font-size: 2rem;
+        font-weight: 300;
+        color: #333;
+        display: inline-block;
+        padding-bottom: 10px;
+      }
+
+      .section-title h2:after {
+        content: "";
+        position: absolute;
+        width: 50px;
+        height: 2px;
+        background-color: #d40000;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .about-content {
+        display: flex;
+        align-items: center;
+        gap: 50px;
+      }
+
+      .about-text {
+        flex: 1;
+      }
+
+      .about-text h3 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        font-weight: 400;
+      }
+
+      .about-text p {
+        margin-bottom: 20px;
+        color: #666;
+      }
+
+      .about-image {
+        flex: 1;
+        border-radius: 2px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .about-image img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      /* Section produits */
+      .products {
+        padding: 80px 0;
+      }
+
+      .products-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 30px;
-        margin: 40px 0;
+        min-height: 400px;
       }
 
       .product-card {
-        background: white;
-        border-radius: 12px;
+        background-color: white;
+        border-radius: 2px;
         overflow: hidden;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        position: relative;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        transition:
+          transform 0.3s,
+          box-shadow 0.3s;
       }
 
       .product-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
       }
 
       .product-image {
-        position: relative;
-        height: 220px;
+        height: 250px;
         overflow: hidden;
-        background-color: #f8f9fa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
 
       .product-image img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.5s ease;
+        transition: transform 0.5s;
       }
 
       .product-card:hover .product-image img {
         transform: scale(1.05);
       }
 
-      .product-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-
-      .product-card:hover .product-overlay {
-        opacity: 1;
-      }
-
-      .product-overlay i {
-        color: white;
-        font-size: 2rem;
-        background: rgba(231, 76, 60, 0.9);
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .discount-badge {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: #e74c3c;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-
       .product-info {
         padding: 20px;
       }
 
-      .product-category {
-        display: inline-block;
-        color: #7f8c8d;
-        font-size: 0.85rem;
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+      .product-info h3 {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+        font-weight: 400;
       }
 
-      .product-info h3 {
-        margin: 0 0 10px 0;
-        font-size: 1.2rem;
-        color: #2c3e50;
-        line-height: 1.4;
-        height: 50px;
+      .product-info p {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        height: 60px;
         overflow: hidden;
         display: -webkit-box;
-        -webkit-line-clamp: 2;
+        -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
       }
 
       .product-price {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #e74c3c;
-        margin: 10px 0;
         display: flex;
+        justify-content: space-between;
         align-items: center;
       }
 
-      .discount-badge {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: #e74c3c;
-        color: white;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        z-index: 1;
+      .price {
+        font-weight: bold;
+        color: #d40000;
       }
 
-      .far.fa-star {
-        color: #ddd;
-      }
-
-      .modal-product-ref {
-        color: #7f8c8d;
-        font-size: 0.9rem;
-        margin: 5px 0;
-      }
-
-      .product-rating {
+      /* Pagination */
+      .pagination {
         display: flex;
-        align-items: center;
-        gap: 5px;
-        margin: 10px 0;
-      }
-
-      .product-rating i {
-        color: #f1c40f;
-        font-size: 0.9rem;
-      }
-
-      .rating-count {
-        color: #7f8c8d;
-        font-size: 0.85rem;
-      }
-
-      .product-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-      }
-
-      .btn-add-to-cart {
-        flex: 1;
-        background: #e74c3c;
-        color: white;
-        border: none;
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
         justify-content: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        font-size: 0.95rem;
+        align-items: center;
+        gap: 10px;
+        margin-top: 50px;
+        flex-wrap: wrap;
       }
 
-      .btn-add-to-cart:hover {
-        background: #c0392b;
-        transform: translateY(-2px);
+      .pagination-btn {
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        background: white;
+        color: #333;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.3s;
+        min-width: 40px;
+        text-align: center;
       }
 
-      .btn-add-to-cart:active {
-        transform: translateY(0);
+      .pagination-btn:hover:not(:disabled) {
+        background: #f0f0f0;
+        border-color: #999;
       }
 
-      .btn-add-to-cart:disabled {
-        background: #95a5a6;
+      .pagination-btn.active {
+        background: #d40000;
+        color: white;
+        border-color: #d40000;
+      }
+
+      .pagination-btn:disabled {
+        opacity: 0.5;
         cursor: not-allowed;
-        transform: none;
       }
 
-      .btn-add-to-cart.loading {
-        background: #3498db;
-        position: relative;
+      .pagination-info {
+        margin: 0 15px;
+        color: #666;
       }
 
-      .btn-add-to-cart.loading i {
+      /* Loading spinner */
+      .loading-spinner {
+        text-align: center;
+        padding: 50px;
+        font-size: 18px;
+        color: #666;
+      }
+
+      .loading-spinner:after {
+        content: "";
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-left: 10px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #d40000;
+        border-radius: 50%;
         animation: spin 1s linear infinite;
       }
 
@@ -231,1532 +357,1776 @@
         }
       }
 
-      .btn-view {
-        background: #3498db;
-        color: white;
-        text-decoration: none;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.3s ease;
+      /* Section valeurs */
+      .values {
+        padding: 80px 0;
+        background-color: #f9f9f9;
       }
 
-      .btn-view:hover {
-        background: #2980b9;
+      .values-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 40px;
       }
 
-      /* État de chargement */
-      .products-loading {
-        grid-column: 1 / -1;
+      .value-item {
         text-align: center;
-        padding: 60px;
-        color: #7f8c8d;
+        padding: 30px 20px;
       }
 
-      .products-loading i {
-        font-size: 2rem;
-        margin-bottom: 15px;
+      .value-icon {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+        color: #d40000;
       }
 
-      .products-loading-error {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 60px;
-        color: #e74c3c;
-      }
-
-      .products-loading-error i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-      }
-
-      /* Styles pour la modal panier */
-      .cart-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-      }
-
-      .cart-modal.show {
-        display: flex;
-      }
-
-      .cart-modal-content {
-        background: white;
-        border-radius: 16px;
-        width: 90%;
-        max-width: 450px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        overflow: hidden;
-      }
-
-      @keyframes modalSlideIn {
-        from {
-          opacity: 0;
-          transform: translateY(-30px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-
-      .cart-modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        border-bottom: 1px solid #eee;
-      }
-
-      .cart-modal-header h3 {
-        margin: 0;
-        color: #333;
+      .value-item h3 {
         font-size: 1.3rem;
+        margin-bottom: 15px;
+        font-weight: 400;
       }
 
-      .cart-modal-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
+      .value-item p {
         color: #666;
-        padding: 0;
-        width: 30px;
-        height: 30px;
+      }
+
+      /* Section témoignages */
+      .testimonials {
+        padding: 80px 0;
+      }
+
+      .testimonials-container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .testimonial {
+        background-color: white;
+        padding: 30px;
+        border-radius: 2px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+      }
+
+      .testimonial-text {
+        font-style: italic;
+        margin-bottom: 20px;
+        color: #555;
+      }
+
+      .testimonial-author {
         display: flex;
         align-items: center;
-        justify-content: center;
+      }
+
+      .author-avatar {
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
-      }
-
-      .cart-modal-close:hover {
-        background: #f5f5f5;
-        color: #333;
-      }
-
-      .cart-modal-body {
-        padding: 20px;
-      }
-
-      .cart-modal-product {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        padding: 20px;
-      }
-
-      .modal-product-image {
-        width: 120px;
-        height: 120px;
-        border-radius: 12px;
         overflow: hidden;
-        flex-shrink: 0;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        background-color: #f8f9fa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        margin-right: 15px;
       }
 
-      .modal-product-image img {
+      .author-avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
 
-      .modal-product-info h4 {
-        margin: 0 0 10px 0;
-        color: #2c3e50;
-        font-size: 1.2rem;
-        font-weight: 600;
+      .author-info h4 {
+        font-size: 1rem;
+        margin-bottom: 5px;
       }
 
-      .modal-product-price {
-        font-weight: 700;
-        color: #e74c3c;
-        font-size: 1.3rem;
-        margin: 0 0 15px 0;
-      }
-
-      .modal-success-message {
-        color: #27ae60;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 500;
-      }
-
-      .cart-modal-footer {
-        padding: 20px;
-        background: #f8f9fa;
-        border-top: 1px solid #eee;
-        display: flex;
-        gap: 12px;
-      }
-
-      .cart-modal-footer .btn {
-        flex: 1;
-        padding: 12px;
-        font-weight: 600;
-        border-radius: 8px;
-        text-align: center;
-        text-decoration: none;
-      }
-
-      .cart-modal-footer .btn-primary {
-        background: #e74c3c;
-        color: white;
-        border: none;
-      }
-
-      .cart-modal-footer .btn-primary:hover {
-        background: #c0392b;
-      }
-
-      .cart-modal-footer .btn-secondary {
-        background: #ecf0f1;
-        color: #2c3e50;
-        border: 1px solid #ddd;
-      }
-
-      .cart-modal-footer .btn-secondary:hover {
-        background: #d5dbdb;
-      }
-
-      /* Notification */
-      .toast-notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: white;
-        border-radius: 12px;
-        padding: 15px 20px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        z-index: 1001;
-        animation: toastSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        max-width: 400px;
-        border-left: 4px solid #27ae60;
-      }
-
-      .toast-error {
-        border-left-color: #e74c3c;
-      }
-
-      @keyframes toastSlideIn {
-        from {
-          opacity: 0;
-          transform: translateX(100%) translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0) translateY(0);
-        }
-      }
-
-      .toast-icon {
-        font-size: 1.8rem;
-      }
-
-      .toast-success .toast-icon {
-        color: #27ae60;
-      }
-
-      .toast-error .toast-icon {
-        color: #e74c3c;
-      }
-
-      .toast-message {
-        flex: 1;
-        color: #2c3e50;
-        font-size: 0.95rem;
-        font-weight: 500;
-      }
-
-      .toast-close {
-        background: none;
-        border: none;
-        color: #bdc3c7;
-        cursor: pointer;
-        padding: 5px;
-        font-size: 1.1rem;
-        transition: color 0.3s ease;
-      }
-
-      .toast-close:hover {
-        color: #7f8c8d;
-      }
-
-      /* Animation du compteur panier */
-      .cart-count.has-items {
-        animation: pulse 0.5s ease;
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.2);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-
-      .cart-count {
-        background: #e74c3c;
-        color: white;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
+      .author-info p {
         font-size: 0.8rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        font-weight: bold;
+        color: #888;
       }
 
-      .text-center {
-        text-align: center;
+      /* Section contact */
+      .contact {
+        padding: 80px 0;
+        background-color: #f9f9f9;
       }
 
-      .cart-count.pulse {
-        animation: pulse-animation 0.6s ease-in-out;
-      }
-
-      @keyframes pulse-animation {
-        0% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.3);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-
-      .debug-banner {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #f39c12;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 5px;
-        z-index: 9999;
-        font-size: 14px;
+      .contact-container {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        gap: 50px;
       }
 
-      .debug-banner i {
-        font-size: 16px;
+      .contact-info {
+        flex: 1;
       }
 
-      .api-error-banner {
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #e74c3c;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
-        z-index: 9999;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-        max-width: 80%;
-        text-align: center;
-      }
-
-      /* Badges de stock */
-      .stock-badge {
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        z-index: 2;
-      }
-
-      .stock-faible {
-        background: #f39c12;
-        color: white;
-      }
-
-      .stock-rupture {
-        background: #e74c3c;
-        color: white;
-      }
-
-      /* Styles pour les messages d'erreur */
-      .products-empty,
-      .products-api-error,
-      .products-network-error {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        padding: 40px;
-        text-align: center;
-        grid-column: 1 / -1;
-      }
-
-      .products-empty i,
-      .products-api-error i,
-      .products-network-error i {
+      .contact-info h3 {
+        font-size: 1.5rem;
         margin-bottom: 20px;
-        font-size: 3rem;
+        font-weight: 400;
+        position: relative;
       }
 
-      /* Bouton de test */
-      .btn-test-api {
-        background: #3498db;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 6px;
-        cursor: pointer;
+      .contact-info p {
+        margin-bottom: 30px;
+        color: #666;
+      }
+
+      .contact-details {
+        margin-bottom: 30px;
+      }
+
+      .contact-detail {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .contact-icon {
+        margin-right: 15px;
+        color: #d40000;
+      }
+
+      .contact-form {
+        flex: 1;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
         font-size: 0.9rem;
-        margin-left: 10px;
+        color: #555;
       }
 
-      .btn-test-api:hover {
-        background: #2980b9;
+      .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 2px;
+        font-family: inherit;
       }
 
-      .debug-section {
-        background: #f8f9fa;
-        padding: 20px;
-        margin: 20px 0;
-        border-radius: 8px;
+      textarea.form-control {
+        height: 150px;
+        resize: vertical;
+      }
+
+      /* Pied de page */
+      footer {
+        background-color: #333;
+        color: white;
+        padding: 50px 0 20px;
+      }
+
+      .footer-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+      }
+
+      .footer-col {
+        flex: 1;
+        padding: 0 15px;
+      }
+
+      .footer-col h3 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        font-weight: 400;
+        position: relative;
+        padding-bottom: 10px;
+      }
+
+      .footer-col h3:after {
+        content: "";
+        position: absolute;
+        width: 30px;
+        height: 2px;
+        background-color: #d40000;
+        bottom: 0;
+        left: 0;
+      }
+
+      .footer-col ul {
+        list-style: none;
+      }
+
+      .footer-col ul li {
+        margin-bottom: 10px;
+      }
+
+      .footer-col ul li a {
+        color: #aaa;
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+
+      .footer-col ul li a:hover {
+        color: white;
+      }
+
+      .social-links {
+        display: flex;
+        gap: 15px;
+      }
+
+      .social-links a {
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+        width: 36px;
+        height: 36px;
+        background-color: #444;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 36px;
+        transition: background-color 0.3s;
+      }
+
+      .social-links a:hover {
+        background-color: #d40000;
+      }
+
+      .copyright {
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #444;
+        color: #aaa;
+        font-size: 0.9rem;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .header-container {
+          flex-direction: column;
+          padding: 15px 0;
+        }
+
+        nav ul {
+          margin-top: 15px;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        nav ul li {
+          margin-left: 10px;
+          margin-right: 10px;
+          margin-bottom: 10px;
+        }
+
+        .panier-mobile {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          background: #f8f8f8;
+          padding: 8px 15px;
+          border-radius: 20px;
+          margin-top: 10px;
+          border: 1px solid #e0e0e0;
+        }
+
+        .hero h1 {
+          font-size: 2.2rem;
+        }
+
+        .hero p {
+          font-size: 1rem;
+        }
+
+        .about-content {
+          flex-direction: column;
+        }
+
+        .contact-container {
+          flex-direction: column;
+        }
+
+        .footer-container {
+          flex-direction: column;
+        }
+
+        .footer-col {
+          margin-bottom: 30px;
+        }
+
+        .pagination-btn {
+          padding: 8px 12px;
+          font-size: 14px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        nav ul {
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+        }
+
+        nav ul li {
+          margin: 5px 0;
+          width: 100%;
+          text-align: center;
+        }
+
+        .panier-mobile {
+          width: auto;
+          margin: 10px auto;
+          background: #d40000;
+          color: white;
+        }
+
+        .panier-mobile a {
+          color: white !important;
+          font-weight: bold;
+        }
+
+        #compteur-panier {
+          background: white;
+          color: #d40000;
+        }
+
+        .hero h1 {
+          font-size: 1.8rem;
+        }
+
+        .hero p {
+          font-size: 0.9rem;
+        }
+
+        .btn {
+          padding: 10px 20px;
+          font-size: 13px;
+        }
+
+        .products-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Styles pour la modal panier */
+      #panier-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      #panier-modal > div {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      /* Styles pour la modal commande */
+      #commande-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      /* Styles pour les notifications */
+      .notification {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 4px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        max-width: 300px;
+      }
+
+      .notification.success {
+        background: #28a745;
+        color: white;
+      }
+
+      .notification.error {
+        background: #dc3545;
+        color: white;
+      }
+
+      .notification.info {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .notification.warning {
+        background: #ffc107;
+        color: #856404;
       }
     </style>
   </head>
   <body>
-    <!-- Header -->
-    <header class="header">
+    <!-- En-tête -->
+    <header>
       <div class="container header-container">
-        <!-- Logo -->
-        <a href="index.html" class="logo">
-          <i class="fas fa-gift logo-icon"></i>
-          <span class="logo-text"
-            >HEURE<span class="logo-highlight">DU CADEAU</span></span
-          >
-        </a>
-
-        <!-- Navigation principale -->
-        <nav class="nav-main">
-          <ul class="nav-list">
-            <li>
-              <a href="index.html" class="nav-link active"
-                ><i class="fas fa-home"></i> Accueil</a
+        <a href="#" class="logo">Youki<span> And Co</span></a>
+        <nav>
+          <ul>
+            <li><a href="#">Accueil</a></li>
+            <li><a href="#nosCreations">Nos créations</a></li>
+            <li><a href="#about">À propos</a></li>
+            <li><a href="#values">Nos valeurs</a></li>
+            <li class="panier-mobile">
+              <a
+                href="#"
+                id="lien-panier"
+                style="display: flex; align-items: center; gap: 5px"
               >
-            </li>
-            <li>
-              <a href="produitsprincipale.php" class="nav-link"
-                ><i class="fas fa-box-open"></i> Cadeaux</a
-              >
-            </li>
-            <li>
-              <a href="apropos.html" class="nav-link"
-                ><i class="fas fa-info-circle"></i> À propos</a
-              >
-            </li>
-            <li>
-              <a href="contact.html" class="nav-link"
-                ><i class="fas fa-envelope"></i> Contact</a
-              >
-            </li>
-            <li>
-              <a href="panier.html" class="nav-link cart-link">
-                <i class="fas fa-shopping-cart"></i> Panier
-                <span class="cart-count">0</span>
+                🛒 Panier (<span id="compteur-panier">0</span>)
               </a>
             </li>
           </ul>
         </nav>
-
-        <!-- Menu mobile -->
-        <button class="menu-toggle" id="menuToggle">
-          <i class="fas fa-bars"></i>
-        </button>
       </div>
-
-      <!-- Navigation mobile -->
-      <nav class="nav-mobile" id="navMobile">
-        <ul class="nav-mobile-list">
-          <li>
-            <a href="index.html" class="nav-mobile-link"
-              ><i class="fas fa-home"></i> Accueil</a
-            >
-          </li>
-          <li>
-            <a href="produitsprincipale.php" class="nav-mobile-link"
-              ><i class="fas fa-box-open"></i> Cadeaux</a
-            >
-          </li>
-          <li>
-            <a href="apropos.html" class="nav-mobile-link"
-              ><i class="fas fa-info-circle"></i> À propos</a
-            >
-          </li>
-          <li>
-            <a href="contact.html" class="nav-mobile-link"
-              ><i class="fas fa-envelope"></i> Contact</a
-            >
-          </li>
-          <li>
-            <a href="panier.html" class="nav-mobile-link"
-              ><i class="fas fa-shopping-cart"></i> Panier</a
-            >
-          </li>
-        </ul>
-      </nav>
     </header>
 
-    <!-- Hero Section -->
+    <!-- Bannière principale -->
     <section class="hero">
-      <div class="container hero-container">
-        <div class="hero-content">
-          <h1 class="hero-title">Des cadeaux qui marquent les esprits</h1>
-          <p class="hero-subtitle">
-            Découvrez notre sélection exclusive de cadeaux originaux pour toutes
-            les occasions
-          </p>
-          <div class="hero-buttons">
-            <a href="produitsprincipale.php" class="btn btn-primary"
-              >Explorer la collection</a
-            >
-            <a href="#categories" class="btn btn-secondary"
-              >Voir les catégories</a
-            >
-          </div>
-        </div>
-        <div class="hero-image">
-          <img src="img/hero-banner.jpg" alt="Collection de cadeaux élégants" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Catégories -->
-    <section class="categories" id="categories">
-      <div class="container">
-        <h2 class="section-title">Nos catégories de cadeaux</h2>
-        <p class="section-subtitle">
-          Trouvez le cadeau parfait selon l'occasion
+      <div class="hero-content">
+        <h1>L'art délicat de l'origami</h1>
+        <p>
+          Découvrez des créations uniques pliées à la main avec passion et
+          précision
         </p>
+        <a href="#nosCreations" class="btn">Explorer la collection</a>
+      </div>
+    </section>
 
-        <div class="categories-grid">
-          <div class="category-card">
-            <div class="category-icon">
-              <i class="fas fa-birthday-cake"></i>
-            </div>
-            <h3>Anniversaires</h3>
-            <p>Cadeaux uniques pour célébrer les anniversaires</p>
-            <a
-              href="produitsprincipale.php?categorie=anniversaire"
-              class="category-link"
-              >Voir les produits →</a
-            >
+    <!-- Section à propos -->
+    <section class="about" id="about">
+      <div class="container">
+        <div class="section-title">
+          <h2>Notre histoire</h2>
+        </div>
+        <div class="about-content">
+          <div class="about-text">
+            <h3>L'artisanat au service de la beauté</h3>
+            <p>
+              Passionnée par l'art japonais, j'ai découvert l'origami. Depuis,
+              je consacre mon temps à créer des pièces uniques qui capturent
+              l'essence de cette tradition millénaire.
+            </p>
+            <p>
+              Chaque création est réalisée avec soin, en utilisant des papiers
+              de qualité sélectionnés pour leurs textures et leurs motifs. Mon
+              objectif est de partager la sérénité et la beauté de l'origami à
+              travers des œuvres qui inspirent et apaisent.
+            </p>
+            <a href="#" class="btn">En savoir plus</a>
           </div>
-          <div class="category-card">
-            <div class="category-icon"><i class="fas fa-heart"></i></div>
-            <h3>Saint-Valentin</h3>
-            <p>Romantique et mémorable</p>
-            <a
-              href="produitsprincipale.php?categorie=valentin"
-              class="category-link"
-              >Voir les produits →</a
-            >
-          </div>
-          <div class="category-card">
-            <div class="category-icon"><i class="fas fa-glass-cheers"></i></div>
-            <h3>Mariage</h3>
-            <p>Cadeaux de mariage élégants</p>
-            <a
-              href="produitsprincipale.php?categorie=mariage"
-              class="category-link"
-              >Voir les produits →</a
-            >
-          </div>
-          <div class="category-card">
-            <div class="category-icon"><i class="fas fa-baby"></i></div>
-            <h3>Naissance</h3>
-            <p>Pour accueillir bébé</p>
-            <a
-              href="produitsprincipale.php?categorie=naissance"
-              class="category-link"
-              >Voir les produits →</a
-            >
-          </div>
-          <div class="category-card">
-            <div class="category-icon">
-              <i class="fas fa-graduation-cap"></i>
-            </div>
-            <h3>Diplômés</h3>
-            <p>Pour célébrer la réussite</p>
-            <a
-              href="produitsprincipale.php?categorie=diplome"
-              class="category-link"
-              >Voir les produits →</a
-            >
-          </div>
-          <div class="category-card">
-            <div class="category-icon">
-              <i class="fas fa-christmas-tree"></i>
-            </div>
-            <h3>Noël</h3>
-            <p>Magie des fêtes de fin d'année</p>
-            <a
-              href="produitsprincipale.php?categorie=noel"
-              class="category-link"
-              >Voir les produits →</a
-            >
+          <div class="about-image">
+            <img src="img/Cygne.jpg" alt="Origami Cygne" />
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Produits phares -->
-    <section class="featured-products">
+    <!-- Section produits avec pagination -->
+    <section class="products" id="nosCreations">
       <div class="container">
-        <h2 class="section-title">Nos meilleures ventes</h2>
-        <p class="section-subtitle">Découvrez les cadeaux les plus appréciés</p>
-
-        <div class="products-grid" id="featuredProducts">
-          <div class="products-loading">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Chargement des produits...</p>
-          </div>
+        <div class="section-title">
+          <h2>Nos créations</h2>
         </div>
 
-        <div class="text-center">
-          <a href="produitsprincipale.php" class="btn btn-primary"
-            >Voir tous les produits</a
+        <!-- Grille des produits -->
+        <div class="products-grid" id="produits-grid">
+          <!-- Les produits seront chargés dynamiquement -->
+          <div class="loading-spinner">Chargement des créations...</div>
+        </div>
+
+        <!-- Contrôles de pagination -->
+        <div class="pagination" id="pagination-controls">
+          <button
+            class="pagination-btn"
+            id="btn-premiere"
+            onclick="changerPage(1)"
           >
-        </div>
-      </div>
-    </section>
-
-    <!-- Section de débogage (visible uniquement en développement) -->
-    <section class="debug-section" style="display: block">
-      <div class="container">
-        <h4 style="margin-bottom: 10px">Outils de débogage</h4>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap">
-          <button onclick="testAPI()" class="btn-test-api">
-            <i class="fas fa-bug"></i> Tester l'API
-          </button>
-          <button onclick="checkDatabase()" class="btn-test-api">
-            <i class="fas fa-database"></i> Vérifier la base
+            ⏮️ Première
           </button>
           <button
-            onclick="localStorage.clear(); location.reload();"
-            class="btn-test-api"
+            class="pagination-btn"
+            id="btn-precedente"
+            onclick="changerPage(currentPage - 1)"
           >
-            <i class="fas fa-trash"></i> Effacer le cache
+            ◀️ Précédente
           </button>
-          <button onclick="loadFeaturedProducts()" class="btn-test-api">
-            <i class="fas fa-redo"></i> Recharger produits
+
+          <span class="pagination-info" id="pagination-info"
+            >Page <span id="page-actuelle">1</span> sur
+            <span id="total-pages">1</span></span
+          >
+
+          <button
+            class="pagination-btn"
+            id="btn-suivante"
+            onclick="changerPage(currentPage + 1)"
+          >
+            Suivante ▶️
+          </button>
+          <button
+            class="pagination-btn"
+            id="btn-derniere"
+            onclick="changerPage(totalPages)"
+          >
+            Dernière ⏭️
           </button>
         </div>
-        <div
-          id="debugOutput"
-          style="
-            margin-top: 15px;
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            display: none;
-          "
-        ></div>
       </div>
     </section>
 
-    <!-- Services -->
-    <section class="services">
+    <!-- Section valeurs -->
+    <section class="values" id="values">
       <div class="container">
-        <h2 class="section-title">Pourquoi choisir Cadeaux Élégance ?</h2>
-        <div class="services-grid">
-          <div class="service-card">
-            <div class="service-icon"><i class="fas fa-gift"></i></div>
-            <h3>Emballage cadeau offert</h3>
-            <p>Chaque cadeau est emballé avec soin dans un papier élégant</p>
+        <div class="section-title">
+          <h2>Nos valeurs</h2>
+        </div>
+        <div class="values-grid">
+          <div class="value-item">
+            <div class="value-icon">🎨</div>
+            <h3>Artisanat authentique</h3>
+            <p>
+              Chaque pièce est créée à la main avec une attention particulière
+              aux détails et aux techniques traditionnelles.
+            </p>
           </div>
-          <div class="service-card">
-            <div class="service-icon"><i class="fas fa-shipping-fast"></i></div>
-            <h3>Livraison rapide</h3>
-            <p>Expédition sous 24-48h en France métropolitaine</p>
+
+          <div class="value-item">
+            <div class="value-icon">🌱</div>
+            <h3>Matériaux durables</h3>
+            <p>
+              Nous sélectionnons soigneusement nos papiers, en privilégiant les
+              sources écologiques et responsables.
+            </p>
           </div>
-          <div class="service-card">
-            <div class="service-icon"><i class="fas fa-undo-alt"></i></div>
-            <h3>Retour facile</h3>
-            <p>30 jours pour changer d'avis, retour gratuit</p>
-          </div>
-          <div class="service-card">
-            <div class="service-icon"><i class="fas fa-headset"></i></div>
-            <h3>Service client</h3>
-            <p>Une équipe à votre écoute du lundi au vendredi</p>
+
+          <div class="value-item">
+            <div class="value-icon">💝</div>
+            <h3>Créations personnalisées</h3>
+            <p>
+              Nous proposons des origami sur mesure pour des occasions
+              spéciales, adaptés à vos souhaits.
+            </p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Témoignages -->
+    <!-- Section témoignages -->
     <section class="testimonials">
       <div class="container">
-        <h2 class="section-title">Ce que disent nos clients</h2>
-        <div class="testimonials-grid">
-          <div class="testimonial-card">
-            <div class="testimonial-rating">
-              <i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star"></i>
-            </div>
+        <div class="section-title">
+          <h2>Témoignages</h2>
+        </div>
+        <div class="testimonials-container">
+          <div class="testimonial">
             <p class="testimonial-text">
-              "Le cadeau pour l'anniversaire de ma femme était parfait !
-              L'emballage était magnifique et la livraison ultra-rapide."
+              "J'ai offert la grue en origami à ma mère pour son anniversaire.
+              Elle a été tellement touchée par la beauté et le symbolisme de
+              cette création. Un travail d'une finesse incroyable !"
             </p>
             <div class="testimonial-author">
-              <div class="author-avatar">PD</div>
+              <div class="author-avatar">
+                <img
+                  src="https://randomuser.me/api/portraits/women/32.jpg"
+                  alt="Sophie Martin"
+                />
+              </div>
               <div class="author-info">
-                <h4>Pierre D.</h4>
+                <h4>Sophie Martin</h4>
                 <p>Paris</p>
               </div>
             </div>
           </div>
-          <div class="testimonial-card">
-            <div class="testimonial-rating">
-              <i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star-half-alt"></i>
-            </div>
+
+          <div class="testimonial">
             <p class="testimonial-text">
-              "J'ai trouvé exactement ce qu'il me fallait pour le mariage de mes
-              amis. Service client très réactif !"
+              "Le dragon que j'ai commandé dépasse toutes mes attentes. La
+              complexité des pliages et la qualité du papier sont remarquables.
+              Une véritable œuvre d'art qui trône maintenant dans mon bureau."
             </p>
             <div class="testimonial-author">
-              <div class="author-avatar">MS</div>
+              <div class="author-avatar">
+                <img
+                  src="https://randomuser.me/api/portraits/men/54.jpg"
+                  alt="Thomas Lefebvre"
+                />
+              </div>
               <div class="author-info">
-                <h4>Marie S.</h4>
+                <h4>Thomas Lefebvre</h4>
                 <p>Lyon</p>
               </div>
             </div>
           </div>
-          <div class="testimonial-card">
-            <div class="testimonial-rating">
-              <i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star"></i><i class="fas fa-star"></i
-              ><i class="fas fa-star"></i>
-            </div>
-            <p class="testimonial-text">
-              "La qualité des produits est exceptionnelle. Je recommande
-              vivement pour tous vos cadeaux !"
+        </div>
+      </div>
+    </section>
+
+    <!-- Pied de page -->
+    <footer>
+      <div class="container">
+        <div class="footer-container">
+          <div class="footer-col">
+            <h3>Youki and Co</h3>
+            <p>
+              Créations artisanales d'origami inspirées par l'esthétique
+              japonaise et réalisées avec passion.
             </p>
-            <div class="testimonial-author">
-              <div class="author-avatar">TL</div>
-              <div class="author-info">
-                <h4>Thomas L.</h4>
-                <p>Bordeaux</p>
+          </div>
+
+          <div class="footer-col">
+            <h3>Liens rapides</h3>
+            <ul>
+              <li><a href="#">Accueil</a></li>
+              <li><a href="#nosCreations">Nos créations</a></li>
+              <li><a href="#about">À propos</a></li>
+              <li><a href="#values">Nos valeurs</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h3>Informations</h3>
+            <ul>
+              <li><a href="#">Conditions générales</a></li>
+              <li><a href="#">Politique de confidentialité</a></li>
+              <li><a href="#">Livraison et retours</a></li>
+              <li><a href="#">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h3>Newsletter</h3>
+            <p>
+              Inscrivez-vous pour recevoir nos dernières créations et
+              actualités.
+            </p>
+            <form
+              onsubmit="
+                event.preventDefault();
+                alert('Fonctionnalité à venir !');
+              "
+            >
+              <div class="form-group">
+                <input
+                  type="email"
+                  class="form-control"
+                  placeholder="Votre email"
+                  id="newsletter-email"
+                />
               </div>
-            </div>
+              <button type="submit" class="btn">S'inscrire</button>
+            </form>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- Newsletter -->
-    <section class="newsletter">
-      <div class="container newsletter-container">
-        <div class="newsletter-content">
-          <h2>Restez informé</h2>
-          <p>
-            Inscrivez-vous à notre newsletter pour recevoir nos nouveautés et
-            offres spéciales
-          </p>
-        </div>
-        <form class="newsletter-form" id="newsletterForm">
-          <input type="email" placeholder="Votre adresse email" required />
-          <button type="submit" class="btn btn-primary">S'inscrire</button>
-        </form>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-      <div class="container footer-container">
-        <div class="footer-col">
-          <h3>Cadeaux Élégance</h3>
-          <p>
-            Votre boutique de cadeaux en ligne pour toutes les occasions.
-            Qualité, élégance et originalité.
-          </p>
-          <div class="social-links">
-            <a href="#"><i class="fab fa-facebook-f"></i></a>
-            <a href="#"><i class="fab fa-instagram"></i></a>
-            <a href="#"><i class="fab fa-pinterest-p"></i></a>
-            <a href="#"><i class="fab fa-twitter"></i></a>
-          </div>
-        </div>
-        <div class="footer-col">
-          <h3>Liens rapides</h3>
-          <ul class="footer-links">
-            <li><a href="index.html">Accueil</a></li>
-            <li><a href="produitsprincipale.php">Tous les cadeaux</a></li>
-            <li><a href="apropos.html">À propos</a></li>
-            <li><a href="contact.html">Contact</a></li>
-            <li><a href="panier.html">Mon panier</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h3>Informations</h3>
-          <ul class="footer-links">
-            <li><a href="#">Livraison</a></li>
-            <li><a href="#">Retours</a></li>
-            <li><a href="#">Conditions générales</a></li>
-            <li><a href="#">Politique de confidentialité</a></li>
-            <li><a href="#">Mentions légales</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h3>Contact</h3>
-          <ul class="footer-contact">
-            <li>
-              <i class="fas fa-map-marker-alt"></i> 123 Rue des Cadeaux, 75000
-              Paris
-            </li>
-            <li><i class="fas fa-phone"></i> 01 23 45 67 89</li>
-            <li><i class="fas fa-envelope"></i> contact@cHEUREDUCADEAU.fr</li>
-            <li><i class="fas fa-clock"></i> Lun-Ven: 9h-18h</li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <div class="container">
-          <p>&copy; 2023 HEURE DU CADEAU. Tous droits réservés.</p>
-          <p>
-            Paiements sécurisés: <i class="fab fa-cc-visa"></i>
-            <i class="fab fa-cc-mastercard"></i>
-            <i class="fab fa-cc-paypal"></i>
-          </p>
+        <div class="copyright">
+          <p>&copy; 2023 Youki and Co. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
 
     <!-- Modal Panier -->
-    <div class="cart-modal" id="cartModal">
-      <div class="cart-modal-content">
-        <div class="cart-modal-header">
-          <h3>Article ajouté au panier</h3>
-          <button class="cart-modal-close" id="closeCartModal">&times;</button>
+    <div id="panier-modal">
+      <div
+        style="
+          background: white;
+          padding: 25px;
+          border-radius: 8px;
+          max-width: 800px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0; color: #333">Votre Panier</h2>
+          <button
+            onclick="fermerPanierModal()"
+            style="
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #666;
+            "
+          >
+            &times;
+          </button>
         </div>
-        <div class="cart-modal-body" id="cartModalBody"></div>
-        <div class="cart-modal-footer">
-          <a href="panier.html" class="btn btn-primary">Voir le panier</a>
-          <button class="btn btn-secondary" id="continueShopping">
-            Continuer mes achats
+        <div id="panier-content"></div>
+        <div
+          style="
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+          "
+        >
+          <button
+            onclick="viderPanier()"
+            id="btn-vider-panier"
+            style="
+              padding: 10px 15px;
+              background: #6c757d;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+            "
+          >
+            Vider le panier
+          </button>
+          <button
+            onclick="verifierEtPasserCommande()"
+            id="btn-passer-commande"
+            style="
+              padding: 10px 20px;
+              background: #d40000;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: all 0.3s ease;
+            "
+          >
+            Passer la commande
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="js/main.js"></script>
-    <script>
-      // ==============================================
-      // CONFIGURATION AVEC BASE DE DONNÉES - VERSION CORRIGÉE
-      // ==============================================
+    <!-- Modal Commande -->
+    <div id="commande-modal">
+      <div
+        style="
+          background: white;
+          padding: 25px;
+          border-radius: 8px;
+          max-width: 500px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          "
+        >
+          <h2 style="margin: 0; color: #333">Finaliser votre commande</h2>
+          <button
+            onclick="fermerCommandeModal()"
+            style="
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #666;
+            "
+          >
+            &times;
+          </button>
+        </div>
 
-      // CORRECTION IMPORTANTE : Ajouter // devant les URLs
-      const API_PRODUITS_URL = "/api/produits.php?action=featured&limit=4";
-      const API_PANIER_URL = "/api/panier.php";
+        <!-- Étape 1: Choix du type de compte -->
+        <div id="etape-choix-compte">
+          <h3 style="margin-bottom: 15px">
+            Comment souhaitez-vous continuer ?
+          </h3>
+          <p style="margin-bottom: 20px; color: #666; font-size: 14px">
+            Choisissez une option pour finaliser votre commande
+          </p>
 
-      console.log("=== CONFIGURATION AVEC BASE DE DONNÉES ===");
-      console.log("URL API Produits:", API_PRODUITS_URL);
-      console.log("URL API Panier:", API_PANIER_URL);
+          <div style="display: flex; flex-direction: column; gap: 15px">
+            <button
+              onclick="choisirEmailExistant()"
+              style="
+                text-align: left;
+                padding: 20px;
+                background: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+              "
+            >
+              <div style="font-size: 18px; margin-bottom: 5px">📧</div>
+              <strong>Utiliser mon email</strong><br />
+              <small style="color: #666"
+                >Je recevrai un lien de confirmation par email</small
+              >
+            </button>
 
-      // Fonction pour générer les étoiles de notation
-      function generateRatingStars(rating) {
-        if (!rating || rating == 0) return "";
-        let stars = "";
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 >= 0.5;
-        for (let i = 1; i <= 5; i++) {
-          if (i <= fullStars) {
-            stars += '<i class="fas fa-star"></i>';
-          } else if (hasHalfStar && i === fullStars + 1) {
-            stars += '<i class="fas fa-star-half-alt"></i>';
-          } else {
-            stars += '<i class="far fa-star"></i>';
-          }
-        }
-        return stars;
-      }
+            <button
+              onclick="choisirNouveauCompte()"
+              style="
+                text-align: left;
+                padding: 20px;
+                background: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s;
+              "
+            >
+              <div style="font-size: 18px; margin-bottom: 5px">👤</div>
+              <strong>Créer un nouveau compte</strong><br />
+              <small style="color: #666">Inscription rapide avec email</small>
+            </button>
+          </div>
+        </div>
 
-      // Fonction pour afficher une notification
-      function showNotification(message, type = "success") {
-        const toast = document.createElement("div");
-        toast.className = `toast-notification toast-${type}`;
-        toast.innerHTML = `
-          <div class="toast-icon"><i class="fas fa-${
-            type === "success" ? "check-circle" : "exclamation-triangle"
-          }"></i></div>
-          <div class="toast-message">${message}</div>
-          <button class="toast-close"><i class="fas fa-times"></i></button>
-        `;
-        document.body.appendChild(toast);
-        toast
-          .querySelector(".toast-close")
-          .addEventListener("click", () => toast.remove());
-        setTimeout(() => {
-          if (toast.parentElement) toast.remove();
-        }, 5000);
-      }
-
-      // Classe PanierManager avec chemin corrigé
-      class PanierManager {
-        constructor() {
-          this.apiUrl = API_PANIER_URL; // Utilise le chemin corrigé
-          this.cartModal = document.getElementById("cartModal");
-          this.cartModalBody = document.getElementById("cartModalBody");
-          this.cartKey = "cadeaux_elegance_panier";
-          this.initEvents();
-          console.log("PanierManager initialisé avec URL:", this.apiUrl);
-        }
-
-        initEvents() {
-          document
-            .getElementById("closeCartModal")
-            ?.addEventListener("click", () => {
-              this.cartModal.classList.remove("show");
-            });
-          document
-            .getElementById("continueShopping")
-            ?.addEventListener("click", () => {
-              this.cartModal.classList.remove("show");
-            });
-          this.cartModal?.addEventListener("click", (e) => {
-            if (e.target === this.cartModal)
-              this.cartModal.classList.remove("show");
-          });
-        }
-
-        // Méthode pour ajouter au panier
-        async ajouterAuPanier(id_produit, quantite = 1, button = null) {
-          console.log(
-            `[PanierManager] Ajouter au panier: ID=${id_produit}, Quantité=${quantite}`
-          );
-
-          if (!id_produit) {
-            showNotification("Erreur: Produit invalide", "error");
-            return false;
-          }
-
-          if (!quantite || quantite < 1) {
-            quantite = 1;
-          }
-
-          // Désactiver le bouton pendant l'opération
-          if (button) {
-            const originalHTML = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML =
-              '<i class="fas fa-spinner fa-spin"></i> Ajout...';
-            button.classList.add("loading");
-
-            try {
-              const response = await fetch(this.apiUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  action: "ajouter",
-                  id_produit: parseInt(id_produit),
-                  quantite: parseInt(quantite),
-                }),
-              });
-
-              console.log("Réponse statut:", response.status);
-              const data = await response.json();
-              console.log("Données reçues:", data);
-
-              if (data.success) {
-                await this.updateCartCount();
-
-                // Afficher la modal
-                const productInfo = await this.getProductInfo(id_produit);
-                this.showCartModal(productInfo);
-
-                showNotification(
-                  `"${data.produit_nom || productInfo.nom}" ajouté au panier !`
-                );
-                return true;
-              } else {
-                console.error("Erreur API:", data.message);
-                showNotification(
-                  data.message || "Erreur lors de l'ajout",
-                  "error"
-                );
-                return false;
-              }
-            } catch (error) {
-              console.error("Erreur ajout panier:", error);
-              showNotification("Erreur de connexion au serveur", "error");
-              return false;
-            } finally {
-              // Réactiver le bouton
-              setTimeout(() => {
-                button.disabled = false;
-                button.innerHTML = originalHTML;
-                button.classList.remove("loading");
-              }, 500);
-            }
-          } else {
-            // Si pas de bouton (appel direct)
-            try {
-              const response = await fetch(this.apiUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  action: "ajouter",
-                  id_produit: parseInt(id_produit),
-                  quantite: parseInt(quantite),
-                }),
-              });
-
-              const data = await response.json();
-
-              if (data.success) {
-                await this.updateCartCount();
-                showNotification("Produit ajouté au panier !");
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error("Erreur:", error);
-              return false;
-            }
-          }
-
-          return false;
-        }
-
-        // Récupérer les infos d'un produit depuis les cartes affichées
-        async getProductInfo(id_produit) {
-          const productCard = document.querySelector(
-            `.product-card[data-id="${id_produit}"]`
-          );
-          const nom =
-            productCard?.querySelector("h3")?.textContent ||
-            `Produit #${id_produit}`;
-          const prixElement = productCard?.querySelector(".product-price");
-          let prix = "19,99";
-
-          if (prixElement) {
-            // Extraire le prix du HTML
-            const priceText = prixElement.textContent || prixElement.innerHTML;
-            const priceMatch = priceText.match(/(\d+[\.,]\d+)/);
-            if (priceMatch) {
-              prix = priceMatch[1].replace(",", ".");
-            }
-          }
-
-          return {
-            nom: nom,
-            prix_ttc: prix,
-            image:
-              productCard?.querySelector("img")?.src ||
-              "img/default-product.jpg",
-            id_produit: id_produit,
-          };
-        }
-
-        // Afficher la modal panier
-        showCartModal(product) {
-          if (!product) return;
-
-          const prix = product.prix_ttc
-            ? parseFloat(product.prix_ttc).toFixed(2).replace(".", ",")
-            : "0,00";
-
-          this.cartModalBody.innerHTML = `
-                <div class="cart-modal-product">
-                    <div class="modal-product-image">
-                        <img src="${
-                          product.image || "img/default-product.jpg"
-                        }" 
-                             alt="${product.nom}"
-                             onerror="this.onerror=null;this.src='img/default-product.jpg'">
-                    </div>
-                    <div class="modal-product-info">
-                        <h4>${product.nom}</h4>
-                        <p class="modal-product-ref">Réf: ${
-                          product.id_produit || "N/A"
-                        }</p>
-                        <p class="modal-product-price">${prix} €</p>
-                        <p class="modal-success-message">
-                            <i class="fas fa-check-circle"></i>
-                            Article ajouté avec succès !
-                        </p>
-                    </div>
-                </div>
-            `;
-
-          this.cartModal.classList.add("show");
-        }
-
-        // Mettre à jour le compteur panier
-        async updateCartCount() {
-          try {
-            console.log("[PanierManager] Mise à jour compteur...");
-
-            let count = 0;
-
-            // Essayer l'API d'abord
-            try {
-              const response = await fetch(`${this.apiUrl}?action=compter`);
-              console.log("API compteur - Statut:", response.status);
-
-              if (response.ok) {
-                const data = await response.json();
-                count = data.total || 0;
-                console.log("Compteur API:", count);
-              } else {
-                console.log("API non disponible, statut:", response.status);
-              }
-            } catch (apiError) {
-              console.log("API panier non disponible", apiError.message);
-            }
-
-            // Mettre à jour l'affichage
-            const cartCountElements = document.querySelectorAll(".cart-count");
-            cartCountElements.forEach((element) => {
-              if (count > 0) {
-                element.textContent = count;
-                element.style.display = "inline-flex";
-                element.classList.add("pulse");
-                setTimeout(() => element.classList.remove("pulse"), 600);
-              } else {
-                element.textContent = "0";
-                element.style.display = "none";
-              }
-            });
-
-            console.log("Compteur final:", count);
-            return count;
-          } catch (error) {
-            console.error("Erreur mise à jour compteur:", error);
-            return 0;
-          }
-        }
-      }
-
-      // Fonction pour charger les produits phares avec chemin corrigé
-      async function loadFeaturedProducts() {
-        try {
-          const container = document.getElementById("featuredProducts");
-
-          // Afficher un indicateur de chargement
-          container.innerHTML = `
-            <div class="products-loading">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Chargement des produits depuis la base de données...</p>
-              <div style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
-                Connexion à l'API: ${API_PRODUITS_URL}
-              </div>
+        <!-- Étape 2: Saisie email -->
+        <div id="etape-saisie-email" style="display: none">
+          <h3 style="margin-bottom: 15px">Vos coordonnées</h3>
+          <form
+            onsubmit="
+              event.preventDefault();
+              soumettreEmail();
+            "
+          >
+            <div style="margin-bottom: 15px">
+              <label
+                style="display: block; margin-bottom: 5px; font-weight: bold"
+                >Email*</label
+              >
+              <input
+                type="email"
+                id="email-saisi"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                "
+                required
+                placeholder="votre@email.com"
+              />
             </div>
-          `;
+            <div style="margin-bottom: 15px">
+              <label
+                style="display: block; margin-bottom: 5px; font-weight: bold"
+                >Nom (optionnel)</label
+              >
+              <input
+                type="text"
+                id="nom-saisi"
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  border: 1px solid #ddd;
+                  border-radius: 4px;
+                "
+                placeholder="Votre nom"
+              />
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px">
+              <button
+                type="button"
+                onclick="retourChoixCompte()"
+                style="
+                  padding: 10px 15px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Retour
+              </button>
+              <button
+                type="submit"
+                style="
+                  padding: 10px 20px;
+                  background: #d40000;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  flex: 1;
+                "
+              >
+                Envoyer le lien de confirmation
+              </button>
+            </div>
+          </form>
+        </div>
 
-          console.log("Tentative de chargement depuis:", API_PRODUITS_URL);
+        <!-- Étape 3: Confirmation par lien -->
+        <div id="etape-confirmation-lien" style="display: none">
+          <div style="text-align: center; padding: 20px">
+            <div style="font-size: 48px; margin-bottom: 20px">📧</div>
+            <h3 style="margin-bottom: 15px">Vérifiez votre email</h3>
+            <p style="margin-bottom: 15px; color: #666">
+              Nous avons envoyé un lien de confirmation à<br />
+              <strong id="email-a-verifier"></strong>
+            </p>
+            <p style="margin-bottom: 20px; color: #666; font-size: 14px">
+              Cliquez sur le lien reçu par email pour confirmer votre identité.
+            </p>
 
-          // Ajouter un timestamp pour éviter le cache
-          const urlWithCacheBuster = API_PRODUITS_URL + "&_=" + Date.now();
+            <div
+              style="
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+              "
+            >
+              <p style="margin: 0; color: #666; font-size: 14px">
+                <strong>Important :</strong> Le lien est valable pendant 15
+                minutes
+              </p>
+            </div>
 
-          const response = await fetch(urlWithCacheBuster, {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Cache-Control": "no-cache",
-            },
-            mode: "cors",
-          });
+            <div
+              style="
+                display: flex;
+                gap: 10px;
+                justify-content: center;
+                margin-top: 20px;
+              "
+            >
+              <button
+                onclick="retourSaisieEmail()"
+                style="
+                  padding: 10px 15px;
+                  background: #6c757d;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Changer d'email
+              </button>
+              <button
+                onclick="renvoyerLienConfirmation()"
+                style="
+                  padding: 10px 20px;
+                  background: #28a745;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                "
+              >
+                Renvoyer le lien
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-          console.log("Statut réponse:", response.status, response.statusText);
+    <script>
+      // Variables globales
+      let panierData = null;
+      let emailEnCours = "";
+      let typeProcessus = "";
+      let currentPage = 1;
+      let totalPages = 1;
+      let produitsParPage = 8;
 
-          let data;
+      class OrigamiAPI {
+        constructor() {
+          this.baseUrl = "acheter.php";
+        }
+
+        async getProduitsPagines(page = 1, limit = 8) {
           try {
-            data = await response.json();
-            console.log("Données API reçues:", data);
-          } catch (parseError) {
-            console.error("Erreur parsing JSON:", parseError);
-            throw new Error("L'API a retourné une réponse invalide");
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "get_produits_pagines",
+                page: page,
+                limit: limit,
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur chargement produits:", error);
+            return { status: 500, error: "Erreur réseau" };
           }
+        }
 
-          if (data.success && data.products && data.products.length > 0) {
-            // Affichage normal
-            displayProductsFromDatabase(data.products);
+        async envoyerLienConfirmation(email, nom) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "envoyer_lien_confirmation",
+                email: email,
+                nom: nom,
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur envoi lien:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
 
-            // Afficher un message de debug si présent
-            if (data.debug) {
-              console.log("Debug API:", data.debug);
-            }
-          } else if (
-            data.success &&
-            (!data.products || data.products.length === 0)
-          ) {
-            // Cas où l'API retourne success:true mais pas de produits
-            console.warn("API retourne succès mais aucun produit");
-            displayNoProductsMessage();
+        async ajouterAuPanier(idOrigami, quantite = 1) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "ajouter_au_panier",
+                idOrigami: parseInt(idOrigami),
+                quantite: parseInt(quantite),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async getPanier() {
+          try {
+            const response = await fetch(`${this.baseUrl}?action=get_panier`);
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async modifierQuantite(idLignePanier, quantite) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "modifier_quantite",
+                idLignePanier: parseInt(idLignePanier),
+                quantite: parseInt(quantite),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async supprimerDuPanier(idLignePanier) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "supprimer_du_panier",
+                idLignePanier: parseInt(idLignePanier),
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async viderPanier() {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "vider_panier",
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+      }
+
+      // Initialisation de l'API
+      const origamiAPI = new OrigamiAPI();
+
+      // FONCTIONS DE PAGINATION
+      async function chargerProduits(page = 1) {
+        const grid = document.getElementById("produits-grid");
+        grid.innerHTML =
+          '<div class="loading-spinner">Chargement des créations...</div>';
+
+        try {
+          const result = await origamiAPI.getProduitsPagines(
+            page,
+            produitsParPage,
+          );
+
+          if (result.status === 200 && result.data) {
+            afficherProduits(result.data.produits);
+            currentPage = result.data.page;
+            totalPages = result.data.total_pages;
+            mettreAJourPagination();
           } else {
-            // Cas où l'API retourne success:false
-            console.error("API retourne success:false", data.message || data);
-            displayApiError(data.message || "Erreur de l'API");
+            grid.innerHTML =
+              '<div style="text-align: center; padding: 50px; color: #666;">Erreur de chargement des produits</div>';
           }
         } catch (error) {
-          console.error("Erreur complète chargement produits:", error);
-          displayNetworkError(error);
+          console.error("Erreur:", error);
+          grid.innerHTML =
+            '<div style="text-align: center; padding: 50px; color: #666;">Erreur de connexion</div>';
         }
       }
 
-      // Fonction pour afficher les produits depuis la base de données
-      function displayProductsFromDatabase(products) {
-        if (!products || products.length === 0) {
-          displayNoProductsMessage();
+      function afficherProduits(produits) {
+        const grid = document.getElementById("produits-grid");
+
+        if (!produits || produits.length === 0) {
+          grid.innerHTML =
+            '<div style="text-align: center; padding: 50px; color: #666;">Aucun produit disponible</div>';
           return;
         }
 
         let html = "";
-        products.forEach((product) => {
-          const prix = product.prix_ttc
-            ? parseFloat(product.prix_ttc).toFixed(2).replace(".", ",")
-            : "0,00";
-
-          const ratingStars = generateRatingStars(
-            parseFloat(product.note_moyenne || 0)
-          );
-
-          // Image du produit - CORRECTION : chemin complet
-          const productImage =
-            "//" + (product.image || "img/default-product.jpg");
-
-          // État du stock
-          const stockQuantity = product.quantite_stock || 0;
-          let stockBadge = "";
-          let isDisabled = false;
-
-          if (stockQuantity <= 0) {
-            stockBadge =
-              '<span class="stock-badge stock-rupture">Épuisé</span>';
-            isDisabled = true;
-          } else if (stockQuantity <= 5) {
-            stockBadge =
-              '<span class="stock-badge stock-faible">Stock faible</span>';
-          }
-
+        produits.forEach((produit) => {
           html += `
-            <div class="product-card" data-id="${product.id_produit}">
-              ${stockBadge}
+            <div class="product-card" data-id="${produit.idOrigami}">
               <div class="product-image">
-                <img src="${productImage}"
-                     alt="${product.nom}"
-                     onerror="this.onerror=null;this.src='/img/default-product.jpg'">
-                <div class="product-overlay">
-                  <i class="fas fa-eye"></i>
-                </div>
+                <img src="${produit.photo}" alt="${produit.nom}" onerror="this.src='img/placeholder.jpg'">
               </div>
               <div class="product-info">
-                <span class="product-category">${
-                  product.categorie_nom || "Cadeau"
-                }</span>
-                <h3>${product.nom}</h3>
-                <p class="product-price">${prix} €</p>
-                
-                ${
-                  product.description_courte
-                    ? `
-                  <p style="color: #666; font-size: 0.9rem; margin: 8px 0;">
-                    ${product.description_courte}
-                  </p>
-                `
-                    : ""
-                }
-                
-                ${
-                  product.note_moyenne && parseFloat(product.note_moyenne) > 0
-                    ? `
-                  <div class="product-rating">
-                    ${ratingStars}
-                    <span class="rating-count">(${
-                      product.nombre_avis || 0
-                    })</span>
-                  </div>
-                `
-                    : ""
-                }
-                
-                <div class="product-actions">
-                  <button class="btn-add-to-cart"
-                          data-id="${product.id_produit}"
-                          title="Ajouter au panier"
-                          ${isDisabled ? "disabled" : ""}>
-                    <i class="fas fa-cart-plus"></i> 
-                    ${isDisabled ? "Épuisé" : "Ajouter"}
-                  </button>
-                  <a href="/produitsprincipale.php?categorie=${encodeURIComponent(
-                    product.categorie_nom || ""
-                  )}" 
-                     class="btn-view">
-                    <i class="fas fa-eye"></i> Voir
-                  </a>
+                <h3>${produit.nom}</h3>
+                <p>${produit.description || "Description non disponible"}</p>
+                <div class="product-price">
+                  <span class="price">${produit.prixHorsTaxe}€</span>
+                  <a href="#" class="btn" onclick="ajouterAuPanierDepuisBouton(event, ${produit.idOrigami}, '${produit.nom.replace(/'/g, "\\'")}')">Commander</a>
                 </div>
               </div>
             </div>
           `;
         });
 
-        document.getElementById("featuredProducts").innerHTML = html;
-        console.log(
-          `${products.length} produits affichés depuis la base de données`
-        );
-
-        // Vérifier que les boutons sont accessibles
-        const buttons = document.querySelectorAll(".btn-add-to-cart");
-        console.log(`${buttons.length} boutons "Ajouter" disponibles`);
+        grid.innerHTML = html;
       }
 
-      // Fonctions d'affichage d'erreur
-      function displayNoProductsMessage() {
-        const container = document.getElementById("featuredProducts");
-        container.innerHTML = `
-          <div class="products-empty">
-            <i class="fas fa-gift fa-3x" style="color: #ddd; margin-bottom: 20px;"></i>
-            <h3>Aucun produit disponible</h3>
-            <p>La boutique est actuellement en cours de configuration.</p>
-            <p style="margin-top: 20px; font-size: 0.9em; color: #7f8c8d;">
-              <i class="fas fa-info-circle"></i> 
-              Ajoutez des produits dans la base de données via phpMyAdmin.
-            </p>
-            <button onclick="loadFeaturedProducts()" class="btn btn-secondary" style="margin-top: 20px;">
-              <i class="fas fa-redo"></i> Actualiser
-            </button>
-          </div>
-        `;
+      function mettreAJourPagination() {
+        document.getElementById("page-actuelle").textContent = currentPage;
+        document.getElementById("total-pages").textContent = totalPages;
+
+        document.getElementById("btn-premiere").disabled = currentPage === 1;
+        document.getElementById("btn-precedente").disabled = currentPage === 1;
+        document.getElementById("btn-suivante").disabled =
+          currentPage === totalPages;
+        document.getElementById("btn-derniere").disabled =
+          currentPage === totalPages;
       }
 
-      function displayApiError(message) {
-        const container = document.getElementById("featuredProducts");
-        container.innerHTML = `
-          <div class="products-api-error">
-            <i class="fas fa-exclamation-triangle fa-3x" style="color: #e74c3c; margin-bottom: 20px;"></i>
-            <h3>Erreur de l'API</h3>
-            <p>${message || "L'API a rencontré une erreur"}</p>
-            <div style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left; max-width: 500px; margin: 20px auto;">
-              <h4>Pour tester manuellement :</h4>
-              <ol style="text-align: left; margin-left: 20px;">
-                <li>Ouvrez <a href="${API_PRODUITS_URL}" target="_blank">${API_PRODUITS_URL}</a></li>
-                <li>Vérifiez que JSON s'affiche</li>
-                <li>Vérifiez le fichier api/produits.php</li>
-              </ol>
-            </div>
-            <button onclick="loadFeaturedProducts()" class="btn btn-secondary" style="margin-top: 20px;">
-              <i class="fas fa-redo"></i> Réessayer
-            </button>
-          </div>
-        `;
+      function changerPage(page) {
+        if (page < 1 || page > totalPages) return;
+        chargerProduits(page);
+        window.location.href = "#nosCreations";
       }
 
-      function displayNetworkError(error) {
-        const container = document.getElementById("featuredProducts");
-        container.innerHTML = `
-          <div class="products-network-error">
-            <i class="fas fa-wifi fa-3x" style="color: #f39c12; margin-bottom: 20px;"></i>
-            <h3>Problème de connexion</h3>
-            <p>Impossible de contacter le serveur.</p>
-            <p><small>${error.message}</small></p>
-            <div style="margin-top: 20px; background: #fff3cd; padding: 15px; border-radius: 8px; max-width: 500px; margin: 20px auto;">
-              <h4 style="color: #856404;">Solutions possibles :</h4>
-              <ul style="text-align: left; margin-left: 20px;">
-                <li>Vérifiez que XAMPP/WAMP est démarré</li>
-                <li>Vérifiez que MySQL est en cours d'exécution</li>
-                <li>Testez l'URL <code>${API_PRODUITS_URL}</code> dans le navigateur</li>
-              </ul>
-            </div>
-            <button onclick="loadFeaturedProducts()" class="btn btn-secondary" style="margin-top: 20px;">
-              <i class="fas fa-redo"></i> Réessayer
-            </button>
-          </div>
-        `;
-      }
+      // FONCTION POUR AJOUTER AU PANIER DEPUIS UN BOUTON
+      async function ajouterAuPanierDepuisBouton(event, idProduit, nomProduit) {
+        event.preventDefault();
+        event.stopPropagation();
 
-      // Initialisation avec chemins corrigés
-      document.addEventListener("DOMContentLoaded", async () => {
-        console.log("=== INITIALISATION AVEC BASE DE DONNÉES ===");
+        const bouton = event.target;
+        const originalText = bouton.textContent;
+        bouton.textContent = "Ajout...";
+        bouton.disabled = true;
 
-        // Test de l'API immédiatement
         try {
-          const testResponse = await fetch(API_PRODUITS_URL);
-          console.log("Test API Produits - Statut:", testResponse.status);
-          const testData = await testResponse.json();
-          console.log("Test API - Données:", testData);
+          const result = await origamiAPI.ajouterAuPanier(idProduit);
+
+          if (result.status === 200) {
+            bouton.textContent = "✓ Ajouté !";
+            bouton.style.backgroundColor = "#28a745";
+
+            setTimeout(() => {
+              bouton.textContent = originalText;
+              bouton.style.backgroundColor = "";
+              bouton.disabled = false;
+            }, 1500);
+
+            updateAffichagePanier();
+            showNotification(`"${nomProduit}" ajouté au panier !`, "success");
+          } else {
+            bouton.textContent = originalText;
+            bouton.disabled = false;
+            showNotification(
+              "Erreur: " + (result.error || "Impossible d'ajouter au panier"),
+              "error",
+            );
+          }
         } catch (error) {
-          console.error("Test API échoué:", error.message);
+          console.error("Erreur:", error);
+          bouton.textContent = originalText;
+          bouton.disabled = false;
+          showNotification("Erreur réseau", "error");
         }
+      }
 
-        // Initialiser le gestionnaire de panier
-        window.panierManager = new PanierManager();
+      // FONCTIONS POUR LE PANIER
+      async function updateAffichagePanier() {
+        try {
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+          console.log("Panier mis à jour:", panier);
 
-        // Mettre à jour le compteur panier IMMÉDIATEMENT
-        await window.panierManager.updateCartCount();
-
-        // Gestion clic boutons Ajouter
-        document.addEventListener("click", async (e) => {
-          const addToCartBtn = e.target.closest(".btn-add-to-cart");
-          if (addToCartBtn && !addToCartBtn.disabled) {
-            e.preventDefault();
-            e.stopPropagation();
-            const id_produit = addToCartBtn.dataset.id
-              ? parseInt(addToCartBtn.dataset.id)
-              : null;
-            console.log("Clic sur bouton Ajouter - ID:", id_produit);
-
-            if (id_produit) {
-              await window.panierManager.ajouterAuPanier(
-                id_produit,
-                1,
-                addToCartBtn
-              );
+          if (panier.status === 200) {
+            const compteurPanier = document.getElementById("compteur-panier");
+            if (compteurPanier) {
+              compteurPanier.textContent = panier.data.totalQuantites || 0;
             }
           }
-        });
 
-        // Charger les produits phares DEPUIS LA BASE DE DONNÉES
-        await loadFeaturedProducts();
-
-        console.log("=== INITIALISATION TERMINÉE ===");
-      });
-
-      // Fonctions globales
-      window.ajouterAuPanier = function (
-        id_produit,
-        quantite = 1,
-        button = null
-      ) {
-        if (!window.panierManager) {
-          window.panierManager = new PanierManager();
-        }
-        return window.panierManager.ajouterAuPanier(
-          id_produit,
-          quantite,
-          button
-        );
-      };
-
-      window.loadFeaturedProducts = loadFeaturedProducts;
-
-      // Fonction de test API
-      async function testAPI() {
-        const debugOutput = document.getElementById("debugOutput");
-        debugOutput.style.display = "block";
-        debugOutput.innerHTML =
-          '<p><i class="fas fa-spinner fa-spin"></i> Test en cours...</p>';
-
-        try {
-          const response = await fetch(API_PRODUITS_URL + "&_=" + Date.now());
-          const status = response.status;
-          const text = await response.text();
-
-          let html = `<p><strong>Statut HTTP:</strong> ${status}</p>`;
-
-          try {
-            const data = JSON.parse(text);
-            html += `<p><strong>JSON valide:</strong> Oui</p>`;
-            html += `<p><strong>Success:</strong> ${data.success}</p>`;
-            html += `<p><strong>Nombre de produits:</strong> ${
-              data.products ? data.products.length : 0
-            }</p>`;
-            html += `<p><strong>Debug:</strong> ${data.debug || "Aucun"}</p>`;
-            html += `<pre style="max-height: 200px; overflow: auto; background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px;">${JSON.stringify(
-              data,
-              null,
-              2
-            )}</pre>`;
-          } catch (e) {
-            html += `<p><strong>JSON valide:</strong> Non</p>`;
-            html += `<pre style="max-height: 200px; overflow: auto; background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px;">${text.substring(
-              0,
-              500
-            )}</pre>`;
-          }
-
-          debugOutput.innerHTML = html;
+          updateEtatBoutonCommande();
+          updateEtatBoutonVider();
         } catch (error) {
-          debugOutput.innerHTML = `<p style="color: #e74c3c;"><strong>Erreur:</strong> ${error.message}</p>`;
+          console.error("Erreur mise à jour panier:", error);
         }
       }
 
-      // Vérification de la base de données
-      window.checkDatabase = async function () {
-        console.log("=== VÉRIFICATION BASE DE DONNÉES ===");
-        try {
-          const response = await fetch(API_PRODUITS_URL);
-          const data = await response.json();
-          console.log("Base de données:", data);
+      async function updateEtatBoutonCommande() {
+        const bouton = document.getElementById("btn-passer-commande");
+        if (!bouton) return;
 
-          if (data.success && data.products) {
-            console.log(
-              `✅ ${data.products.length} produits trouvés dans la base`
-            );
-            data.products.forEach((p, i) => {
-              console.log(
-                `   ${i + 1}. ${p.nom} - ${p.prix_ttc}€ (Catégorie: ${
-                  p.categorie_nom || "Non catégorisé"
-                })`
-              );
-            });
+        try {
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+
+          if (
+            panier.status === 200 &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            bouton.disabled = false;
+            bouton.style.backgroundColor = "#d40000";
+            bouton.style.cursor = "pointer";
+            bouton.style.opacity = "1";
+            bouton.title = "Cliquer pour passer commande";
           } else {
-            console.log("❌ Aucun produit trouvé ou erreur API");
+            bouton.disabled = true;
+            bouton.style.backgroundColor = "#cccccc";
+            bouton.style.cursor = "not-allowed";
+            bouton.style.opacity = "0.6";
+            bouton.title = "Votre panier est vide";
           }
         } catch (error) {
-          console.log("❌ Impossible de contacter l'API:", error.message);
+          console.error("Erreur mise à jour bouton:", error);
+          bouton.disabled = true;
+          bouton.style.backgroundColor = "#cccccc";
+          bouton.style.cursor = "not-allowed";
+          bouton.style.opacity = "0.6";
         }
-      };
+      }
 
-      // Exécuter la vérification au chargement
-      setTimeout(() => {
-        window.checkDatabase();
-      }, 1000);
+      async function updateEtatBoutonVider() {
+        const btnVider = document.getElementById("btn-vider-panier");
+        if (!btnVider) return;
+
+        try {
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+
+          if (
+            panier.status === 200 &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            btnVider.disabled = false;
+            btnVider.style.background = "#6c757d";
+            btnVider.style.cursor = "pointer";
+          } else {
+            btnVider.disabled = true;
+            btnVider.style.background = "#cccccc";
+            btnVider.style.cursor = "not-allowed";
+          }
+        } catch (error) {
+          console.error("Erreur mise à jour bouton vider:", error);
+          btnVider.disabled = true;
+          btnVider.style.background = "#cccccc";
+          btnVider.style.cursor = "not-allowed";
+        }
+      }
+
+      function showNotification(message, type = "info", duree = 3000) {
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 18px;">${getIconeType(type)}</span>
+                <span>${message}</span>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.transform = "translateX(0)";
+        }, 100);
+
+        setTimeout(() => {
+          notification.style.transform = "translateX(400px)";
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
+            }
+          }, 300);
+        }, duree);
+      }
+
+      function getIconeType(type) {
+        const icones = {
+          success: "✅",
+          error: "❌",
+          info: "ℹ️",
+          warning: "⚠️",
+        };
+        return icones[type] || "ℹ️";
+      }
+
+      // FONCTIONS POUR LA MODAL PANIER
+      function afficherPanierModal() {
+        let modal = document.getElementById("panier-modal");
+        if (!modal) {
+          modal = document.createElement("div");
+          modal.id = "panier-modal";
+          modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 2000;
+            `;
+
+          modal.innerHTML = `
+                <div style="background: white; padding: 25px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #333;">Votre Panier</h2>
+                        <button onclick="fermerPanierModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                    </div>
+                    <div id="panier-content"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="viderPanier()" id="btn-vider-panier" style="padding: 10px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Vider le panier</button>
+                        <button onclick="verifierEtPasserCommande()" id="btn-passer-commande" style="padding: 10px 20px; background: #d40000; color: white; border: none; border-radius: 4px; cursor: pointer;">Passer la commande</button>
+                    </div>
+                </div>
+            `;
+          document.body.appendChild(modal);
+        }
+
+        modal.style.display = "flex";
+        chargerContenuPanier();
+      }
+
+      function fermerPanierModal() {
+        const modal = document.getElementById("panier-modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      }
+
+      async function chargerContenuPanier() {
+        try {
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+          const content = document.getElementById("panier-content");
+
+          console.log("Chargement contenu panier:", panier);
+
+          updateEtatBoutonCommande();
+          updateEtatBoutonVider();
+
+          if (
+            panier.status === 200 &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            let html = `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #eee;">
+                                    <th style="text-align: left; padding: 10px;">Produit</th>
+                                    <th style="text-align: center; padding: 10px;">Prix</th>
+                                    <th style="text-align: center; padding: 10px;">Quantité</th>
+                                    <th style="text-align: center; padding: 10px;">Total</th>
+                                    <th style="text-align: center; padding: 10px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+            panier.data.articles.forEach((article) => {
+              html += `
+                        <tr style="border-bottom: 1px solid #f0f0f0;">
+                            <td style="padding: 15px 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                        <img src="${article.photo}" alt="${article.nom}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+                                    </div>
+                                    <div>
+                                        <strong>${article.nom}</strong><br>
+                                        <small style="color: #666;">${article.description ? article.description.substring(0, 50) + "..." : "Description non disponible"}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="text-align: center; padding: 10px;">${article.prixUnitaire}€</td>
+                            <td style="text-align: center; padding: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite - 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
+                                    <span style="min-width: 30px; display: inline-block;">${article.quantite}</span>
+                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite + 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
+                                </div>
+                            </td>
+                            <td style="text-align: center; padding: 10px; font-weight: bold;">${article.totalLigne}€</td>
+                            <td style="text-align: center; padding: 10px;">
+                                <button onclick="supprimerArticle(${article.idLignePanier})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
+                            </td>
+                        </tr>
+                    `;
+            });
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between;">
+                        <span>Total:</span>
+                        <span>${panier.data.total}€</span>
+                    </div>
+                `;
+            content.innerHTML = html;
+          } else {
+            content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🛒</div>
+                        <h3>Votre panier est vide</h3>
+                        <p>Ajoutez des articles pour commencer vos achats</p>
+                        <button onclick="fermerPanierModal()" style="margin-top: 20px; padding: 10px 20px; background: #d40000; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Découvrir nos produits
+                        </button>
+                    </div>
+                `;
+          }
+        } catch (error) {
+          console.error("Erreur chargement panier:", error);
+          const content = document.getElementById("panier-content");
+          content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                    <h3>Erreur de chargement</h3>
+                    <p>Impossible de charger le panier</p>
+                    <button onclick="fermerPanierModal()" style="margin-top: 20px; padding: 10px 20px; background: #d40000; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Fermer
+                    </button>
+                </div>
+            `;
+        }
+      }
+
+      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
+        if (nouvelleQuantite < 1) {
+          await supprimerArticle(idLignePanier);
+          return;
+        }
+
+        try {
+          const result = await origamiAPI.modifierQuantite(
+            idLignePanier,
+            nouvelleQuantite,
+          );
+
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Quantité modifiée", "success");
+          } else {
+            showNotification("Erreur lors de la modification", "error");
+          }
+        } catch (error) {
+          console.error("Erreur modification quantité:", error);
+          showNotification("Erreur réseau", "error");
+        }
+      }
+
+      async function supprimerArticle(idLignePanier) {
+        try {
+          const result = await origamiAPI.supprimerDuPanier(idLignePanier);
+
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Article supprimé du panier", "success");
+          } else {
+            showNotification("Erreur lors de la suppression", "error");
+          }
+        } catch (error) {
+          console.error("Erreur suppression article:", error);
+          showNotification("Erreur réseau", "error");
+        }
+      }
+
+      async function viderPanier() {
+        if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
+          return;
+        }
+
+        try {
+          const result = await origamiAPI.viderPanier();
+
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Panier vidé", "success");
+          } else {
+            showNotification("Erreur lors du vidage du panier", "error");
+          }
+        } catch (error) {
+          console.error("Erreur vidage panier:", error);
+          showNotification("Erreur réseau", "error");
+        }
+      }
+
+      function verifierEtPasserCommande() {
+        if (
+          !panierData ||
+          !panierData.data.articles ||
+          panierData.data.articles.length === 0
+        ) {
+          showNotification("Votre panier est vide", "error");
+          return;
+        }
+
+        fermerPanierModal();
+        afficherCommandeModal();
+      }
+
+      // FONCTIONS POUR LA MODAL DE COMMANDE
+      function afficherCommandeModal() {
+        const modal = document.getElementById("commande-modal");
+        if (modal) {
+          modal.style.display = "flex";
+          resetCommandeModal();
+        }
+      }
+
+      function fermerCommandeModal() {
+        const modal = document.getElementById("commande-modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      }
+
+      function resetCommandeModal() {
+        document.getElementById("etape-choix-compte").style.display = "block";
+        document.getElementById("etape-saisie-email").style.display = "none";
+        document.getElementById("etape-confirmation-lien").style.display =
+          "none";
+      }
+
+      function choisirEmailExistant() {
+        document.getElementById("etape-choix-compte").style.display = "none";
+        document.getElementById("etape-saisie-email").style.display = "block";
+        typeProcessus = "existant";
+      }
+
+      function choisirNouveauCompte() {
+        document.getElementById("etape-choix-compte").style.display = "none";
+        document.getElementById("etape-saisie-email").style.display = "block";
+        typeProcessus = "nouveau";
+      }
+
+      function retourChoixCompte() {
+        document.getElementById("etape-saisie-email").style.display = "none";
+        document.getElementById("etape-choix-compte").style.display = "block";
+      }
+
+      function retourSaisieEmail() {
+        document.getElementById("etape-confirmation-lien").style.display =
+          "none";
+        document.getElementById("etape-saisie-email").style.display = "block";
+      }
+
+      function soumettreEmail() {
+        const email = document.getElementById("email-saisi").value;
+        const nom = document.getElementById("nom-saisi").value || "Client";
+
+        if (!email || !email.includes("@")) {
+          showNotification("Veuillez saisir un email valide", "error");
+          return;
+        }
+
+        localStorage.setItem("email_confirmation", email);
+        sessionStorage.setItem("email_confirmation", email);
+
+        const btn = document.querySelector(
+          '#etape-saisie-email button[type="submit"]',
+        );
+        const texteOriginal = btn.textContent;
+        btn.textContent = "Envoi en cours...";
+        btn.disabled = true;
+
+        envoyerEmailConfirmation(email, nom).then((result) => {
+          btn.textContent = texteOriginal;
+          btn.disabled = false;
+
+          if (result.success) {
+            emailEnCours = email;
+            document.getElementById("etape-saisie-email").style.display =
+              "none";
+            document.getElementById("etape-confirmation-lien").style.display =
+              "block";
+            document.getElementById("email-a-verifier").textContent = email;
+
+            document.querySelector("#etape-confirmation-lien p").innerHTML =
+              `Nous avons envoyé un lien de confirmation à<br>
+                 <strong>${email}</strong><br><br>
+                 <em>Cliquez sur le lien reçu par email pour finaliser votre commande.</em>`;
+          }
+        });
+      }
+
+      async function envoyerEmailConfirmation(email, nom) {
+        try {
+          console.log("Envoi email confirmation à:", email, nom);
+
+          const result = await origamiAPI.envoyerLienConfirmation(email, nom);
+          console.log("Réponse envoi email:", result);
+
+          if (result.status === 200) {
+            showNotification(
+              `Lien de confirmation envoyé à ${email}` +
+                (result.data.client_existant
+                  ? " (client existant)"
+                  : " (nouveau client)"),
+              "success",
+            );
+            return {
+              success: true,
+              client_existant: result.data.client_existant,
+            };
+          } else {
+            showNotification("Erreur: " + result.error, "error");
+            return { success: false, message: result.error };
+          }
+        } catch (error) {
+          console.error("Erreur envoi email:", error);
+          showNotification(
+            "Erreur de connexion au serveur: " + error.message,
+            "error",
+          );
+          return {
+            success: false,
+            message: "Erreur de connexion: " + error.message,
+          };
+        }
+      }
+
+      function renvoyerLienConfirmation() {
+        const nom = document.getElementById("nom-saisi").value || "Client";
+        envoyerEmailConfirmation(emailEnCours, nom).then((result) => {
+          if (result.success) {
+            showNotification("Lien de confirmation renvoyé", "success");
+          }
+        });
+      }
+
+      // Fermer les modals en cliquant à l'extérieur
+      document.addEventListener("click", function (e) {
+        const panierModal = document.getElementById("panier-modal");
+        const commandeModal = document.getElementById("commande-modal");
+
+        if (panierModal && e.target === panierModal) {
+          fermerPanierModal();
+        }
+
+        if (commandeModal && e.target === commandeModal) {
+          fermerCommandeModal();
+        }
+      });
+
+      // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
+      document
+        .querySelectorAll("#panier-modal > div, #commande-modal > div")
+        .forEach((modalContent) => {
+          modalContent.addEventListener("click", function (e) {
+            e.stopPropagation();
+          });
+        });
+
+      // INITIALISATION
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("Page chargée - Initialisation...");
+
+        // Charger les produits avec pagination
+        chargerProduits(1);
+
+        // Initialiser le panier
+        updateAffichagePanier();
+
+        // Lien du panier
+        document
+          .getElementById("lien-panier")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            afficherPanierModal();
+          });
+
+        console.log("Initialisation terminée");
+      });
     </script>
   </body>
 </html>

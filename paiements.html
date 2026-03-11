@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>One-Time Payment - Recommended Integration - PayPal JavaScript SDK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      .buttons-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>One-Time Payment Recommended Integration</h1>
+
+    <div class="buttons-container">
+      <!-- All buttons are hidden until eligibility is confirmed -->
+      <paypal-button type="pay" hidden></paypal-button>
+      <paypal-pay-later-button hidden></paypal-pay-later-button>
+      <paypal-credit-button hidden></paypal-credit-button>
+    </div>
+    
+    <script src="app.js"></script>
+
+    <!-- Load PayPal SDK -->
+    <script>
+      async
+      src="https://www.sandbox.paypal.com/web-sdk/v6/core";
+      onload="onPayPalWebSdkLoaded()";
+    
+    async function onPayPalWebSdkLoaded() {
+    try {
+    // Get client token for authentication
+    const clientToken = await getBrowserSafeClientToken();
+    
+    // Create PayPal SDK instance
+    const sdkInstance = await window.paypal.createInstance({
+      clientToken,
+      components: ["paypal-payments"],
+      pageType: "checkout",
+    });
+
+    // Check eligibility for all payment methods
+    const paymentMethods = await sdkInstance.findEligibleMethods({
+      currencyCode: "USD",
+    });
+
+    // Set up PayPal button if eligible
+    if (paymentMethods.isEligible("paypal")) {
+      setUpPayPalButton(sdkInstance);
+    }
+
+    // Set up Pay Later button if eligible
+    if (paymentMethods.isEligible("paylater")) {
+      const payLaterPaymentMethodDetails = paymentMethods.getDetails("paylater");
+      setUpPayLaterButton(sdkInstance, payLaterPaymentMethodDetails);
+    }
+
+    // Set up PayPal Credit button if eligible
+    if (paymentMethods.isEligible("credit")) {
+      const paypalCreditPaymentMethodDetails = paymentMethods.getDetails("credit");
+      setUpPayPalCreditButton(sdkInstance, paypalCreditPaymentMethodDetails);
+    }
+  } catch (error) {
+    console.error("SDK initialization error:", error);
+  }
+}
+
+// Shared payment session options for all payment methods
+const paymentSessionOptions = {
+  // Called when user approves a payment 
+  async onApprove(data) {
+    console.log("Payment approved:", data);
+    try {
+      const orderData = await captureOrder({
+        orderId: data.orderId,
+      });
+      console.log("Payment captured successfully:", orderData);
+    } catch (error) {
+      console.error("Payment capture failed:", error);
+    }
+  },
+  
+  // Called when user cancels a payment
+  onCancel(data) {
+    console.log("Payment cancelled:", data);
+  },
+  
+  // Called when an error occurs during payment
+  onError(error) {
+    console.error("Payment error:", error);
+  },
+};
+
+// Set up standard PayPal button
+async function setUpPayPalButton(sdkInstance) {
+  const paypalPaymentSession = sdkInstance.createPayPalOneTimePaymentSession(
+    paymentSessionOptions,
+  );
+
+  const paypalButton = document.querySelector("paypal-button");
+  paypalButton.removeAttribute("hidden");
+
+  paypalButton.addEventListener("click", async () => {
+    try {
+      await paypalPaymentSession.start(
+        { presentationMode: "auto" }, // Auto-detects best presentation mode
+        createOrder(),
+      );
+    } catch (error) {
+      console.error("PayPal payment start error:", error);
+    }
+  });
+}
+
+// Set up Pay Later button
+async function setUpPayLaterButton(sdkInstance, payLaterPaymentMethodDetails) {
+  const payLaterPaymentSession = sdkInstance.createPayLaterOneTimePaymentSession(
+    paymentSessionOptions
+  );
+
+  const { productCode, countryCode } = payLaterPaymentMethodDetails;
+  const payLaterButton = document.querySelector("paypal-pay-later-button");
+
+  // Configure button with Pay Later specific details
+  payLaterButton.productCode = productCode;
+  payLaterButton.countryCode = countryCode;
+  payLaterButton.removeAttribute("hidden");
+
+  payLaterButton.addEventListener("click", async () => {
+    try {
+      await payLaterPaymentSession.start(
+        { presentationMode: "auto" },
+        createOrder(),
+      );
+    } catch (error) {
+      console.error("Pay Later payment start error:", error);
+    }
+  });
+}
+
+// Set up PayPal Credit button
+async function setUpPayPalCreditButton(sdkInstance, paypalCreditPaymentMethodDetails) {
+  const paypalCreditPaymentSession = sdkInstance.createPayPalCreditOneTimePaymentSession(
+    paymentSessionOptions
+  );
+
+  const { countryCode } = paypalCreditPaymentMethodDetails;
+  const paypalCreditButton = document.querySelector("paypal-credit-button");
+
+  // Configure button with PayPal Credit specific details
+  paypalCreditButton.countryCode = countryCode;
+  paypalCreditButton.removeAttribute("hidden");
+
+  paypalCreditButton.addEventListener("click", async () => {
+    try {
+      await paypalCreditPaymentSession.start(
+        { presentationMode: "auto" },
+        createOrder(),
+      );
+    } catch (error) {
+      console.error("PayPal Credit payment start error:", error);
+    }
+  });
+}
+    </script>
+  </body>
+</html>

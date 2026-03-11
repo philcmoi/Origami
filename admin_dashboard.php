@@ -16,7 +16,7 @@ try {
     $commandesEnAttente = $stmt->fetchColumn();
     
     // Clients permanents
-    $stmt = $pdo->query("SELECT COUNT(*) FROM Client WHERE type = 'permanent' OR (type IS NULL AND email NOT LIKE 'temp_%@origamizen.fr')");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM Client WHERE type = 'permanent' OR (type IS NULL AND email NOT LIKE 'temp_%@YoukiAndCo.fr')");
     $clientsPermanents = $stmt->fetchColumn();
     
     // Chiffre d'affaires du mois
