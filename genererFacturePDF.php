@@ -322,7 +322,7 @@ function genererFacturePDF($pdo, $idCommande) {
         <div class="totals">
             <div class="total-line">Sous-total : ' . number_format($sousTotal, 2, ',', ' ') . ' €</div>
             <div class="total-line">Frais de port : ' . number_format(($commande['fraisDePort'] ?? 0), 2, ',', ' ') . ' €</div>
-            <div class="grand-total">TOTAL TTC : ' . number_format($totalGeneral, 2, ',', ' ') . ' €</div>
+            <div class="grand-total">TOTAL : ' . number_format($totalGeneral, 2, ',', ' ') . ' €</div>
         </div>
         
         <!-- Mentions légales -->
