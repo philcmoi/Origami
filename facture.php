@@ -2,10 +2,7 @@
 // facture.php - Génération et affichage de la facture
 error_log("🎯 facture.php - Génération facture");
 
-// Inclure TCPDF pour la génération de PDF
 require_once('tcpdf/tcpdf.php');
-
-// Configuration de la base de données
 require_once 'config.php';
 
 // Accepter les requêtes POST pour l'appel automatique
@@ -57,7 +54,7 @@ if (!$idCommande) {
 }
 
 /**
- * Génère une facture PDF sobre et professionnelle
+ * Génère une facture PDF avec colonnes calibrées
  */
 function genererFacturePDF($pdo, $idCommande) {
     error_log("🔄 Génération PDF pour commande: " . $idCommande);
@@ -102,8 +99,7 @@ function genererFacturePDF($pdo, $idCommande) {
                 lc.quantite,
                 lc.prixUnitaire,
                 (lc.quantite * lc.prixUnitaire) as total_ligne,
-                o.nom as produit_nom,
-                o.description
+                o.nom as produit_nom
             FROM LigneCommande lc
             JOIN Origami o ON lc.idOrigami = o.idOrigami
             WHERE lc.idCommande = ?
@@ -121,114 +117,111 @@ function genererFacturePDF($pdo, $idCommande) {
         // Création du PDF
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
         
-        // Informations du document
         $pdf->SetCreator('Youki and Co');
         $pdf->SetAuthor('Youki and Co');
         $pdf->SetTitle('Facture #' . $idCommande);
         $pdf->SetSubject('Facture');
         
-        // Marges
-        $pdf->SetMargins(15, 15, 15);
-        $pdf->SetHeaderMargin(0);
-        $pdf->SetFooterMargin(0);
-        
-        // Désactiver les en-têtes/pieds de page par défaut
+        $pdf->SetMargins(20, 20, 20);
+        $pdf->SetAutoPageBreak(TRUE, 25);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
         
-        // Ajouter une page
         $pdf->AddPage();
         
-        // Style sobre et professionnel
+        $nomCompletClient = ($commande['client_nom'] ?? '') . ' ' . ($commande['client_prenom'] ?? '');
+        
+        // HTML avec colonnes calibrées
         $html = '
         <style>
-            body { font-family: helvetica; font-size: 10pt; line-height: 1.4; }
-            h1 { font-size: 24pt; color: #333; margin: 0 0 5px 0; font-weight: normal; }
-            h2 { font-size: 14pt; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin: 20px 0 10px 0; }
-            .header { margin-bottom: 30px; }
-            .company-name { font-size: 28pt; color: #333; letter-spacing: 2px; }
-            .company-details { color: #666; font-size: 9pt; margin-top: 5px; }
-            .invoice-info { text-align: right; }
-            .invoice-title { font-size: 18pt; color: #333; margin-bottom: 5px; }
-            .invoice-number { font-size: 12pt; color: #666; }
-            .address-box { border: 1px solid #eee; padding: 10px; margin: 5px 0; }
-            .address-label { font-weight: bold; color: #555; margin-bottom: 5px; }
-            table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-            th { background: #f5f5f5; color: #333; font-weight: bold; padding: 8px; text-align: left; border-bottom: 2px solid #ddd; }
-            td { padding: 8px; border-bottom: 1px solid #eee; }
-            .totals { text-align: right; margin-top: 20px; }
-            .total-line { padding: 5px 0; }
-            .grand-total { font-size: 12pt; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
-            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #999; font-size: 8pt; }
-            .no-tva { background: #f9f9f9; padding: 10px; margin: 20px 0; border: 1px solid #eee; color: #666; font-size: 9pt; text-align: center; }
+            body { font-family: helvetica; font-size: 10pt; color: #333; line-height: 1.4; margin: 0; padding: 0; }
+            .header { margin-bottom: 35px; border-bottom: 1px solid #ddd; padding-bottom: 15px; }
+            .company { font-size: 18pt; font-weight: 300; letter-spacing: 2px; color: #333; }
+            .company-details { font-size: 8pt; color: #666; margin-top: 5px; }
+            .invoice-title { font-size: 16pt; font-weight: 300; color: #333; }
+            .invoice-number { font-size: 10pt; color: #666; }
+            .client-label { font-size: 8pt; font-weight: bold; text-transform: uppercase; color: #999; margin-bottom: 5px; }
+            .client-name { font-size: 11pt; font-weight: 500; margin-bottom: 3px; }
+            .client-info { font-size: 9pt; color: #666; }
+            .address-section { margin: 20px 0; }
+            .address-table { width: 100%; margin: 15px 0; border-collapse: collapse; }
+            .address-table td { width: 50%; vertical-align: top; padding: 5px 0; }
+            .address-label { font-size: 8pt; font-weight: bold; text-transform: uppercase; color: #999; margin-bottom: 5px; }
+            .address-content { font-size: 9pt; color: #666; line-height: 1.4; }
+            .products-table { width: 100%; border-collapse: collapse; margin: 25px 0; }
+            .products-table th { 
+                background: #f8f8f8; 
+                padding: 10px 8px; 
+                text-align: left; 
+                border-bottom: 1px solid #e0e0e0; 
+                font-size: 9pt; 
+                font-weight: 600; 
+                color: #555;
+            }
+            .products-table td { padding: 10px 8px; border-bottom: 1px solid #f0f0f0; font-size: 9pt; }
+            .col-produit { width: 50%; }
+            .col-prix { width: 15%; text-align: right; }
+            .col-qte { width: 10%; text-align: center; }
+            .col-total { width: 25%; text-align: right; }
+            .totals { text-align: right; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; }
+            .grand-total { font-size: 11pt; font-weight: bold; margin-top: 8px; color: #333; }
+            .legal { margin-top: 30px; padding: 10px; background: #fafafa; font-size: 7pt; color: #666; text-align: center; }
+            .footer { margin-top: 30px; text-align: center; font-size: 7pt; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
         </style>
         
-        <!-- En-tête -->
-        <table class="header" width="100%">
-            <tr>
-                <td width="60%">
-                    <div class="company-name">YOUKI & CO</div>
-                    <div class="company-details">
-                        Créations artisanales japonaises<br>
-                        contact@youkiandco.fr<br>
-                        SIRET 123 456 789 00012
-                    </div>
-                </td>
-                <td width="40%" class="invoice-info">
-                    <div class="invoice-title">FACTURE</div>
-                    <div class="invoice-number">N° ' . $idCommande . '</div>
-                    <div style="color: #666; margin-top: 5px;">Date: ' . date('d/m/Y', strtotime($commande['dateCommande'])) . '</div>
-                </td>
-            </tr>
-        </table>
+        <div class="header">
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td width="60%">
+                        <div class="company">YOUKI & CO</div>
+                        <div class="company-details">Créations artisanales japonaises</div>
+                    </td>
+                    <td width="40%" style="text-align: right;">
+                        <div class="invoice-title">FACTURE</div>
+                        <div class="invoice-number">N° ' . $idCommande . '</div>
+                        <div class="invoice-number">' . date('d/m/Y', strtotime($commande['dateCommande'])) . '</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
         
-        <!-- Client et adresses -->
-        <table width="100%">
-            <tr>
-                <td width="33%" valign="top">
-                    <div class="address-box">
-                        <div class="address-label">CLIENT</div>
-                        ' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '<br>
-                        ' . htmlspecialchars($commande['client_email']) . '<br>';
+        <div>
+            <div class="client-label">CLIENT</div>
+            <div class="client-name">' . htmlspecialchars($nomCompletClient) . '</div>
+            <div class="client-info">' . htmlspecialchars($commande['client_email']) . '</div>';
         
-        if ($commande['client_telephone']) {
-            $html .= htmlspecialchars($commande['client_telephone']) . '<br>';
+        if (!empty($commande['client_telephone'])) {
+            $html .= '<div class="client-info">' . htmlspecialchars($commande['client_telephone']) . '</div>';
         }
         
-        $html .= '
-                    </div>
-                </td>
-                <td width="33%" valign="top">
-                    <div class="address-box">
-                        <div class="address-label">ADRESSE DE LIVRAISON</div>
-                        ' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '<br>
-                        ' . htmlspecialchars($commande['adresse_livraison']) . '<br>
+        $html .= '</div>
+        
+        <div class="address-section">
+            <table class="address-table" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td>
+                        <div class="address-label">LIVRAISON</div>
+                        <div class="address-content">' . htmlspecialchars($commande['adresse_livraison']) . '<br>
                         ' . htmlspecialchars($commande['cp_livraison'] . ' ' . $commande['ville_livraison']) . '<br>
-                        ' . htmlspecialchars($commande['pays_livraison']) . '
-                    </div>
-                </td>
-                <td width="33%" valign="top">
-                    <div class="address-box">
-                        <div class="address-label">ADRESSE DE FACTURATION</div>
-                        ' . htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) . '<br>
-                        ' . htmlspecialchars($commande['adresse_facturation']) . '<br>
+                        ' . htmlspecialchars($commande['pays_livraison']) . '</div>
+                    </td>
+                    <td>
+                        <div class="address-label">FACTURATION</div>
+                        <div class="address-content">' . htmlspecialchars($commande['adresse_facturation']) . '<br>
                         ' . htmlspecialchars($commande['cp_facturation'] . ' ' . $commande['ville_facturation']) . '<br>
-                        ' . htmlspecialchars($commande['pays_facturation']) . '
-                    </div>
-                </td>
-            </tr>
-        </table>
+                        ' . htmlspecialchars($commande['pays_facturation']) . '</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
         
-        <h2>DÉTAIL DE LA COMMANDE</h2>
-        
-        <!-- Tableau des articles -->
-        <table>
+        <table class="products-table" cellpadding="0" cellspacing="0">
             <thead>
                 <tr>
-                    <th width="50%">Produit</th>
-                    <th width="15%">Prix unitaire</th>
-                    <th width="15%">Quantité</th>
-                    <th width="20%">Total</th>
+                    <th class="col-produit">DÉSIGNATION</th>
+                    <th class="col-prix">PRIX UNIT.</th>
+                    <th class="col-qte">QTÉ</th>
+                    <th class="col-total">TOTAL</th>
                 </tr>
             </thead>
             <tbody>';
@@ -236,12 +229,10 @@ function genererFacturePDF($pdo, $idCommande) {
         foreach ($articles as $article) {
             $html .= '
                 <tr>
-                    <td>' . htmlspecialchars($article['produit_nom']) . '<br>
-                        <small style="color: #999;">' . htmlspecialchars(substr($article['description'], 0, 60)) . '...</small>
-                    </td>
-                    <td>' . number_format($article['prixUnitaire'], 2, ',', ' ') . ' €</td>
-                    <td>' . $article['quantite'] . '</td>
-                    <td>' . number_format($article['total_ligne'], 2, ',', ' ') . ' €</td>
+                    <td class="col-produit">' . htmlspecialchars($article['produit_nom']) . '</td>
+                    <td class="col-prix">' . number_format($article['prixUnitaire'], 2, ',', ' ') . ' €</td>
+                    <td class="col-qte">' . $article['quantite'] . '</td>
+                    <td class="col-total">' . number_format($article['total_ligne'], 2, ',', ' ') . ' €</td>
                 </tr>';
         }
         
@@ -249,22 +240,19 @@ function genererFacturePDF($pdo, $idCommande) {
             </tbody>
         </table>
         
-        <!-- Totaux -->
         <div class="totals">
-            <div class="total-line">Sous-total: ' . number_format($sousTotal, 2, ',', ' ') . ' €</div>
-            <div class="total-line">Frais de port: ' . number_format($commande['fraisDePort'], 2, ',', ' ') . ' €</div>
-            <div class="grand-total">TOTAL: ' . number_format($totalGeneral, 2, ',', ' ') . ' €</div>
+            <div>Sous-total : ' . number_format($sousTotal, 2, ',', ' ') . ' €</div>
+            <div>Frais de port : ' . number_format($commande['fraisDePort'], 2, ',', ' ') . ' €</div>
+            <div class="grand-total">TOTAL : ' . number_format($totalGeneral, 2, ',', ' ') . ' €</div>
         </div>
         
-        <!-- Mention TVA -->
-        <div class="no-tva">
-            Exonération de TVA - Art. 293 B du CGI
+        <div class="legal">
+            Exonération de TVA - Article 293 B du Code Général des Impôts
         </div>
         
-        <!-- Pied de page -->
         <div class="footer">
-            Youki & Co - RCS Paris 123 456 789 - Exonération de TVA, art. 293 B du CGI<br>
-            Document généré le ' . date('d/m/Y à H:i') . '
+            Youki & Co - contact@youkiandco.fr<br>
+            Facture générée le ' . date('d/m/Y à H:i') . '
         </div>';
         
         $pdf->writeHTML($html, true, false, true, false, '');
@@ -274,7 +262,7 @@ function genererFacturePDF($pdo, $idCommande) {
             mkdir('factures', 0755, true);
         }
         
-        $filename = 'factures/facture_' . $idCommande . '_' . date('YmdHis') . '.pdf';
+        $filename = 'factures/facture_' . $idCommande . '.pdf';
         $pdf->Output(__DIR__ . '/' . $filename, 'F');
         
         if (file_exists($filename)) {
@@ -291,11 +279,10 @@ function genererFacturePDF($pdo, $idCommande) {
 }
 
 /**
- * Affiche la facture HTML sobre
+ * Affiche la facture HTML avec colonnes calibrées
  */
 function afficherFactureHTML($pdo, $idCommande) {
     try {
-        // Récupérer les informations
         $stmt = $pdo->prepare("
             SELECT 
                 c.idCommande,
@@ -306,7 +293,6 @@ function afficherFactureHTML($pdo, $idCommande) {
                 cl.nom as client_nom,
                 cl.prenom as client_prenom,
                 cl.email as client_email,
-                cl.telephone as client_telephone,
                 a_fact.adresse as adresse_facturation,
                 a_fact.codePostal as cp_facturation,
                 a_fact.ville as ville_facturation,
@@ -323,7 +309,6 @@ function afficherFactureHTML($pdo, $idCommande) {
             throw new Exception("Commande non trouvée");
         }
         
-        // Récupérer les articles
         $stmt = $pdo->prepare("
             SELECT 
                 lc.quantite,
@@ -355,125 +340,128 @@ function afficherFactureHTML($pdo, $idCommande) {
                 body { 
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     background: #f5f5f5;
-                    padding: 20px;
+                    padding: 30px 20px;
                 }
                 .container {
-                    max-width: 800px;
+                    max-width: 900px;
                     margin: 0 auto;
                     background: white;
                     border-radius: 4px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
                 }
                 .invoice {
-                    padding: 40px;
+                    padding: 35px;
                 }
                 .header {
                     display: flex;
                     justify-content: space-between;
-                    margin-bottom: 40px;
+                    margin-bottom: 35px;
+                    border-bottom: 1px solid #eaeaea;
+                    padding-bottom: 20px;
                 }
                 .company h1 {
-                    font-size: 32px;
+                    font-size: 24px;
                     font-weight: 300;
-                    color: #333;
                     letter-spacing: 2px;
+                    color: #333;
                     margin-bottom: 5px;
                 }
                 .company p {
-                    color: #666;
-                    font-size: 12px;
-                    line-height: 1.5;
+                    color: #888;
+                    font-size: 11px;
                 }
                 .invoice-info {
                     text-align: right;
                 }
                 .invoice-info h2 {
-                    font-size: 24px;
+                    font-size: 20px;
                     font-weight: 300;
                     color: #333;
                     margin-bottom: 5px;
                 }
                 .invoice-info p {
-                    color: #666;
+                    color: #888;
                     font-size: 12px;
                 }
                 .client-section {
                     display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 20px;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 30px;
                     margin-bottom: 30px;
-                    background: #fafafa;
-                    padding: 20px;
-                    border-radius: 4px;
                 }
                 .address h3 {
-                    font-size: 11px;
+                    font-size: 10px;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
-                    color: #999;
-                    margin-bottom: 10px;
+                    letter-spacing: 0.5px;
+                    color: #aaa;
+                    margin-bottom: 8px;
+                    font-weight: 500;
                 }
                 .address p {
                     font-size: 13px;
-                    color: #333;
-                    line-height: 1.6;
+                    color: #444;
+                    line-height: 1.5;
                 }
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    margin: 30px 0;
+                    margin: 25px 0;
                 }
                 th {
                     text-align: left;
                     padding: 12px 8px;
-                    border-bottom: 2px solid #eee;
-                    color: #666;
+                    border-bottom: 1px solid #eaeaea;
+                    color: #888;
                     font-weight: 500;
-                    font-size: 12px;
+                    font-size: 11px;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
                 td {
                     padding: 12px 8px;
                     border-bottom: 1px solid #f0f0f0;
-                    color: #333;
+                    color: #444;
                     font-size: 13px;
                 }
+                .col-produit { width: 45%; }
+                .col-prix { width: 20%; text-align: right; }
+                .col-qte { width: 15%; text-align: center; }
+                .col-total { width: 20%; text-align: right; }
                 .totals {
                     text-align: right;
-                    margin-top: 20px;
+                    margin-top: 25px;
                     padding-top: 20px;
-                    border-top: 2px solid #f0f0f0;
+                    border-top: 1px solid #eaeaea;
                 }
                 .totals p {
-                    margin-bottom: 8px;
+                    margin-bottom: 6px;
                     color: #666;
                     font-size: 13px;
                 }
                 .grand-total {
-                    font-size: 18px;
-                    font-weight: 400;
+                    font-size: 16px;
+                    font-weight: 500;
                     color: #333;
-                    margin-top: 10px;
-                    padding-top: 10px;
+                    margin-top: 8px;
+                    padding-top: 8px;
                     border-top: 1px solid #ddd;
                 }
-                .tva-mention {
-                    margin: 30px 0;
-                    padding: 15px;
+                .legal-mention {
+                    margin: 25px 0;
+                    padding: 12px;
                     background: #fafafa;
-                    border: 1px solid #f0f0f0;
-                    color: #666;
-                    font-size: 12px;
+                    color: #888;
+                    font-size: 11px;
                     text-align: center;
+                    border: 1px solid #f0f0f0;
                 }
                 .footer {
-                    margin-top: 40px;
+                    margin-top: 30px;
                     padding-top: 20px;
-                    border-top: 1px solid #f0f0f0;
+                    border-top: 1px solid #eaeaea;
                     text-align: center;
-                    color: #999;
-                    font-size: 11px;
+                    color: #aaa;
+                    font-size: 10px;
                 }
                 .actions {
                     margin-top: 30px;
@@ -481,18 +469,18 @@ function afficherFactureHTML($pdo, $idCommande) {
                 }
                 .btn {
                     display: inline-block;
-                    padding: 10px 20px;
+                    padding: 8px 16px;
                     margin: 0 5px;
                     background: white;
                     border: 1px solid #ddd;
-                    border-radius: 4px;
-                    color: #333;
+                    border-radius: 3px;
+                    color: #555;
                     text-decoration: none;
-                    font-size: 13px;
+                    font-size: 12px;
                     transition: all 0.2s;
                 }
                 .btn:hover {
-                    background: #f5f5f5;
+                    background: #f8f8f8;
                     border-color: #ccc;
                 }
                 .btn-primary {
@@ -516,14 +504,11 @@ function afficherFactureHTML($pdo, $idCommande) {
                     <div class="header">
                         <div class="company">
                             <h1>YOUKI & CO</h1>
-                            <p>Créations artisanales japonaises<br>
-                            contact@youkiandco.fr<br>
-                            SIRET 123 456 789 00012</p>
+                            <p>Créations artisanales japonaises</p>
                         </div>
                         <div class="invoice-info">
                             <h2>FACTURE</h2>
-                            <p>N° <?= $idCommande ?><br>
-                            Date: <?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></p>
+                            <p>N° <?= $idCommande ?><br>Date: <?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></p>
                         </div>
                     </div>
 
@@ -531,13 +516,11 @@ function afficherFactureHTML($pdo, $idCommande) {
                         <div class="address">
                             <h3>Client</h3>
                             <p><?= htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) ?><br>
-                            <?= htmlspecialchars($commande['client_email']) ?><br>
-                            <?= htmlspecialchars($commande['client_telephone'] ?? '') ?></p>
+                            <?= htmlspecialchars($commande['client_email']) ?></p>
                         </div>
                         <div class="address">
-                            <h3>Facturation</h3>
-                            <p><?= htmlspecialchars($commande['client_prenom'] . ' ' . $commande['client_nom']) ?><br>
-                            <?= htmlspecialchars($commande['adresse_facturation']) ?><br>
+                            <h3>Adresse de facturation</h3>
+                            <p><?= htmlspecialchars($commande['adresse_facturation']) ?><br>
                             <?= htmlspecialchars($commande['cp_facturation'] . ' ' . $commande['ville_facturation']) ?><br>
                             <?= htmlspecialchars($commande['pays_facturation']) ?></p>
                         </div>
@@ -546,37 +529,37 @@ function afficherFactureHTML($pdo, $idCommande) {
                     <table>
                         <thead>
                             <tr>
-                                <th>Produit</th>
-                                <th>Prix unitaire</th>
-                                <th>Quantité</th>
-                                <th>Total</th>
+                                <th class="col-produit">Désignation</th>
+                                <th class="col-prix">Prix unitaire</th>
+                                <th class="col-qte">Quantité</th>
+                                <th class="col-total">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($articles as $article): ?>
                             <tr>
-                                <td><?= htmlspecialchars($article['produit_nom']) ?></td>
-                                <td><?= number_format($article['prixUnitaire'], 2, ',', ' ') ?> €</td>
-                                <td><?= $article['quantite'] ?></td>
-                                <td><?= number_format($article['total_ligne'], 2, ',', ' ') ?> €</td>
+                                <td class="col-produit"><?= htmlspecialchars($article['produit_nom']) ?></td>
+                                <td class="col-prix"><?= number_format($article['prixUnitaire'], 2, ',', ' ') ?> €</td>
+                                <td class="col-qte"><?= $article['quantite'] ?></td>
+                                <td class="col-total"><?= number_format($article['total_ligne'], 2, ',', ' ') ?> €</td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
 
                     <div class="totals">
-                        <p>Sous-total: <?= number_format($sousTotal, 2, ',', ' ') ?> €</p>
-                        <p>Frais de port: <?= number_format($commande['fraisDePort'], 2, ',', ' ') ?> €</p>
-                        <p class="grand-total">TOTAL: <?= number_format($totalGeneral, 2, ',', ' ') ?> €</p>
+                        <p>Sous-total : <?= number_format($sousTotal, 2, ',', ' ') ?> €</p>
+                        <p>Frais de port : <?= number_format($commande['fraisDePort'], 2, ',', ' ') ?> €</p>
+                        <p class="grand-total">TOTAL : <?= number_format($totalGeneral, 2, ',', ' ') ?> €</p>
                     </div>
 
-                    <div class="tva-mention">
-                        Exonération de TVA - Art. 293 B du CGI
+                    <div class="legal-mention">
+                        Exonération de TVA - Article 293 B du Code Général des Impôts
                     </div>
 
                     <div class="footer">
-                        Youki & Co - RCS Paris 123 456 789 - Exonération de TVA, art. 293 B du CGI<br>
-                        Document généré le <?= date('d/m/Y à H:i') ?>
+                        Youki & Co - contact@youkiandco.fr<br>
+                        Facture générée le <?= date('d/m/Y à H:i') ?>
                     </div>
 
                     <div class="actions">
