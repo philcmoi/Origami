@@ -30,7 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         // Gestion de l'upload d'image
         $photo = '';
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-            $photo = uploadImage($_FILES['photo']);
+            $photoName = uploadImage($_FILES['photo']);
+            if ($photoName) {
+                $photo = 'uploads/origami/' . $photoName; // Chemin complet
+            }
         }
         
         try {
@@ -58,10 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $photo = $_POST['photo_actuelle'] ?? '';
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
             // Supprimer l'ancienne image si elle existe
-            if ($photo && file_exists('uploads/origami/' . $photo)) {
-                unlink('uploads/origami/' . $photo);
+            if ($photo && file_exists($photo)) {
+                unlink($photo);
             }
-            $photo = uploadImage($_FILES['photo']);
+            $photoName = uploadImage($_FILES['photo']);
+            if ($photoName) {
+                $photo = 'uploads/origami/' . $photoName;
+            }
         }
         
         try {
@@ -112,8 +118,8 @@ if (isset($_GET['action'])) {
                 $stmt = $bdd->prepare("SELECT photo FROM Origami WHERE idOrigami = ?");
                 $stmt->execute([$id]);
                 $produit = $stmt->fetch();
-                if ($produit && $produit['photo'] && file_exists('uploads/origami/' . $produit['photo'])) {
-                    unlink('uploads/origami/' . $produit['photo']);
+                if ($produit && $produit['photo'] && file_exists($produit['photo'])) {
+                    unlink($produit['photo']);
                 }
                 
                 $stmt = $bdd->prepare("DELETE FROM Origami WHERE idOrigami = ?");
@@ -156,7 +162,7 @@ function uploadImage($file) {
     $chemin_destination = $dossier_upload . $nom_fichier;
     
     if (move_uploaded_file($file['tmp_name'], $chemin_destination)) {
-        return $nom_fichier;
+        return $nom_fichier; // Retourne juste le nom, le chemin sera ajouté au moment du stockage
     }
     
     return '';
@@ -729,8 +735,8 @@ $stats_total = $stmt->fetch()['total'];
                         <tr>
                             <td>#<?= $p['idOrigami'] ?></td>
                             <td>
-                                <?php if($p['photo'] && file_exists('uploads/origami/' . $p['photo'])): ?>
-                                    <img src="uploads/origami/<?= htmlspecialchars($p['photo']) ?>" class="product-image" alt="<?= htmlspecialchars($p['nom']) ?>">
+                                <?php if($p['photo'] && file_exists($p['photo'])): ?>
+                                    <img src="<?= htmlspecialchars($p['photo']) ?>" class="product-image" alt="<?= htmlspecialchars($p['nom']) ?>">
                                 <?php else: ?>
                                     <div class="product-image" style="background: #e9ecef; display: flex; align-items: center; justify-content: center;">
                                         <i class="fas fa-image" style="color: #aaa;"></i>
@@ -878,10 +884,10 @@ $stats_total = $stmt->fetch()['total'];
                         previewDiv.innerHTML = '';
                         if(data.photo && data.photo !== '') {
                             const img = document.createElement('img');
-                            img.src = 'uploads/origami/' + data.photo;
+                            img.src = data.photo; // Utiliser le chemin complet stocké
                             img.className = 'image-preview';
                             img.onerror = function() {
-                                console.log('Image non trouvée:', 'uploads/origami/' + data.photo);
+                                console.log('Image non trouvée:', data.photo);
                                 previewDiv.innerHTML = '<p style="color: #dc3545; font-size: 0.8rem;">Image actuelle introuvable</p>';
                             };
                             previewDiv.appendChild(img);
@@ -920,15 +926,9 @@ $stats_total = $stmt->fetch()['total'];
             if(e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(ev) {
-                    // Ne pas effacer l'aperçu existant, juste ajouter le nouveau
-                    const existingImg = preview.querySelector('img');
-                    if(existingImg && !existingImg.src.includes('blob:')) {
-                        // Conserver l'ancienne image comme référence
-                    }
                     const img = document.createElement('img');
                     img.src = ev.target.result;
                     img.className = 'image-preview';
-                    // Remplacer ou ajouter
                     if(preview.querySelector('img')) {
                         preview.replaceChild(img, preview.querySelector('img'));
                     } else {
