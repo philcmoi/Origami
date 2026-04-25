@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -91,7 +91,8 @@
 
       /* Bannière principale */
       .hero {
-        background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)),
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)),
           url("img/ai-generated-8662190_1280.png");
         background-size: cover;
         background-position: center;
@@ -218,6 +219,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 30px;
+        min-height: 400px;
       }
 
       .product-card {
@@ -225,7 +227,9 @@
         border-radius: 2px;
         overflow: hidden;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        transition: transform 0.3s, box-shadow 0.3s;
+        transition:
+          transform 0.3s,
+          box-shadow 0.3s;
       }
 
       .product-card:hover {
@@ -263,6 +267,11 @@
         color: #666;
         font-size: 0.9rem;
         margin-bottom: 15px;
+        height: 60px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
       }
 
       .product-price {
@@ -274,6 +283,78 @@
       .price {
         font-weight: bold;
         color: #d40000;
+      }
+
+      /* Pagination */
+      .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 50px;
+        flex-wrap: wrap;
+      }
+
+      .pagination-btn {
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        background: white;
+        color: #333;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.3s;
+        min-width: 40px;
+        text-align: center;
+      }
+
+      .pagination-btn:hover:not(:disabled) {
+        background: #f0f0f0;
+        border-color: #999;
+      }
+
+      .pagination-btn.active {
+        background: #d40000;
+        color: white;
+        border-color: #d40000;
+      }
+
+      .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .pagination-info {
+        margin: 0 15px;
+        color: #666;
+      }
+
+      /* Loading spinner */
+      .loading-spinner {
+        text-align: center;
+        padding: 50px;
+        font-size: 18px;
+        color: #666;
+      }
+
+      .loading-spinner:after {
+        content: "";
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-left: 10px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #d40000;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
 
       /* Section valeurs */
@@ -535,7 +616,6 @@
           margin-bottom: 10px;
         }
 
-        /* Amélioration spécifique pour le lien panier sur mobile */
         .panier-mobile {
           display: flex !important;
           align-items: center;
@@ -570,133 +650,13 @@
         .footer-col {
           margin-bottom: 30px;
         }
-      }
 
-      /* Styles pour la modal panier */
-      #panier-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-      }
-
-      /* Styles pour la modal commande */
-      #commande-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-      }
-
-      @media (max-width: 768px) {
-        #panier-modal > div,
-        #commande-modal > div {
-          width: 95% !important;
-          margin: 20px;
-          padding: 15px !important;
+        .pagination-btn {
+          padding: 8px 12px;
+          font-size: 14px;
         }
       }
 
-      /* Styles pour les notifications */
-      .notification {
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 4px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transform: translateX(400px);
-        transition: transform 0.3s ease;
-        max-width: 300px;
-      }
-
-      .notification.success {
-        background: #28a745;
-        color: white;
-      }
-
-      .notification.error {
-        background: #dc3545;
-        color: white;
-      }
-
-      .notification.info {
-        background: #17a2b8;
-        color: white;
-      }
-
-      /* Styles pour le bouton de commande */
-      #btn-passer-commande {
-        transition: all 0.3s ease;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      #btn-passer-commande:disabled {
-        background-color: #cccccc !important;
-        cursor: not-allowed !important;
-        opacity: 0.6;
-        transform: none;
-      }
-
-      #btn-passer-commande:not(:disabled):hover {
-        background-color: #b30000 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(212, 0, 0, 0.3);
-      }
-
-      #btn-passer-commande:not(:disabled):active {
-        transform: translateY(0);
-        box-shadow: 0 2px 4px rgba(212, 0, 0, 0.3);
-      }
-
-      /* Styles pour le bouton vider panier */
-      #btn-vider-panier {
-        transition: all 0.3s ease;
-      }
-
-      #btn-vider-panier:disabled {
-        background-color: #cccccc !important;
-        cursor: not-allowed !important;
-        opacity: 0.6;
-      }
-
-      #btn-vider-panier:not(:disabled):hover {
-        background-color: #5a6268 !important;
-      }
-
-      /* Animation de chargement */
-      @keyframes pulse {
-        0% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.7;
-        }
-        100% {
-          opacity: 1;
-        }
-      }
-
-      #btn-passer-commande.loading {
-        animation: pulse 1.5s infinite;
-      }
-
-      /* Styles améliorés pour mobile */
       @media (max-width: 480px) {
         nav ul {
           flex-direction: column;
@@ -739,6 +699,102 @@
           padding: 10px 20px;
           font-size: 13px;
         }
+
+        .products-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Styles pour la modal panier */
+      #panier-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      #panier-modal > div {
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      /* Styles pour la modal commande */
+      #commande-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      /* Styles pour les notifications */
+      .notification {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 4px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        max-width: 300px;
+      }
+
+      .notification.success {
+        background: #28a745;
+        color: white;
+      }
+
+      .notification.error {
+        background: #dc3545;
+        color: white;
+      }
+
+      .notification.info {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .notification.warning {
+        background: #ffc107;
+        color: #856404;
+      }
+
+      /* Style pour le bouton de rafraîchissement flottant */
+      .refresh-cart-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 15px;
+        cursor: pointer;
+        z-index: 9999;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+      }
+
+      .refresh-cart-btn:hover {
+        background: #0056b3;
+        transform: scale(1.05);
       }
     </style>
   </head>
@@ -751,8 +807,8 @@
           <ul>
             <li><a href="#">Accueil</a></li>
             <li><a href="#nosCreations">Nos créations</a></li>
-            <li><a href="#">À propos</a></li>
-            <li><a href="#">Ateliers</a></li>
+            <li><a href="#about">À propos</a></li>
+            <li><a href="#values">Nos valeurs</a></li>
             <li class="panier-mobile">
               <a
                 href="#"
@@ -780,7 +836,7 @@
     </section>
 
     <!-- Section à propos -->
-    <section class="about">
+    <section class="about" id="about">
       <div class="container">
         <div class="section-title">
           <h2>Notre histoire</h2>
@@ -808,104 +864,61 @@
       </div>
     </section>
 
-    <!-- Section produits -->
-    <section class="products">
+    <!-- Section produits avec pagination -->
+    <section class="products" id="nosCreations">
       <div class="container">
-        <div class="section-title" id="nosCreations">
+        <div class="section-title">
           <h2>Nos créations</h2>
         </div>
-        <div class="products-grid">
-          <!-- Produit 1 - Grue -->
-          <div class="product-card" data-id="1">
-            <div class="product-image">
-              <img src="img/couple de sygnes.jpg" alt="Origami Sygnes" />
-            </div>
-            <div class="product-info">
-              <h3>La grue Élégante</h3>
-              <p>
-                Symbole de paix et de longévité, cette grue est pliée avec un
-                papier washi traditionnel.
-              </p>
-              <div class="product-price">
-                <span class="price">24€</span>
-                <a href="#" class="btn">Commander</a>
-              </div>
-            </div>
-          </div>
 
-          <!-- Produit 2 - Fleur -->
-          <div class="product-card" data-id="2">
-            <div class="product-image">
-              <img src="img/flower.jpg" alt="Origami fleur" />
-            </div>
-            <div class="product-info">
-              <h3>Fleur de Cerisier</h3>
-              <p>
-                Inspirée des sakura japonais, cette fleur délicate apporte une
-                touche de printemps éternel.
-              </p>
-              <div class="product-price">
-                <span class="price">18€</span>
-                <a href="#" class="btn">Commander</a>
-              </div>
-            </div>
-          </div>
+        <!-- Grille des produits -->
+        <div class="products-grid" id="produits-grid">
+          <!-- Les produits seront chargés dynamiquement -->
+          <div class="loading-spinner">Chargement des créations...</div>
+        </div>
 
-          <!-- Produit 3 - Dragon -->
-          <div class="product-card" data-id="3">
-            <div class="product-image">
-              <img src="img/dragon.png" alt="Origami dragon" />
-            </div>
-            <div class="product-info">
-              <h3>Dragon Majestueux</h3>
-              <p>
-                Une création complexe et impressionnante, symbole de puissance
-                et de sagesse.
-              </p>
-              <div class="product-price">
-                <span class="price">45€</span>
-                <a href="#" class="btn">Commander</a>
-              </div>
-            </div>
-          </div>
+        <!-- Contrôles de pagination -->
+        <div class="pagination" id="pagination-controls">
+          <button
+            class="pagination-btn"
+            id="btn-premiere"
+            onclick="changerPage(1)"
+          >
+            ⏮️ Première
+          </button>
+          <button
+            class="pagination-btn"
+            id="btn-precedente"
+            onclick="changerPage(currentPage - 1)"
+          >
+            ◀️ Précédente
+          </button>
 
-          <!-- Produit 4 - Éventail -->
-          <div class="product-card" data-id="4">
-            <div class="product-image">
-              <img src="img/eventail.jpg" alt="Origami éventail" />
-            </div>
-            <div class="product-info">
-              <h3>Éventail Traditionnel</h3>
-              <p>
-                Accessoire élégant et fonctionnel, plié avec un papier aux
-                motifs traditionnels.
-              </p>
-              <div class="product-price">
-                <span class="price">32€</span>
-                <a href="#" class="btn">Commander</a>
-              </div>
-            </div>
-          </div>
+          <span class="pagination-info" id="pagination-info"
+            >Page <span id="page-actuelle">1</span> sur
+            <span id="total-pages">1</span></span
+          >
 
-          <!-- Produit 5 - EURO (CORRIGÉ - placé correctement) -->
-          <div class="product-card" data-id="5">
-            <div class="product-image">
-              <img src="img/euro.jpg" alt="Euro" />
-            </div>
-            <div class="product-info">
-              <h3>1 euro</h3>
-              <p>Pièce de monnaie</p>
-              <div class="product-price">
-                <span class="price">1€</span>
-                <a href="#" class="btn">Commander</a>
-              </div>
-            </div>
-          </div>
+          <button
+            class="pagination-btn"
+            id="btn-suivante"
+            onclick="changerPage(currentPage + 1)"
+          >
+            Suivante ▶️
+          </button>
+          <button
+            class="pagination-btn"
+            id="btn-derniere"
+            onclick="changerPage(totalPages)"
+          >
+            Dernière ⏭️
+          </button>
         </div>
       </div>
     </section>
+
     <!-- Section valeurs -->
-    <section class="values">
+    <section class="values" id="values">
       <div class="container">
         <div class="section-title">
           <h2>Nos valeurs</h2>
@@ -1007,9 +1020,9 @@
             <h3>Liens rapides</h3>
             <ul>
               <li><a href="#">Accueil</a></li>
-              <li><a href="#">Nos créations</a></li>
-              <li><a href="#">À propos</a></li>
-              <li><a href="#">Ateliers</a></li>
+              <li><a href="#nosCreations">Nos créations</a></li>
+              <li><a href="#about">À propos</a></li>
+              <li><a href="#values">Nos valeurs</a></li>
             </ul>
           </div>
 
@@ -1029,12 +1042,18 @@
               Inscrivez-vous pour recevoir nos dernières créations et
               actualités.
             </p>
-            <form>
+            <form
+              onsubmit="
+                event.preventDefault();
+                alert('Fonctionnalité à venir !');
+              "
+            >
               <div class="form-group">
                 <input
                   type="email"
                   class="form-control"
                   placeholder="Votre email"
+                  id="newsletter-email"
                 />
               </div>
               <button type="submit" class="btn">S'inscrire</button>
@@ -1214,7 +1233,12 @@
         <!-- Étape 2: Saisie email -->
         <div id="etape-saisie-email" style="display: none">
           <h3 style="margin-bottom: 15px">Vos coordonnées</h3>
-          <form onsubmit="event.preventDefault(); soumettreEmail();">
+          <form
+            onsubmit="
+              event.preventDefault();
+              soumettreEmail();
+            "
+          >
             <div style="margin-bottom: 15px">
               <label
                 style="display: block; margin-bottom: 5px; font-weight: bold"
@@ -1351,14 +1375,42 @@
     </div>
 
     <script>
-      // Variables globales
+      // ==============================================
+      // VARIABLES GLOBALES
+      // ==============================================
       let panierData = null;
       let emailEnCours = "";
       let typeProcessus = "";
+      let currentPage = 1;
+      let totalPages = 1;
+      let produitsParPage = 8;
 
+      // ==============================================
+      // CLASSE API ORIGAMI
+      // ==============================================
       class OrigamiAPI {
         constructor() {
           this.baseUrl = "acheter.php";
+        }
+
+        async getProduitsPagines(page = 1, limit = 8) {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "get_produits_pagines",
+                page: page,
+                limit: limit,
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur chargement produits:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
         }
 
         async envoyerLienConfirmation(email, nom) {
@@ -1407,6 +1459,42 @@
             return await response.json();
           } catch (error) {
             console.error("Erreur:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async verifierPanier() {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "verifier_panier",
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur vérification panier:", error);
+            return { status: 500, error: "Erreur réseau" };
+          }
+        }
+
+        async getRecapPanier() {
+          try {
+            const response = await fetch(this.baseUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                action: "get_recap_panier",
+              }),
+            });
+            return await response.json();
+          } catch (error) {
+            console.error("Erreur récupération récap panier:", error);
             return { status: 500, error: "Erreur réseau" };
           }
         }
@@ -1472,137 +1560,325 @@
       // Initialisation de l'API
       const origamiAPI = new OrigamiAPI();
 
-      // FONCTIONS POUR L'ENVOI D'EMAIL RÉEL
-      async function envoyerEmailConfirmation(email, nom) {
+      // ==============================================
+      // FONCTIONS DE PAGINATION
+      // ==============================================
+      async function chargerProduits(page = 1) {
+        const grid = document.getElementById("produits-grid");
+        grid.innerHTML =
+          '<div class="loading-spinner">Chargement des créations...</div>';
+
         try {
-          console.log("Envoi email confirmation à:", email, nom);
+          const result = await origamiAPI.getProduitsPagines(
+            page,
+            produitsParPage,
+          );
 
-          const result = await origamiAPI.envoyerLienConfirmation(email, nom);
-          console.log("Réponse envoi email:", result);
-
-          if (result.status === 200) {
-            showNotification(
-              `Lien de confirmation envoyé à ${email}` +
-                (result.data.client_existant
-                  ? " (client existant)"
-                  : " (nouveau client)"),
-              "success"
-            );
-            return {
-              success: true,
-              client_existant: result.data.client_existant,
-            };
+          if (result.status === 200 && result.data) {
+            afficherProduits(result.data.produits);
+            currentPage = result.data.page;
+            totalPages = result.data.total_pages;
+            mettreAJourPagination();
           } else {
-            showNotification("Erreur: " + result.error, "error");
-            return { success: false, message: result.error };
+            grid.innerHTML =
+              '<div style="text-align: center; padding: 50px; color: #666;">Erreur de chargement des produits</div>';
           }
         } catch (error) {
-          console.error("Erreur envoi email:", error);
-          showNotification(
-            "Erreur de connexion au serveur: " + error.message,
-            "error"
-          );
-          return {
-            success: false,
-            message: "Erreur de connexion: " + error.message,
-          };
+          console.error("Erreur:", error);
+          grid.innerHTML =
+            '<div style="text-align: center; padding: 50px; color: #666;">Erreur de connexion</div>';
         }
       }
 
-      // FONCTION POUR LES BOUTONS COMMANDER
-      function setupBoutonsCommander() {
-        console.log("Initialisation des boutons commander...");
+      function afficherProduits(produits) {
+        const grid = document.getElementById("produits-grid");
 
-        document.querySelectorAll(".product-card .btn").forEach((bouton) => {
-          bouton.replaceWith(bouton.cloneNode(true));
+        if (!produits || produits.length === 0) {
+          grid.innerHTML =
+            '<div style="text-align: center; padding: 50px; color: #666;">Aucun produit disponible</div>';
+          return;
+        }
+
+        let html = "";
+        produits.forEach((produit) => {
+          html += `
+            <div class="product-card" data-id="${produit.idOrigami}">
+              <div class="product-image">
+                <img src="${produit.photo}" alt="${produit.nom}" onerror="this.src='img/placeholder.jpg'">
+              </div>
+              <div class="product-info">
+                <h3>${produit.nom}</h3>
+                <p>${produit.description || "Description non disponible"}</p>
+                <div class="product-price">
+                  <span class="price">${produit.prixHorsTaxe}€</span>
+                  <a href="#" class="btn" onclick="ajouterAuPanierDepuisBouton(event, ${produit.idOrigami}, '${produit.nom.replace(/'/g, "\\'")}')">Commander</a>
+                </div>
+              </div>
+            </div>
+          `;
         });
 
-        document.querySelectorAll(".product-card .btn").forEach((bouton) => {
-          bouton.addEventListener("click", async function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const carteProduit = this.closest(".product-card");
-            const idProduit = carteProduit.getAttribute("data-id");
-            const nomProduit =
-              carteProduit.querySelector(".product-info h3").textContent;
-
-            console.log(
-              "Bouton cliqué - ID produit:",
-              idProduit,
-              "Nom:",
-              nomProduit
-            );
-
-            if (!idProduit) {
-              console.error("ID produit non trouvé");
-              showNotification("Erreur: Produit non reconnu", "error");
-              return;
-            }
-
-            const originalText = this.textContent;
-            this.textContent = "Ajout...";
-            this.disabled = true;
-
-            try {
-              const result = await origamiAPI.ajouterAuPanier(idProduit);
-
-              if (result.status === 200) {
-                this.textContent = "✓ Ajouté !";
-                this.style.backgroundColor = "#28a745";
-
-                setTimeout(() => {
-                  this.textContent = originalText;
-                  this.style.backgroundColor = "";
-                  this.disabled = false;
-                }, 1500);
-
-                updateAffichagePanier();
-                showNotification(
-                  `"${nomProduit}" ajouté au panier !`,
-                  "success"
-                );
-              } else {
-                this.textContent = originalText;
-                this.disabled = false;
-                showNotification(
-                  "Erreur: " +
-                    (result.error || "Impossible d'ajouter au panier"),
-                  "error"
-                );
-              }
-            } catch (error) {
-              console.error("Erreur:", error);
-              this.textContent = originalText;
-              this.disabled = false;
-              showNotification("Erreur réseau", "error");
-            }
-          });
-        });
+        grid.innerHTML = html;
       }
 
-      // FONCTION POUR METTRE À JOUR L'AFFICHAGE DU PANIER
+      function mettreAJourPagination() {
+        document.getElementById("page-actuelle").textContent = currentPage;
+        document.getElementById("total-pages").textContent = totalPages;
+
+        document.getElementById("btn-premiere").disabled = currentPage === 1;
+        document.getElementById("btn-precedente").disabled = currentPage === 1;
+        document.getElementById("btn-suivante").disabled =
+          currentPage === totalPages;
+        document.getElementById("btn-derniere").disabled =
+          currentPage === totalPages;
+      }
+
+      function changerPage(page) {
+        if (page < 1 || page > totalPages) return;
+        chargerProduits(page);
+        window.location.href = "#nosCreations";
+      }
+
+      // ==============================================
+      // FONCTIONS PANIER
+      // ==============================================
+      async function ajouterAuPanierDepuisBouton(event, idProduit, nomProduit) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const bouton = event.target;
+        const originalText = bouton.textContent;
+        bouton.textContent = "Ajout...";
+        bouton.disabled = true;
+
+        try {
+          const result = await origamiAPI.ajouterAuPanier(idProduit);
+
+          if (result.status === 200) {
+            bouton.textContent = "✓ Ajouté !";
+            bouton.style.backgroundColor = "#28a745";
+
+            setTimeout(() => {
+              bouton.textContent = originalText;
+              bouton.style.backgroundColor = "";
+              bouton.disabled = false;
+            }, 1500);
+
+            await updateAffichagePanier();
+            showNotification(`"${nomProduit}" ajouté au panier !`, "success");
+          } else {
+            bouton.textContent = originalText;
+            bouton.disabled = false;
+            showNotification(
+              "Erreur: " + (result.error || "Impossible d'ajouter au panier"),
+              "error",
+            );
+          }
+        } catch (error) {
+          console.error("Erreur:", error);
+          bouton.textContent = originalText;
+          bouton.disabled = false;
+          showNotification("Erreur réseau", "error");
+        }
+      }
+
+      // Fonction CORRIGÉE pour vider le panier
+      async function viderPanier() {
+        if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
+          return;
+        }
+
+        const btnVider = document.getElementById("btn-vider-panier");
+        const texteOriginal = btnVider
+          ? btnVider.textContent
+          : "Vider le panier";
+
+        if (btnVider) {
+          btnVider.disabled = true;
+          btnVider.textContent = "Vidage...";
+        }
+
+        try {
+          console.log("🗑️ Vidage du panier...");
+          const result = await origamiAPI.viderPanier();
+
+          if (result.status === 200) {
+            showNotification("✅ Panier vidé avec succès !", "success");
+
+            // Mettre à jour l'affichage complet
+            await updateAffichagePanier();
+
+            // Recharger le contenu de la modal si elle est ouverte
+            const modalPanier = document.getElementById("panier-modal");
+            if (modalPanier && modalPanier.style.display === "flex") {
+              await chargerContenuPanier();
+            }
+
+            // Mettre à jour l'état des boutons
+            await updateEtatBoutonCommande();
+            updateEtatBoutonVider();
+          } else {
+            showNotification("❌ Erreur lors du vidage du panier", "error");
+          }
+        } catch (error) {
+          console.error("Erreur vidage panier:", error);
+          showNotification("❌ Erreur réseau lors du vidage", "error");
+        } finally {
+          if (btnVider) {
+            btnVider.disabled = false;
+            btnVider.textContent = texteOriginal;
+          }
+        }
+      }
+
       async function updateAffichagePanier() {
         try {
-          const panier = await origamiAPI.getPanier();
-          panierData = panier;
-          console.log("Panier mis à jour:", panier);
+          // Utiliser la nouvelle méthode de vérification optimisée
+          const verification = await origamiAPI.verifierPanier();
 
-          if (panier.status === 200) {
+          if (verification.status === 200 && verification.data) {
+            // Mettre à jour le compteur d'affichage
             const compteurPanier = document.getElementById("compteur-panier");
             if (compteurPanier) {
-              compteurPanier.textContent = panier.data.totalQuantites || 0;
+              compteurPanier.textContent =
+                verification.data.total_articles || 0;
+            }
+
+            // Stocker les données du panier
+            if (verification.data.total_articles > 0) {
+              // Récupérer les détails complets pour l'affichage
+              const panier = await origamiAPI.getRecapPanier();
+              if (panier.status === 200 && panier.data) {
+                panierData = panier;
+              } else {
+                panierData = {
+                  status: 200,
+                  data: {
+                    articles: [],
+                    total: 0,
+                    total_articles: verification.data.total_articles,
+                  },
+                };
+              }
+            } else {
+              panierData = {
+                status: 200,
+                data: { articles: [], total: 0, total_articles: 0 },
+              };
+            }
+
+            console.log(
+              "📊 Panier mis à jour:",
+              verification.data.total_articles,
+              "articles",
+            );
+          } else {
+            // Fallback vers la méthode classique
+            const panier = await origamiAPI.getPanier();
+            panierData = panier;
+
+            if (panier.status === 200) {
+              const compteurPanier = document.getElementById("compteur-panier");
+              if (compteurPanier) {
+                compteurPanier.textContent = panier.data.totalQuantites || 0;
+              }
             }
           }
 
-          updateEtatBoutonCommande();
+          // Mettre à jour l'état des boutons
+          await updateEtatBoutonCommande();
           updateEtatBoutonVider();
         } catch (error) {
           console.error("Erreur mise à jour panier:", error);
         }
       }
 
-      // FONCTION POUR AFFICHER LES NOTIFICATIONS
+      // ==============================================
+      // FONCTIONS POUR LES BOUTONS
+      // ==============================================
+      async function updateEtatBoutonCommande() {
+        const bouton = document.getElementById("btn-passer-commande");
+        if (!bouton) return;
+
+        try {
+          const verification = await origamiAPI.verifierPanier();
+
+          if (verification.status === 200 && verification.data) {
+            const aDesArticles =
+              verification.data.total_articles > 0 &&
+              !verification.data.panier_vide;
+
+            if (aDesArticles) {
+              bouton.disabled = false;
+              bouton.style.backgroundColor = "#d40000";
+              bouton.style.cursor = "pointer";
+              bouton.style.opacity = "1";
+              bouton.title = "Cliquer pour passer commande";
+              console.log(
+                "✅ Bouton commande ACTIVÉ -",
+                verification.data.total_articles,
+                "article(s)",
+              );
+            } else {
+              bouton.disabled = true;
+              bouton.style.backgroundColor = "#cccccc";
+              bouton.style.cursor = "not-allowed";
+              bouton.style.opacity = "0.6";
+              bouton.title = "Votre panier est vide";
+              console.log("❌ Bouton commande DÉSACTIVÉ - panier vide");
+            }
+          } else {
+            bouton.disabled = true;
+            bouton.style.backgroundColor = "#cccccc";
+            bouton.style.cursor = "not-allowed";
+          }
+        } catch (error) {
+          console.error("Erreur mise à jour bouton commande:", error);
+          bouton.disabled = true;
+          bouton.style.backgroundColor = "#cccccc";
+          bouton.style.cursor = "not-allowed";
+        }
+      }
+
+      async function updateEtatBoutonVider() {
+        const btnVider = document.getElementById("btn-vider-panier");
+        if (!btnVider) return;
+
+        try {
+          const verification = await origamiAPI.verifierPanier();
+
+          if (verification.status === 200 && verification.data) {
+            const aDesArticles =
+              verification.data.total_articles > 0 &&
+              !verification.data.panier_vide;
+
+            if (aDesArticles) {
+              btnVider.disabled = false;
+              btnVider.style.background = "#6c757d";
+              btnVider.style.cursor = "pointer";
+              btnVider.style.opacity = "1";
+            } else {
+              btnVider.disabled = true;
+              btnVider.style.background = "#cccccc";
+              btnVider.style.cursor = "not-allowed";
+              btnVider.style.opacity = "0.6";
+            }
+          } else {
+            btnVider.disabled = true;
+            btnVider.style.background = "#cccccc";
+            btnVider.style.cursor = "not-allowed";
+          }
+        } catch (error) {
+          console.error("Erreur mise à jour bouton vider:", error);
+          btnVider.disabled = true;
+          btnVider.style.background = "#cccccc";
+          btnVider.style.cursor = "not-allowed";
+        }
+      }
+
+      // ==============================================
+      // NOTIFICATIONS
+      // ==============================================
       function showNotification(message, type = "info", duree = 3000) {
         const notification = document.createElement("div");
         notification.className = `notification ${type}`;
@@ -1612,11 +1888,6 @@
                 <span>${message}</span>
             </div>
         `;
-
-        if (message.includes("panier") || message.includes("vide")) {
-          notification.style.background = "#ffc107";
-          notification.style.color = "#856404";
-        }
 
         document.body.appendChild(notification);
 
@@ -1644,71 +1915,9 @@
         return icones[type] || "ℹ️";
       }
 
-      // FONCTIONS POUR LA GESTION DU PANIER
-      async function updateEtatBoutonCommande() {
-        const bouton = document.getElementById("btn-passer-commande");
-        if (!bouton) return;
-
-        try {
-          const panier = await origamiAPI.getPanier();
-          panierData = panier;
-
-          if (
-            panier.status === 200 &&
-            panier.data.articles &&
-            panier.data.articles.length > 0
-          ) {
-            bouton.disabled = false;
-            bouton.style.backgroundColor = "#d40000";
-            bouton.style.cursor = "pointer";
-            bouton.style.opacity = "1";
-            bouton.title = "Cliquer pour passer commande";
-          } else {
-            bouton.disabled = true;
-            bouton.style.backgroundColor = "#cccccc";
-            bouton.style.cursor = "not-allowed";
-            bouton.style.opacity = "0.6";
-            bouton.title = "Votre panier est vide";
-          }
-        } catch (error) {
-          console.error("Erreur mise à jour bouton:", error);
-          bouton.disabled = true;
-          bouton.style.backgroundColor = "#cccccc";
-          bouton.style.cursor = "not-allowed";
-          bouton.style.opacity = "0.6";
-        }
-      }
-
-      async function updateEtatBoutonVider() {
-        const btnVider = document.getElementById("btn-vider-panier");
-        if (!btnVider) return;
-
-        try {
-          const panier = await origamiAPI.getPanier();
-          panierData = panier;
-
-          if (
-            panier.status === 200 &&
-            panier.data.articles &&
-            panier.data.articles.length > 0
-          ) {
-            btnVider.disabled = false;
-            btnVider.style.background = "#6c757d";
-            btnVider.style.cursor = "pointer";
-          } else {
-            btnVider.disabled = true;
-            btnVider.style.background = "#cccccc";
-            btnVider.style.cursor = "not-allowed";
-          }
-        } catch (error) {
-          console.error("Erreur mise à jour bouton vider:", error);
-          btnVider.disabled = true;
-          btnVider.style.background = "#cccccc";
-          btnVider.style.cursor = "not-allowed";
-        }
-      }
-
-      // FONCTION POUR AFFICHER LA MODAL PANIER
+      // ==============================================
+      // MODAL PANIER
+      // ==============================================
       function afficherPanierModal() {
         let modal = document.getElementById("panier-modal");
         if (!modal) {
@@ -1747,10 +1956,16 @@
         chargerContenuPanier();
       }
 
-      // FONCTION CORRIGÉE POUR CHARGER LE CONTENU DU PANIER
+      function fermerPanierModal() {
+        const modal = document.getElementById("panier-modal");
+        if (modal) {
+          modal.style.display = "none";
+        }
+      }
+
       async function chargerContenuPanier() {
         try {
-          const panier = await origamiAPI.getPanier();
+          const panier = await origamiAPI.getRecapPanier();
           panierData = panier;
           const content = document.getElementById("panier-content");
 
@@ -1761,6 +1976,7 @@
 
           if (
             panier.status === 200 &&
+            panier.data &&
             panier.data.articles &&
             panier.data.articles.length > 0
           ) {
@@ -1785,50 +2001,23 @@
                             <td style="padding: 15px 10px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                        <img src="${article.photo}" alt="${
-                article.nom
-              }" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+                                        <img src="${article.photo}" alt="${article.nom}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
                                     </div>
                                     <div>
                                         <strong>${article.nom}</strong><br>
-                                        <small style="color: #666;">${
-                                          article.description
-                                            ? article.description.substring(
-                                                0,
-                                                50
-                                              ) + "..."
-                                            : "Description non disponible"
-                                        }</small>
+                                        <small style="color: #666;">${article.description ? article.description.substring(0, 50) + "..." : "Description non disponible"}</small>
                                     </div>
                                 </div>
                             </td>
-                            <td style="text-align: center; padding: 10px;">${
-                              article.prixUnitaire
-                            }€</td>
+                            <td style="text-align: center; padding: 10px;">${article.prixUnitaire}€</td>
                             <td style="text-align: center; padding: 10px;">
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                    <button onclick="modifierQuantite(${
-                                      article.idLignePanier
-                                    }, ${
-                article.quantite - 1
-              })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
-                                    <span style="min-width: 30px; display: inline-block;">${
-                                      article.quantite
-                                    }</span>
-                                    <button onclick="modifierQuantite(${
-                                      article.idLignePanier
-                                    }, ${
-                article.quantite + 1
-              })" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
+                                    <span>${article.quantite}</span>
                                 </div>
                             </td>
-                            <td style="text-align: center; padding: 10px; font-weight: bold;">${
-                              article.totalLigne
-                            }€</td>
+                            <td style="text-align: center; padding: 10px; font-weight: bold;">${article.totalLigne}€</td>
                             <td style="text-align: center; padding: 10px;">
-                                <button onclick="supprimerArticle(${
-                                  article.idLignePanier
-                                })" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
+                                <button onclick="supprimerArticlePanier(${article.idOrigami})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
                             </td>
                         </tr>
                     `;
@@ -1872,91 +2061,55 @@
         }
       }
 
-      function fermerPanierModal() {
-        const modal = document.getElementById("panier-modal");
-        if (modal) {
-          modal.style.display = "none";
-        }
-      }
-
-      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
-        if (nouvelleQuantite < 1) {
-          await supprimerArticle(idLignePanier);
-          return;
-        }
-
+      async function supprimerArticlePanier(idOrigami) {
         try {
-          const result = await origamiAPI.modifierQuantite(
-            idLignePanier,
-            nouvelleQuantite
-          );
-
-          if (result.status === 200) {
-            await chargerContenuPanier();
-            await updateAffichagePanier();
-            showNotification("Quantité modifiée", "success");
-          } else {
-            showNotification("Erreur lors de la modification", "error");
-          }
-        } catch (error) {
-          console.error("Erreur modification quantité:", error);
-          showNotification("Erreur réseau", "error");
-        }
-      }
-
-      async function supprimerArticle(idLignePanier) {
-        try {
-          const result = await origamiAPI.supprimerDuPanier(idLignePanier);
-
-          if (result.status === 200) {
-            await chargerContenuPanier();
-            await updateAffichagePanier();
-            showNotification("Article supprimé du panier", "success");
-          } else {
-            showNotification("Erreur lors de la suppression", "error");
-          }
+          showNotification("Fonctionnalité en développement", "info");
         } catch (error) {
           console.error("Erreur suppression article:", error);
           showNotification("Erreur réseau", "error");
         }
       }
 
-      async function viderPanier() {
-        if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
-          return;
-        }
+      // ==============================================
+      // FONCTIONS MODAL COMMANDE
+      // ==============================================
+      async function verifierEtPasserCommande() {
+        console.log("🔍 Vérification avant passage commande...");
 
         try {
-          const result = await origamiAPI.viderPanier();
+          const verification = await origamiAPI.verifierPanier();
 
-          if (result.status === 200) {
-            await chargerContenuPanier();
-            await updateAffichagePanier();
-            showNotification("Panier vidé", "success");
-          } else {
-            showNotification("Erreur lors du vidage du panier", "error");
+          if (verification.status !== 200) {
+            showNotification(
+              "Service temporairement indisponible. Veuillez réessayer.",
+              "error",
+            );
+            return;
           }
+
+          if (
+            verification.data.panier_vide ||
+            verification.data.total_articles === 0
+          ) {
+            showNotification(
+              "❌ Votre panier est vide. Ajoutez des articles avant de passer commande.",
+              "error",
+            );
+            return;
+          }
+
+          console.log("✅ Panier valide, ouverture modal de commande");
+          fermerPanierModal();
+          afficherCommandeModal();
         } catch (error) {
-          console.error("Erreur vidage panier:", error);
-          showNotification("Erreur réseau", "error");
+          console.error("❌ Erreur vérification:", error);
+          showNotification(
+            "Erreur lors de la vérification de votre panier",
+            "error",
+          );
         }
       }
 
-      function verifierEtPasserCommande() {
-        if (
-          !panierData ||
-          !panierData.data.articles ||
-          panierData.data.articles.length === 0
-        ) {
-          showNotification("Votre panier est vide", "error");
-          return;
-        }
-
-        fermerPanierModal();
-        afficherCommandeModal();
-      }
-
-      // FONCTIONS POUR LA MODAL DE COMMANDE
       function afficherCommandeModal() {
         const modal = document.getElementById("commande-modal");
         if (modal) {
@@ -2002,7 +2155,6 @@
         document.getElementById("etape-saisie-email").style.display = "block";
       }
 
-      // Gestion de la soumission de l'email
       function soumettreEmail() {
         const email = document.getElementById("email-saisi").value;
         const nom = document.getElementById("nom-saisi").value || "Client";
@@ -2012,12 +2164,11 @@
           return;
         }
 
-        // Stocker l'email pour la confirmation
         localStorage.setItem("email_confirmation", email);
         sessionStorage.setItem("email_confirmation", email);
 
         const btn = document.querySelector(
-          '#etape-saisie-email button[type="submit"]'
+          '#etape-saisie-email button[type="submit"]',
         );
         const texteOriginal = btn.textContent;
         btn.textContent = "Envoi en cours...";
@@ -2035,14 +2186,60 @@
               "block";
             document.getElementById("email-a-verifier").textContent = email;
 
-            // Mettre à jour le message avec le vrai processus
-            document.querySelector(
-              "#etape-confirmation-lien p"
-            ).innerHTML = `Nous avons envoyé un lien de confirmation à<br>
+            document.querySelector("#etape-confirmation-lien p").innerHTML =
+              `Nous avons envoyé un lien de confirmation à<br>
                  <strong>${email}</strong><br><br>
                  <em>Cliquez sur le lien reçu par email pour finaliser votre commande.</em>`;
           }
         });
+      }
+
+      async function envoyerEmailConfirmation(email, nom) {
+        try {
+          console.log("📧 Envoi email confirmation à:", email, nom);
+
+          const result = await origamiAPI.envoyerLienConfirmation(email, nom);
+          console.log("📡 Réponse serveur:", result);
+
+          if (!result || typeof result !== "object") {
+            showNotification(
+              "Erreur de communication avec le serveur",
+              "error",
+            );
+            return { success: false, message: "Erreur de communication" };
+          }
+
+          if (result.status === 200) {
+            const message = `✅ Lien de confirmation envoyé à ${email}`;
+            if (result.data && result.data.client_existant) {
+              showNotification(message + " (client existant)", "success");
+            } else {
+              showNotification(message + " (nouveau client)", "success");
+            }
+            return {
+              success: true,
+              client_existant: result.data?.client_existant,
+            };
+          } else if (result.status === 500) {
+            const errorMsg = result.error || "Erreur interne du serveur";
+            showNotification(`❌ Erreur serveur: ${errorMsg}`, "error");
+            return { success: false, message: errorMsg };
+          } else {
+            const errorMsg = result.error || "Veuillez réessayer";
+            showNotification(`❌ ${errorMsg}`, "error");
+            return { success: false, message: errorMsg };
+          }
+        } catch (error) {
+          console.error("❌ Erreur réseau détaillée:", error);
+          showNotification(
+            "❌ Erreur de connexion au serveur. Vérifiez votre connexion internet.",
+            "error",
+          );
+          return {
+            success: false,
+            message: "Erreur de connexion: " + error.message,
+          };
+        }
       }
 
       function renvoyerLienConfirmation() {
@@ -2054,7 +2251,9 @@
         });
       }
 
-      // Fermer les modals en cliquant à l'extérieur
+      // ==============================================
+      // GESTION FERMETURE MODALS
+      // ==============================================
       document.addEventListener("click", function (e) {
         const panierModal = document.getElementById("panier-modal");
         const commandeModal = document.getElementById("commande-modal");
@@ -2068,7 +2267,6 @@
         }
       });
 
-      // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
       document
         .querySelectorAll("#panier-modal > div, #commande-modal > div")
         .forEach((modalContent) => {
@@ -2077,11 +2275,35 @@
           });
         });
 
+      // Vérification périodique du panier
+      let verificationInterval = null;
+
+      function demarrerVerificationPeriodique() {
+        if (verificationInterval) clearInterval(verificationInterval);
+        verificationInterval = setInterval(() => {
+          updateEtatBoutonCommande();
+          updateEtatBoutonVider();
+        }, 8000);
+        console.log("⏰ Vérification périodique du panier démarrée (8s)");
+      }
+
+      function arreterVerificationPeriodique() {
+        if (verificationInterval) {
+          clearInterval(verificationInterval);
+          verificationInterval = null;
+          console.log("⏹️ Vérification périodique du panier arrêtée");
+        }
+      }
+
+      // ==============================================
       // INITIALISATION
-      document.addEventListener("DOMContentLoaded", function () {
-        console.log("Page chargée - Initialisation...");
-        setupBoutonsCommander();
-        updateAffichagePanier();
+      // ==============================================
+      document.addEventListener("DOMContentLoaded", async function () {
+        console.log("🚀 Page chargée - Initialisation...");
+
+        await chargerProduits(1);
+        await updateAffichagePanier();
+        demarrerVerificationPeriodique();
 
         document
           .getElementById("lien-panier")
@@ -2090,7 +2312,27 @@
             afficherPanierModal();
           });
 
-        console.log("Initialisation terminée");
+        // Bouton de rafraîchissement manuel
+        const refreshBtn = document.createElement("button");
+        refreshBtn.className = "refresh-cart-btn";
+        refreshBtn.innerHTML = "🔄 Rafraîchir le panier";
+        refreshBtn.onclick = async () => {
+          refreshBtn.innerHTML = "⏳ Chargement...";
+          refreshBtn.disabled = true;
+          await updateAffichagePanier();
+          refreshBtn.innerHTML = "✅ Mis à jour !";
+          setTimeout(() => {
+            refreshBtn.innerHTML = "🔄 Rafraîchir le panier";
+            refreshBtn.disabled = false;
+          }, 1500);
+        };
+        document.body.appendChild(refreshBtn);
+
+        console.log("✅ Initialisation terminée");
+      });
+
+      window.addEventListener("beforeunload", () => {
+        arreterVerificationPeriodique();
       });
     </script>
   </body>
