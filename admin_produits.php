@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         
         try {
             $stmt = $bdd->prepare("
-                INSERT INTO Origami (nom, description, photo, prixHorsTaxe)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO Origami (nom, description, photo, prixHorsTaxe, visible)
+                VALUES (?, ?, ?, ?, 1)
             ");
             $stmt->execute([$nom, $description, $photo, $prix]);
             $_SESSION['success'] = "Produit ajouté avec succès !";
@@ -92,7 +92,35 @@ if (isset($_GET['action'])) {
     $action = $_GET['action'];
     $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     
-    // Supprimer un produit
+    // Masquer un produit (NOUVEAU)
+    if ($action === 'masquer' && $id > 0) {
+        try {
+            $stmt = $bdd->prepare("UPDATE Origami SET visible = 0 WHERE idOrigami = ?");
+            $stmt->execute([$id]);
+            $_SESSION['success'] = "Produit masqué avec succès ! Il n'apparaîtra plus dans la boutique.";
+        } catch (PDOException $e) {
+            error_log("Erreur masquage produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors du masquage.";
+        }
+        header('Location: admin_produits.php' . (isset($_GET['afficher_masques']) ? '?afficher_masques=1' : ''));
+        exit;
+    }
+    
+    // Réactiver un produit (NOUVEAU)
+    if ($action === 'reactiver' && $id > 0) {
+        try {
+            $stmt = $bdd->prepare("UPDATE Origami SET visible = 1 WHERE idOrigami = ?");
+            $stmt->execute([$id]);
+            $_SESSION['success'] = "Produit réactivé avec succès !";
+        } catch (PDOException $e) {
+            error_log("Erreur réactivation produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors de la réactivation.";
+        }
+        header('Location: admin_produits.php');
+        exit;
+    }
+    
+    // Supprimer un produit (conservé pour les produits sans commandes)
     if ($action === 'supprimer' && $id > 0) {
         try {
             // Vérifier si le produit est dans des commandes
@@ -101,7 +129,9 @@ if (isset($_GET['action'])) {
             $count = $stmt->fetch()['total'];
             
             if ($count > 0) {
-                $_SESSION['warning'] = "Ce produit ne peut pas être supprimé car il est référencé dans des commandes.";
+                $_SESSION['warning'] = "Ce produit ne peut pas être supprimé car il est référencé dans des commandes. Il a été masqué à la place.";
+                $stmt = $bdd->prepare("UPDATE Origami SET visible = 0 WHERE idOrigami = ?");
+                $stmt->execute([$id]);
             } else {
                 // Vérifier aussi dans les paniers
                 $stmt = $bdd->prepare("SELECT COUNT(*) as total FROM LignePanier WHERE idOrigami = ?");
@@ -173,6 +203,7 @@ function uploadImage($file) {
 // ==============================================
 $page_courante = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $recherche = isset($_GET['search']) ? trim($_GET['search']) : '';
+$afficher_masques = isset($_GET['afficher_masques']) && $_GET['afficher_masques'] == '1';
 $elements_par_page = 15;
 
 // Construction de la requête
@@ -182,6 +213,11 @@ $params = [];
 if (!empty($recherche)) {
     $where_conditions[] = "(nom LIKE :search OR description LIKE :search)";
     $params[':search'] = "%$recherche%";
+}
+
+// Filtre visibilité
+if (!$afficher_masques) {
+    $where_conditions[] = "visible = 1";
 }
 
 $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
@@ -209,6 +245,10 @@ $stmt->execute();
 $produits = $stmt->fetchAll();
 
 // Statistiques
+$stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 1");
+$stats_visibles = $stmt->fetch()['total'];
+$stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 0");
+$stats_masques = $stmt->fetch()['total'];
 $stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami");
 $stats_total = $stmt->fetch()['total'];
 ?>
@@ -456,6 +496,17 @@ $stats_total = $stmt->fetch()['total'];
             border-radius: 8px;
         }
 
+        .product-image-placeholder {
+            width: 60px;
+            height: 60px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ccc;
+        }
+
         .actions {
             display: flex;
             gap: 8px;
@@ -475,9 +526,37 @@ $stats_total = $stmt->fetch()['total'];
             color: white;
         }
 
+        .btn-hide {
+            background: var(--warning);
+            color: #333;
+        }
+
+        .btn-reactiver {
+            background: var(--success);
+            color: white;
+        }
+
         .btn-delete {
             background: var(--danger);
             color: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-visible {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-hidden {
+            background: #f8d7da;
+            color: #721c24;
         }
 
         /* Pagination */
@@ -636,6 +715,16 @@ $stats_total = $stmt->fetch()['total'];
             opacity: 0.6;
             cursor: not-allowed;
         }
+
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-toggle label {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -684,8 +773,18 @@ $stats_total = $stmt->fetch()['total'];
 
         <!-- Statistiques -->
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card" onclick="window.location.href='admin_produits.php'">
                 <i class="fas fa-box"></i>
+                <div class="number"><?= $stats_visibles ?></div>
+                <div class="label">Produits visibles</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='admin_produits.php?afficher_masques=1'">
+                <i class="fas fa-eye-slash"></i>
+                <div class="number"><?= $stats_masques ?></div>
+                <div class="label">Produits masqués</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-database"></i>
                 <div class="number"><?= $stats_total ?></div>
                 <div class="label">Total produits</div>
             </div>
@@ -696,13 +795,24 @@ $stats_total = $stmt->fetch()['total'];
             <form method="GET" class="search-box">
                 <input type="text" name="search" placeholder="Rechercher un produit..." 
                        value="<?= htmlspecialchars($recherche) ?>">
+                <?php if($afficher_masques): ?>
+                    <input type="hidden" name="afficher_masques" value="1">
+                <?php endif; ?>
                 <button type="submit"><i class="fas fa-search"></i></button>
-                <?php if(!empty($recherche)): ?>
+                <?php if(!empty($recherche) || $afficher_masques): ?>
                     <a href="admin_produits.php" class="btn-outline">
                         <i class="fas fa-times"></i> Réinitialiser
                     </a>
                 <?php endif; ?>
             </form>
+            
+            <div class="filter-toggle">
+                <input type="checkbox" id="afficherMasques" <?= $afficher_masques ? 'checked' : '' ?>
+                       onchange="window.location.href='admin_produits.php?afficher_masques=' + (this.checked ? 1 : 0)">
+                <label for="afficherMasques">
+                    <i class="fas fa-eye-slash"></i> Afficher les produits masqués
+                </label>
+            </div>
             
             <button onclick="openAjoutModal()" class="btn-primary">
                 <i class="fas fa-plus"></i> Ajouter un produit
@@ -719,13 +829,14 @@ $stats_total = $stmt->fetch()['total'];
                         <th>Nom</th>
                         <th>Description</th>
                         <th>Prix HT</th>
+                        <th>Statut</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if(empty($produits)): ?>
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px;">
+                            <td colspan="7" style="text-align: center; padding: 40px;">
                                 <i class="fas fa-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
                                 <p>Aucun produit trouvé</p>
                             </td>
@@ -733,26 +844,53 @@ $stats_total = $stmt->fetch()['total'];
                     <?php else: ?>
                         <?php foreach($produits as $p): ?>
                         <tr>
-                            <td>#<?= $p['idOrigami'] ?></td>
+                            <td><strong>#<?= $p['idOrigami'] ?></strong></td>
                             <td>
                                 <?php if($p['photo'] && file_exists($p['photo'])): ?>
                                     <img src="<?= htmlspecialchars($p['photo']) ?>" class="product-image" alt="<?= htmlspecialchars($p['nom']) ?>">
                                 <?php else: ?>
-                                    <div class="product-image" style="background: #e9ecef; display: flex; align-items: center; justify-content: center;">
-                                        <i class="fas fa-image" style="color: #aaa;"></i>
+                                    <div class="product-image-placeholder">
+                                        <i class="fas fa-image"></i>
                                     </div>
                                 <?php endif; ?>
                             </td>
-                            <td><strong><?= htmlspecialchars($p['nom']) ?></strong></td>
+                            <td>
+                                <strong><?= htmlspecialchars($p['nom']) ?></strong>
+                                <?php if($afficher_masques && isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <br><span class="status-badge status-hidden"><i class="fas fa-eye-slash"></i> Masqué</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlspecialchars(substr($p['description'], 0, 80)) ?>...</td>
                             <td><?= number_format($p['prixHorsTaxe'], 2) ?> €</td>
+                            <td>
+                                <?php if(isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <span class="status-badge status-hidden">Masqué</span>
+                                <?php else: ?>
+                                    <span class="status-badge status-visible">Visible</span>
+                                <?php endif; ?>
+                            </td>
                             <td class="actions">
                                 <button onclick="editProduit(<?= $p['idOrigami'] ?>)" class="btn-icon btn-edit" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </button>
+                                <?php if(isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <a href="?action=reactiver&id=<?= $p['idOrigami'] ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>" 
+                                       class="btn-icon btn-reactiver" 
+                                       onclick="return confirm('Réactiver ce produit ? Il réapparaîtra dans la boutique.')" 
+                                       title="Réactiver">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="?action=masquer&id=<?= $p['idOrigami'] ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>" 
+                                       class="btn-icon btn-hide" 
+                                       onclick="return confirm('Masquer ce produit ? Il n\'apparaîtra plus dans la boutique (mais restera dans l\'historique des commandes).')" 
+                                       title="Masquer">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </a>
+                                <?php endif; ?>
                                 <a href="?action=supprimer&id=<?= $p['idOrigami'] ?>" 
                                    class="btn-icon btn-delete" 
-                                   onclick="return confirm('Supprimer définitivement ce produit ?')" 
+                                   onclick="return confirm('Supprimer définitivement ce produit ? (uniquement possible s\'il n\'a pas de commandes associées)')" 
                                    title="Supprimer">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
@@ -768,7 +906,7 @@ $stats_total = $stmt->fetch()['total'];
         <?php if($total_pages > 1): ?>
             <div class="pagination">
                 <?php if($page_courante > 1): ?>
-                    <a href="?page=<?= $page_courante - 1 ?>&search=<?= urlencode($recherche) ?>">
+                    <a href="?page=<?= $page_courante - 1 ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>">
                         <i class="fas fa-angle-left"></i>
                     </a>
                 <?php endif; ?>
@@ -777,12 +915,12 @@ $stats_total = $stmt->fetch()['total'];
                     <?php if($i == $page_courante): ?>
                         <span class="current"><?= $i ?></span>
                     <?php else: ?>
-                        <a href="?page=<?= $i ?>&search=<?= urlencode($recherche) ?>"><?= $i ?></a>
+                        <a href="?page=<?= $i ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>"><?= $i ?></a>
                     <?php endif; ?>
                 <?php endfor; ?>
 
                 <?php if($page_courante < $total_pages): ?>
-                    <a href="?page=<?= $page_courante + 1 ?>&search=<?= urlencode($recherche) ?>">
+                    <a href="?page=<?= $page_courante + 1 ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>">
                         <i class="fas fa-angle-right"></i>
                     </a>
                 <?php endif; ?>
@@ -884,7 +1022,7 @@ $stats_total = $stmt->fetch()['total'];
                         previewDiv.innerHTML = '';
                         if(data.photo && data.photo !== '') {
                             const img = document.createElement('img');
-                            img.src = data.photo; // Utiliser le chemin complet stocké
+                            img.src = data.photo;
                             img.className = 'image-preview';
                             img.onerror = function() {
                                 console.log('Image non trouvée:', data.photo);
@@ -956,7 +1094,6 @@ $stats_total = $stmt->fetch()['total'];
                 return false;
             }
             
-            // Désactiver le bouton pour éviter les doubles soumissions
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.innerHTML = '<span class="loading"></span> Enregistrement...';
             submitBtn.disabled = true;

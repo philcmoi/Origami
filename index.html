@@ -771,31 +771,6 @@
         background: #ffc107;
         color: #856404;
       }
-
-      /* Style pour le bouton de rafraîchissement flottant */
-      .refresh-cart-btn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50px;
-        padding: 10px 15px;
-        cursor: pointer;
-        z-index: 9999;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease;
-      }
-
-      .refresh-cart-btn:hover {
-        background: #0056b3;
-        transform: scale(1.05);
-      }
     </style>
   </head>
   <body>
@@ -1375,9 +1350,7 @@
     </div>
 
     <script>
-      // ==============================================
-      // VARIABLES GLOBALES
-      // ==============================================
+      // Variables globales
       let panierData = null;
       let emailEnCours = "";
       let typeProcessus = "";
@@ -1385,9 +1358,6 @@
       let totalPages = 1;
       let produitsParPage = 8;
 
-      // ==============================================
-      // CLASSE API ORIGAMI
-      // ==============================================
       class OrigamiAPI {
         constructor() {
           this.baseUrl = "acheter.php";
@@ -1463,42 +1433,6 @@
           }
         }
 
-        async verifierPanier() {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "verifier_panier",
-              }),
-            });
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur vérification panier:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
-
-        async getRecapPanier() {
-          try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "get_recap_panier",
-              }),
-            });
-            return await response.json();
-          } catch (error) {
-            console.error("Erreur récupération récap panier:", error);
-            return { status: 500, error: "Erreur réseau" };
-          }
-        }
-
         async modifierQuantite(idLignePanier, quantite) {
           try {
             const response = await fetch(this.baseUrl, {
@@ -1560,9 +1494,7 @@
       // Initialisation de l'API
       const origamiAPI = new OrigamiAPI();
 
-      // ==============================================
       // FONCTIONS DE PAGINATION
-      // ==============================================
       async function chargerProduits(page = 1) {
         const grid = document.getElementById("produits-grid");
         grid.innerHTML =
@@ -1639,9 +1571,7 @@
         window.location.href = "#nosCreations";
       }
 
-      // ==============================================
-      // FONCTIONS PANIER
-      // ==============================================
+      // FONCTION POUR AJOUTER AU PANIER DEPUIS UN BOUTON
       async function ajouterAuPanierDepuisBouton(event, idProduit, nomProduit) {
         event.preventDefault();
         event.stopPropagation();
@@ -1664,7 +1594,7 @@
               bouton.disabled = false;
             }, 1500);
 
-            await updateAffichagePanier();
+            updateAffichagePanier();
             showNotification(`"${nomProduit}" ajouté au panier !`, "success");
           } else {
             bouton.textContent = originalText;
@@ -1682,161 +1612,58 @@
         }
       }
 
-      // Fonction CORRIGÉE pour vider le panier
-      async function viderPanier() {
-        if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
-          return;
-        }
-
-        const btnVider = document.getElementById("btn-vider-panier");
-        const texteOriginal = btnVider
-          ? btnVider.textContent
-          : "Vider le panier";
-
-        if (btnVider) {
-          btnVider.disabled = true;
-          btnVider.textContent = "Vidage...";
-        }
-
-        try {
-          console.log("🗑️ Vidage du panier...");
-          const result = await origamiAPI.viderPanier();
-
-          if (result.status === 200) {
-            showNotification("✅ Panier vidé avec succès !", "success");
-
-            // Mettre à jour l'affichage complet
-            await updateAffichagePanier();
-
-            // Recharger le contenu de la modal si elle est ouverte
-            const modalPanier = document.getElementById("panier-modal");
-            if (modalPanier && modalPanier.style.display === "flex") {
-              await chargerContenuPanier();
-            }
-
-            // Mettre à jour l'état des boutons
-            await updateEtatBoutonCommande();
-            updateEtatBoutonVider();
-          } else {
-            showNotification("❌ Erreur lors du vidage du panier", "error");
-          }
-        } catch (error) {
-          console.error("Erreur vidage panier:", error);
-          showNotification("❌ Erreur réseau lors du vidage", "error");
-        } finally {
-          if (btnVider) {
-            btnVider.disabled = false;
-            btnVider.textContent = texteOriginal;
-          }
-        }
-      }
-
+      // FONCTIONS POUR LE PANIER
       async function updateAffichagePanier() {
         try {
-          // Utiliser la nouvelle méthode de vérification optimisée
-          const verification = await origamiAPI.verifierPanier();
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
+          console.log("Panier mis à jour:", panier);
 
-          if (verification.status === 200 && verification.data) {
-            // Mettre à jour le compteur d'affichage
+          if (panier.status === 200) {
             const compteurPanier = document.getElementById("compteur-panier");
             if (compteurPanier) {
-              compteurPanier.textContent =
-                verification.data.total_articles || 0;
-            }
-
-            // Stocker les données du panier
-            if (verification.data.total_articles > 0) {
-              // Récupérer les détails complets pour l'affichage
-              const panier = await origamiAPI.getRecapPanier();
-              if (panier.status === 200 && panier.data) {
-                panierData = panier;
-              } else {
-                panierData = {
-                  status: 200,
-                  data: {
-                    articles: [],
-                    total: 0,
-                    total_articles: verification.data.total_articles,
-                  },
-                };
-              }
-            } else {
-              panierData = {
-                status: 200,
-                data: { articles: [], total: 0, total_articles: 0 },
-              };
-            }
-
-            console.log(
-              "📊 Panier mis à jour:",
-              verification.data.total_articles,
-              "articles",
-            );
-          } else {
-            // Fallback vers la méthode classique
-            const panier = await origamiAPI.getPanier();
-            panierData = panier;
-
-            if (panier.status === 200) {
-              const compteurPanier = document.getElementById("compteur-panier");
-              if (compteurPanier) {
-                compteurPanier.textContent = panier.data.totalQuantites || 0;
-              }
+              compteurPanier.textContent = panier.data.totalQuantites || 0;
             }
           }
 
-          // Mettre à jour l'état des boutons
-          await updateEtatBoutonCommande();
+          updateEtatBoutonCommande();
           updateEtatBoutonVider();
         } catch (error) {
           console.error("Erreur mise à jour panier:", error);
         }
       }
 
-      // ==============================================
-      // FONCTIONS POUR LES BOUTONS
-      // ==============================================
       async function updateEtatBoutonCommande() {
         const bouton = document.getElementById("btn-passer-commande");
         if (!bouton) return;
 
         try {
-          const verification = await origamiAPI.verifierPanier();
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
 
-          if (verification.status === 200 && verification.data) {
-            const aDesArticles =
-              verification.data.total_articles > 0 &&
-              !verification.data.panier_vide;
-
-            if (aDesArticles) {
-              bouton.disabled = false;
-              bouton.style.backgroundColor = "#d40000";
-              bouton.style.cursor = "pointer";
-              bouton.style.opacity = "1";
-              bouton.title = "Cliquer pour passer commande";
-              console.log(
-                "✅ Bouton commande ACTIVÉ -",
-                verification.data.total_articles,
-                "article(s)",
-              );
-            } else {
-              bouton.disabled = true;
-              bouton.style.backgroundColor = "#cccccc";
-              bouton.style.cursor = "not-allowed";
-              bouton.style.opacity = "0.6";
-              bouton.title = "Votre panier est vide";
-              console.log("❌ Bouton commande DÉSACTIVÉ - panier vide");
-            }
+          if (
+            panier.status === 200 &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            bouton.disabled = false;
+            bouton.style.backgroundColor = "#d40000";
+            bouton.style.cursor = "pointer";
+            bouton.style.opacity = "1";
+            bouton.title = "Cliquer pour passer commande";
           } else {
             bouton.disabled = true;
             bouton.style.backgroundColor = "#cccccc";
             bouton.style.cursor = "not-allowed";
+            bouton.style.opacity = "0.6";
+            bouton.title = "Votre panier est vide";
           }
         } catch (error) {
-          console.error("Erreur mise à jour bouton commande:", error);
+          console.error("Erreur mise à jour bouton:", error);
           bouton.disabled = true;
           bouton.style.backgroundColor = "#cccccc";
           bouton.style.cursor = "not-allowed";
+          bouton.style.opacity = "0.6";
         }
       }
 
@@ -1845,24 +1672,17 @@
         if (!btnVider) return;
 
         try {
-          const verification = await origamiAPI.verifierPanier();
+          const panier = await origamiAPI.getPanier();
+          panierData = panier;
 
-          if (verification.status === 200 && verification.data) {
-            const aDesArticles =
-              verification.data.total_articles > 0 &&
-              !verification.data.panier_vide;
-
-            if (aDesArticles) {
-              btnVider.disabled = false;
-              btnVider.style.background = "#6c757d";
-              btnVider.style.cursor = "pointer";
-              btnVider.style.opacity = "1";
-            } else {
-              btnVider.disabled = true;
-              btnVider.style.background = "#cccccc";
-              btnVider.style.cursor = "not-allowed";
-              btnVider.style.opacity = "0.6";
-            }
+          if (
+            panier.status === 200 &&
+            panier.data.articles &&
+            panier.data.articles.length > 0
+          ) {
+            btnVider.disabled = false;
+            btnVider.style.background = "#6c757d";
+            btnVider.style.cursor = "pointer";
           } else {
             btnVider.disabled = true;
             btnVider.style.background = "#cccccc";
@@ -1876,9 +1696,6 @@
         }
       }
 
-      // ==============================================
-      // NOTIFICATIONS
-      // ==============================================
       function showNotification(message, type = "info", duree = 3000) {
         const notification = document.createElement("div");
         notification.className = `notification ${type}`;
@@ -1915,9 +1732,7 @@
         return icones[type] || "ℹ️";
       }
 
-      // ==============================================
-      // MODAL PANIER
-      // ==============================================
+      // FONCTIONS POUR LA MODAL PANIER
       function afficherPanierModal() {
         let modal = document.getElementById("panier-modal");
         if (!modal) {
@@ -1965,7 +1780,7 @@
 
       async function chargerContenuPanier() {
         try {
-          const panier = await origamiAPI.getRecapPanier();
+          const panier = await origamiAPI.getPanier();
           panierData = panier;
           const content = document.getElementById("panier-content");
 
@@ -1976,7 +1791,6 @@
 
           if (
             panier.status === 200 &&
-            panier.data &&
             panier.data.articles &&
             panier.data.articles.length > 0
           ) {
@@ -2012,12 +1826,14 @@
                             <td style="text-align: center; padding: 10px;">${article.prixUnitaire}€</td>
                             <td style="text-align: center; padding: 10px;">
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
-                                    <span>${article.quantite}</span>
+                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite - 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>
+                                    <span style="min-width: 30px; display: inline-block;">${article.quantite}</span>
+                                    <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite + 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
                                 </div>
                             </td>
                             <td style="text-align: center; padding: 10px; font-weight: bold;">${article.totalLigne}€</td>
                             <td style="text-align: center; padding: 10px;">
-                                <button onclick="supprimerArticlePanier(${article.idOrigami})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
+                                <button onclick="supprimerArticle(${article.idLignePanier})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
                             </td>
                         </tr>
                     `;
@@ -2061,55 +1877,84 @@
         }
       }
 
-      async function supprimerArticlePanier(idOrigami) {
+      async function modifierQuantite(idLignePanier, nouvelleQuantite) {
+        if (nouvelleQuantite < 1) {
+          await supprimerArticle(idLignePanier);
+          return;
+        }
+
         try {
-          showNotification("Fonctionnalité en développement", "info");
+          const result = await origamiAPI.modifierQuantite(
+            idLignePanier,
+            nouvelleQuantite,
+          );
+
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Quantité modifiée", "success");
+          } else {
+            showNotification("Erreur lors de la modification", "error");
+          }
+        } catch (error) {
+          console.error("Erreur modification quantité:", error);
+          showNotification("Erreur réseau", "error");
+        }
+      }
+
+      async function supprimerArticle(idLignePanier) {
+        try {
+          const result = await origamiAPI.supprimerDuPanier(idLignePanier);
+
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Article supprimé du panier", "success");
+          } else {
+            showNotification("Erreur lors de la suppression", "error");
+          }
         } catch (error) {
           console.error("Erreur suppression article:", error);
           showNotification("Erreur réseau", "error");
         }
       }
 
-      // ==============================================
-      // FONCTIONS MODAL COMMANDE
-      // ==============================================
-      async function verifierEtPasserCommande() {
-        console.log("🔍 Vérification avant passage commande...");
+      async function viderPanier() {
+        if (!confirm("Êtes-vous sûr de vouloir vider votre panier ?")) {
+          return;
+        }
 
         try {
-          const verification = await origamiAPI.verifierPanier();
+          const result = await origamiAPI.viderPanier();
 
-          if (verification.status !== 200) {
-            showNotification(
-              "Service temporairement indisponible. Veuillez réessayer.",
-              "error",
-            );
-            return;
+          if (result.status === 200) {
+            await chargerContenuPanier();
+            await updateAffichagePanier();
+            showNotification("Panier vidé", "success");
+          } else {
+            showNotification("Erreur lors du vidage du panier", "error");
           }
-
-          if (
-            verification.data.panier_vide ||
-            verification.data.total_articles === 0
-          ) {
-            showNotification(
-              "❌ Votre panier est vide. Ajoutez des articles avant de passer commande.",
-              "error",
-            );
-            return;
-          }
-
-          console.log("✅ Panier valide, ouverture modal de commande");
-          fermerPanierModal();
-          afficherCommandeModal();
         } catch (error) {
-          console.error("❌ Erreur vérification:", error);
-          showNotification(
-            "Erreur lors de la vérification de votre panier",
-            "error",
-          );
+          console.error("Erreur vidage panier:", error);
+          showNotification("Erreur réseau", "error");
         }
       }
 
+      function verifierEtPasserCommande() {
+        if (
+          !panierData ||
+          !panierData.data.articles ||
+          panierData.data.articles.length === 0
+        ) {
+          showNotification("Votre panier est vide", "error");
+          return;
+        }
+
+        fermerPanierModal();
+        afficherCommandeModal();
+      }
+
+      // FONCTIONS POUR LA MODAL DE COMMANDE
       function afficherCommandeModal() {
         const modal = document.getElementById("commande-modal");
         if (modal) {
@@ -2196,43 +2041,31 @@
 
       async function envoyerEmailConfirmation(email, nom) {
         try {
-          console.log("📧 Envoi email confirmation à:", email, nom);
+          console.log("Envoi email confirmation à:", email, nom);
 
           const result = await origamiAPI.envoyerLienConfirmation(email, nom);
-          console.log("📡 Réponse serveur:", result);
-
-          if (!result || typeof result !== "object") {
-            showNotification(
-              "Erreur de communication avec le serveur",
-              "error",
-            );
-            return { success: false, message: "Erreur de communication" };
-          }
+          console.log("Réponse envoi email:", result);
 
           if (result.status === 200) {
-            const message = `✅ Lien de confirmation envoyé à ${email}`;
-            if (result.data && result.data.client_existant) {
-              showNotification(message + " (client existant)", "success");
-            } else {
-              showNotification(message + " (nouveau client)", "success");
-            }
+            showNotification(
+              `Lien de confirmation envoyé à ${email}` +
+                (result.data.client_existant
+                  ? " (client existant)"
+                  : " (nouveau client)"),
+              "success",
+            );
             return {
               success: true,
-              client_existant: result.data?.client_existant,
+              client_existant: result.data.client_existant,
             };
-          } else if (result.status === 500) {
-            const errorMsg = result.error || "Erreur interne du serveur";
-            showNotification(`❌ Erreur serveur: ${errorMsg}`, "error");
-            return { success: false, message: errorMsg };
           } else {
-            const errorMsg = result.error || "Veuillez réessayer";
-            showNotification(`❌ ${errorMsg}`, "error");
-            return { success: false, message: errorMsg };
+            showNotification("Erreur: " + result.error, "error");
+            return { success: false, message: result.error };
           }
         } catch (error) {
-          console.error("❌ Erreur réseau détaillée:", error);
+          console.error("Erreur envoi email:", error);
           showNotification(
-            "❌ Erreur de connexion au serveur. Vérifiez votre connexion internet.",
+            "Erreur de connexion au serveur: " + error.message,
             "error",
           );
           return {
@@ -2251,9 +2084,7 @@
         });
       }
 
-      // ==============================================
-      // GESTION FERMETURE MODALS
-      // ==============================================
+      // Fermer les modals en cliquant à l'extérieur
       document.addEventListener("click", function (e) {
         const panierModal = document.getElementById("panier-modal");
         const commandeModal = document.getElementById("commande-modal");
@@ -2267,6 +2098,7 @@
         }
       });
 
+      // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
       document
         .querySelectorAll("#panier-modal > div, #commande-modal > div")
         .forEach((modalContent) => {
@@ -2275,36 +2107,17 @@
           });
         });
 
-      // Vérification périodique du panier
-      let verificationInterval = null;
-
-      function demarrerVerificationPeriodique() {
-        if (verificationInterval) clearInterval(verificationInterval);
-        verificationInterval = setInterval(() => {
-          updateEtatBoutonCommande();
-          updateEtatBoutonVider();
-        }, 8000);
-        console.log("⏰ Vérification périodique du panier démarrée (8s)");
-      }
-
-      function arreterVerificationPeriodique() {
-        if (verificationInterval) {
-          clearInterval(verificationInterval);
-          verificationInterval = null;
-          console.log("⏹️ Vérification périodique du panier arrêtée");
-        }
-      }
-
-      // ==============================================
       // INITIALISATION
-      // ==============================================
-      document.addEventListener("DOMContentLoaded", async function () {
-        console.log("🚀 Page chargée - Initialisation...");
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("Page chargée - Initialisation...");
 
-        await chargerProduits(1);
-        await updateAffichagePanier();
-        demarrerVerificationPeriodique();
+        // Charger les produits avec pagination
+        chargerProduits(1);
 
+        // Initialiser le panier
+        updateAffichagePanier();
+
+        // Lien du panier
         document
           .getElementById("lien-panier")
           .addEventListener("click", function (e) {
@@ -2312,27 +2125,7 @@
             afficherPanierModal();
           });
 
-        // Bouton de rafraîchissement manuel
-        const refreshBtn = document.createElement("button");
-        refreshBtn.className = "refresh-cart-btn";
-        refreshBtn.innerHTML = "🔄 Rafraîchir le panier";
-        refreshBtn.onclick = async () => {
-          refreshBtn.innerHTML = "⏳ Chargement...";
-          refreshBtn.disabled = true;
-          await updateAffichagePanier();
-          refreshBtn.innerHTML = "✅ Mis à jour !";
-          setTimeout(() => {
-            refreshBtn.innerHTML = "🔄 Rafraîchir le panier";
-            refreshBtn.disabled = false;
-          }, 1500);
-        };
-        document.body.appendChild(refreshBtn);
-
-        console.log("✅ Initialisation terminée");
-      });
-
-      window.addEventListener("beforeunload", () => {
-        arreterVerificationPeriodique();
+        console.log("Initialisation terminée");
       });
     </script>
   </body>

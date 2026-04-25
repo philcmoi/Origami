@@ -238,84 +238,61 @@ function nettoyerTokensExpires($pdo) {
     }
 }
 
-// FONCTION CORRIGÉE : Nettoyage complet des clients temporaires et zombies
-// Version avec gestion correcte des contraintes de clés étrangères
+// FONCTION AMÉLIORÉE : Nettoyage complet des clients temporaires et zombies
 function nettoyerClientsTemporairesAmeliore($pdo) {
     try {
         error_log("🔍 Début du nettoyage des clients temporaires et zombies");
         $countTotal = 0;
 
-        // 1. Récupérer d'abord les IDs des clients temporaires à supprimer
+        // 1. Nettoyage des clients temporaires anciens (avec ou sans colonne type)
         try {
-            // Récupérer les IDs des clients temporaires anciens
-            $stmt = $pdo->prepare("
-                SELECT idClient FROM Client 
-                WHERE (type = 'temporaire' OR email LIKE 'temp_%@YoukiAndCO%') 
-                AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
-            ");
+            $stmt = $pdo->prepare("DELETE FROM Client WHERE (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
             $stmt->execute();
-            $clientsASupprimer = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            if (!empty($clientsASupprimer)) {
-                $placeholders = implode(',', array_fill(0, count($clientsASupprimer), '?'));
-                
-                // 2. Supprimer d'abord les paniers liés à ces clients
-                $stmt = $pdo->prepare("
-                    DELETE p FROM Panier p 
-                    WHERE idClient IN ($placeholders)
-                ");
-                $stmt->execute($clientsASupprimer);
-                $countPaniers = $stmt->rowCount();
-                if ($countPaniers > 0) {
-                    error_log("🛒 Paniers supprimés: " . $countPaniers);
-                }
-                
-                // 3. Puis supprimer les clients
-                $stmt = $pdo->prepare("
-                    DELETE FROM Client 
-                    WHERE idClient IN ($placeholders)
-                ");
-                $stmt->execute($clientsASupprimer);
+            $countTemp = $stmt->rowCount();
+            $countTotal += $countTemp;
+            if ($countTemp > 0) {
+                error_log("🧹 Clients temporaires supprimés: " . $countTemp);
+            }
+        } catch (Exception $e) {
+            // Si colonne type manquante, nettoyer par email et date
+            error_log("Colonne type manquante, utilisation alternative");
+            try {
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+                $stmt->execute();
                 $countTemp = $stmt->rowCount();
                 $countTotal += $countTemp;
                 if ($countTemp > 0) {
-                    error_log("🧹 Clients temporaires supprimés: " . $countTemp);
+                    error_log("🧹 Clients temporaires (sans type) supprimés: " . $countTemp);
+                }
+            } catch (Exception $e2) {
+                // Si date_creation manquante, nettoyer seulement par email
+                error_log("Colonne date_creation manquante, nettoyage par email uniquement");
+                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr'");
+                $stmt->execute();
+                $countTemp = $stmt->rowCount();
+                $countTotal += $countTemp;
+                if ($countTemp > 0) {
+                    error_log("🧹 Clients temporaires (email uniquement) supprimés: " . $countTemp);
                 }
             }
-        } catch (Exception $e) {
-            error_log("Erreur lors de la suppression des clients temporaires: " . $e->getMessage());
         }
 
         // 2. Nettoyer les clients sans panier ni commande (zombis) - plus agressif (2 heures)
         try {
-            // Récupérer les IDs des clients zombies
             $stmt = $pdo->prepare("
-                SELECT c.idClient 
-                FROM Client c 
+                DELETE c FROM Client c 
                 LEFT JOIN Panier p ON c.idClient = p.idClient 
                 LEFT JOIN Commande cmd ON c.idClient = cmd.idClient 
                 WHERE p.idPanier IS NULL 
                 AND cmd.idCommande IS NULL 
                 AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
-                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@YoukiAndCO%')
+                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr')
             ");
             $stmt->execute();
-            $clientsZombies = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            if (!empty($clientsZombies)) {
-                $placeholders = implode(',', array_fill(0, count($clientsZombies), '?'));
-                
-                // Les paniers sont déjà NULL, donc pas besoin de les supprimer séparément
-                $stmt = $pdo->prepare("
-                    DELETE FROM Client 
-                    WHERE idClient IN ($placeholders)
-                ");
-                $stmt->execute($clientsZombies);
-                $countZombies = $stmt->rowCount();
-                $countTotal += $countZombies;
-                if ($countZombies > 0) {
-                    error_log("🧟 Clients zombies supprimés: " . $countZombies);
-                }
+            $countZombies = $stmt->rowCount();
+            $countTotal += $countZombies;
+            if ($countZombies > 0) {
+                error_log("🧟 Clients zombies supprimés: " . $countZombies);
             }
         } catch (Exception $e) {
             error_log("Erreur nettoyage zombies: " . $e->getMessage());
@@ -354,7 +331,7 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
         }
 
         if ($countTotal > 0) {
-            error_log("✅ Nettoyage terminé: " . $countTotal . " clients supprimés");
+            error_log("✅ Nettoyage terminé: " . $countTotal . " éléments nettoyés");
         }
 
         return $countTotal;
@@ -410,20 +387,8 @@ function getOrCreateClient($pdo) {
     
     // AVANT de créer un nouveau client, nettoyer les anciens clients temporaires pour cette session
     try {
-        // D'abord trouver l'ID du client à supprimer
-        $stmt = $pdo->prepare("SELECT idClient FROM Client WHERE session_id = ? AND (type = 'temporaire' OR email LIKE 'temp_%@YoukiAndCO%')");
+        $stmt = $pdo->prepare("DELETE FROM Client WHERE session_id = ? AND (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr')");
         $stmt->execute([$sessionId]);
-        $ancienClient = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($ancienClient) {
-            // Supprimer le panier lié d'abord
-            $stmt2 = $pdo->prepare("DELETE FROM Panier WHERE idClient = ?");
-            $stmt2->execute([$ancienClient['idClient']]);
-            // Puis supprimer le client
-            $stmt3 = $pdo->prepare("DELETE FROM Client WHERE idClient = ?");
-            $stmt3->execute([$ancienClient['idClient']]);
-            error_log("Ancien client temporaire supprimé: " . $ancienClient['idClient']);
-        }
     } catch (Exception $e) {
         error_log("Erreur nettoyage anciens clients session: " . $e->getMessage());
     }
@@ -440,13 +405,13 @@ function getOrCreateClient($pdo) {
         try {
             // Essayer avec date_creation
             $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, date_creation, session_id) VALUES (?, 'Invité', 'Client', NOW(), ?)");
-            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCO';
+            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCO.fr';
             $stmt->execute([$emailTemp, $sessionId]);
         } catch (Exception $e2) {
             // Si échec (date_creation manquante), insérer avec les colonnes minimales
             error_log("Insertion avec colonnes minimales: " . $e2->getMessage());
             $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, session_id) VALUES (?, 'Invité', 'Client', ?)");
-            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCO';
+            $emailTemp = 'temp_' . uniqid() . '@YoukiAndCo.fr';
             $stmt->execute([$emailTemp, $sessionId]);
         }
     }
@@ -458,7 +423,7 @@ function getOrCreateClient($pdo) {
     return $clientId;
 }
 
-// FONCTION : Générer une facture via l'API facture.php
+// FONCTION : Générer une facture
 function genererFactureAPI($idCommande, $format = 'html') {
     error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
@@ -531,108 +496,6 @@ function envoyerEmailAvecPieceJointe($destinataire, $sujet, $message, $fichierJo
         error_log("Erreur PHPMailer avec pièce jointe: " . $mail->ErrorInfo);
         return ['success' => false, 'error' => 'Erreur PHPMailer: ' . $e->getMessage()];
     }
-}
-
-// NOUVELLE ACTION : Vérifier si le panier a des articles (pour le bouton)
-if ($action == 'verifier_panier') {
-    $idClient = $_SESSION['client_id'] ?? null;
-    
-    if (!$idClient) {
-        echo json_encode(['status' => 200, 'data' => ['panier_vide' => true, 'total_articles' => 0]]);
-        exit;
-    }
-    
-    try {
-        // Récupérer le panier du client
-        $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
-        $stmt->execute([$idClient]);
-        $panier = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$panier) {
-            echo json_encode(['status' => 200, 'data' => ['panier_vide' => true, 'total_articles' => 0]]);
-            exit;
-        }
-        
-        // Compter les articles dans le panier
-        $stmt = $pdo->prepare("SELECT SUM(quantite) as total FROM LignePanier WHERE idPanier = ?");
-        $stmt->execute([$panier['idPanier']]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $totalArticles = intval($result['total'] ?? 0);
-        
-        echo json_encode([
-            'status' => 200,
-            'data' => [
-                'panier_vide' => ($totalArticles === 0),
-                'total_articles' => $totalArticles
-            ]
-        ]);
-    } catch (Exception $e) {
-        error_log("Erreur vérification panier: " . $e->getMessage());
-        echo json_encode(['status' => 200, 'data' => ['panier_vide' => true, 'total_articles' => 0]]);
-    }
-    exit;
-}
-
-// NOUVELLE ACTION : Récupérer le récapitulatif du panier pour le paiement
-if ($action == 'get_recap_panier') {
-    $idClient = $_SESSION['client_id'] ?? null;
-    
-    if (!$idClient) {
-        echo json_encode(['status' => 400, 'error' => 'Client non identifié']);
-        exit;
-    }
-    
-    try {
-        // Récupérer le panier
-        $stmt = $pdo->prepare("
-            SELECT p.idPanier 
-            FROM Panier p 
-            WHERE p.idClient = ?
-        ");
-        $stmt->execute([$idClient]);
-        $panier = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$panier) {
-            echo json_encode(['status' => 200, 'data' => ['articles' => [], 'total' => 0]]);
-            exit;
-        }
-        
-        // Récupérer les articles
-        $stmt = $pdo->prepare("
-            SELECT 
-                lp.idOrigami,
-                lp.quantite,
-                lp.prixUnitaire,
-                (lp.quantite * lp.prixUnitaire) as totalLigne,
-                o.nom,
-                o.description,
-                o.photo
-            FROM LignePanier lp
-            JOIN Origami o ON lp.idOrigami = o.idOrigami
-            WHERE lp.idPanier = ?
-        ");
-        $stmt->execute([$panier['idPanier']]);
-        $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Calculer le total
-        $total = 0;
-        foreach ($articles as $article) {
-            $total += $article['totalLigne'];
-        }
-        
-        echo json_encode([
-            'status' => 200,
-            'data' => [
-                'articles' => $articles,
-                'total' => $total,
-                'total_articles' => count($articles)
-            ]
-        ]);
-    } catch (Exception $e) {
-        error_log("Erreur récupération recap panier: " . $e->getMessage());
-        echo json_encode(['status' => 500, 'error' => $e->getMessage()]);
-    }
-    exit;
 }
 
 // FONCTION : Envoyer la facture par email
@@ -1206,14 +1069,15 @@ if ($action == 'get_produits_pagines') {
     $offset = ($page - 1) * $limit;
     
     try {
-        // Compter le nombre total de produits
-        $stmt = $pdo->query("SELECT COUNT(*) as total FROM Origami");
+        // Compter le nombre total de produits (uniquement visibles)
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 1");
         $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // Récupérer les produits paginés
+        // Récupérer les produits paginés (uniquement visibles)
         $stmt = $pdo->prepare("
             SELECT idOrigami, nom, description, photo, prixHorsTaxe 
             FROM Origami 
+            WHERE visible = 1
             ORDER BY idOrigami 
             LIMIT :limit OFFSET :offset
         ");
@@ -1381,7 +1245,7 @@ try {
                     $stmt->execute([$idClientTemporaire]);
                     
                     // NETTOYAGE IMMÉDIAT : Supprimer le client temporaire après transfert
-                    $stmt = $pdo->prepare("DELETE FROM Client WHERE idClient = ? AND (type = 'temporaire' OR email LIKE 'temp_%@YoukiAndCO%')");
+                    $stmt = $pdo->prepare("DELETE FROM Client WHERE idClient = ? AND (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr')");
                     $stmt->execute([$idClientTemporaire]);
                     
                     error_log("🔄 Articles transférés du client temporaire " . $idClientTemporaire . " vers le client permanent " . $idClient . " et client temporaire supprimé");
@@ -1396,6 +1260,7 @@ try {
         }
 
         // RÉCUPÉRER LE RÉCAPITULATIF DU PANIER AVANT DE CRÉER LE TOKEN
+        // MODIFICATION : Ajout de la condition o.visible = 1 pour n'afficher que les produits visibles
         $stmt = $pdo->prepare("
             SELECT 
                 lp.idLignePanier,
@@ -1408,7 +1273,7 @@ try {
                 (lp.quantite * lp.prixUnitaire) as totalLigne
             FROM LignePanier lp
             JOIN Origami o ON lp.idOrigami = o.idOrigami
-            WHERE lp.idPanier = ?
+            WHERE lp.idPanier = ? AND o.visible = 1
         ");
         $stmt->execute([$panierPermanent['idPanier']]);
         $articlesPanier = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1670,7 +1535,7 @@ try {
             echo json_encode([
                 'status' => 500, 
                 'error' => 'Erreur lors de l\'envoi de l\'email. Veuillez réessayer.',
-                'debug' => $resultatEmail['error']
+                'debug' => $resultatEmail['error'] // À retirer en production
             ]);
         }
 
@@ -2041,7 +1906,70 @@ try {
         
         if (!$token) {
             if (isset($_GET['token'])) {
-                $token = $_GET['token'];
+                // PROPOSER LE PAIEMENT PAYPAL AVEC OPTION COMPTE
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement - Youki and Co</title>
+    <style>
+        .btn-paypal-account { 
+            background-color: #0070ba; 
+            color: white; 
+            padding: 15px 40px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 18px;
+            margin: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            width: 280px;
+        }
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!--<h1>💳 Finaliser le Paiement</h1>
+        <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p> -->
+        
+        <div class="payment-options">
+            <!-- Option 1 : Compte PayPal -->
+            <button class="btn-paypal-account" onclick="paiementPayPalCompte()">
+                <img src="https://www.paypalobjects.com/webstatic/en_US/i/buttons/PP_logo_h_100x26.png" alt="PayPal" height="26">
+                Payer avec compte PayPal
+            </button>
+            
+            <!-- Option 2 : Carte via PayPal -->
+            <button class="btn-cb" onclick="paiementCarte()">
+                💳 Payer par Carte Bancaire
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function paiementPayPalCompte() {
+            window.location.href = 'paiement_paypal.php?commande=<?= $idCommande ?>';
+        }
+
+        function paiementCarte() {
+            window.location.href = 'paiement_cb.php?commande=<?= $idCommande ?>';
+        }
+    </script>
+</body>
+</html>
+<?php
+            exit;
             } else {
                 echo json_encode(['status' => 400, 'error' => 'Token manquant']);
                 exit;
@@ -2206,8 +2134,8 @@ try {
             $idPanier = $panier['idPanier'];
         }
 
-        // Récupérer le prix de l'origami
-        $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ?");
+        // Récupérer le prix de l'origami (uniquement si produit visible)
+        $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ? AND visible = 1");
         $stmt->execute([$idOrigami]);
         $origami = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -2277,7 +2205,7 @@ try {
             exit;
         }
 
-        // Récupérer les articles du panier avec les détails des origamis
+        // Récupérer les articles du panier avec les détails des origamis (uniquement produits visibles)
         $stmt = $pdo->prepare("
             SELECT 
                 lp.idLignePanier,
@@ -2290,7 +2218,7 @@ try {
                 (lp.quantite * lp.prixUnitaire) as totalLigne
             FROM LignePanier lp
             JOIN Origami o ON lp.idOrigami = o.idOrigami
-            WHERE lp.idPanier = ?
+            WHERE lp.idPanier = ? AND o.visible = 1
         ");
         $stmt->execute([$panier['idPanier']]);
         $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2669,7 +2597,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
         exit;
     }
     
-    // 2. Récupérer les articles du panier
+    // 2. Récupérer les articles du panier (uniquement produits visibles)
     $stmt = $pdo->prepare("
         SELECT 
             lp.idOrigami,
@@ -2677,7 +2605,8 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             lp.prixUnitaire,
             (lp.quantite * lp.prixUnitaire) as totalLigne
         FROM LignePanier lp
-        WHERE lp.idPanier = ?
+        JOIN Origami o ON lp.idOrigami = o.idOrigami
+        WHERE lp.idPanier = ? AND o.visible = 1
     ");
     $stmt->execute([$panier['idPanier']]);
     $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2694,8 +2623,8 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
     }
     
     // 4. Définir les paramètres de la commande
-    $fraisDePort = 0.0;
-    $delaiLivraison = date('Y-m-d', strtotime('+5 days'));
+    $fraisDePort = 0.0; // Frais de port fixes
+    $delaiLivraison = date('Y-m-d', strtotime('+5 days')); // Délai de 5 jours
     $montantTotal = $total + $fraisDePort;
     
     // 5. Créer la commande
@@ -2814,10 +2743,6 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                 margin-top: 0;
                 color: #0070ba;
             }
-            @media (max-width: 768px) {
-                .container { padding: 20px; }
-                .btn-paypal, .btn-cb { width: 100%; justify-content: center; }
-            }
         </style>
     </head>
     <body>
@@ -2846,16 +2771,24 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
 
         <script>
             function initierPaiementPayPal() {
+                // Désactiver les boutons pendant le traitement
                 document.querySelectorAll('button').forEach(btn => btn.disabled = true);
                 
                 fetch('acheter.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'creer_commande_paypal', montant: <?= $montantTotal ?>, id_commande: <?= $idCommande ?> })
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'creer_commande_paypal',
+                        montant: <?= $montantTotal ?>,
+                        id_commande: <?= $idCommande ?>
+                    })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 200) {
+                        // Rediriger vers PayPal
                         window.location.href = data.data.approve_url;
                     } else {
                         alert('Erreur: ' + data.error);
@@ -2870,6 +2803,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             }
 
             function paiementCB() {
+                // Rediriger vers le traitement CB classique
                 window.location.href = 'paiement_cb.php?commande=<?= $idCommande ?>';
             }
 
@@ -2882,8 +2816,15 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
                 if (email && email.includes('@')) {
                     fetch('acheter.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'envoyer_facture_email', id_commande: idCommande, email: email, format: 'pdf' })
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'envoyer_facture_email',
+                            id_commande: idCommande,
+                            email: email,
+                            format: 'pdf'
+                        })
                     })
                     .then(response => response.json())
                     .then(data => {
