@@ -423,9 +423,7 @@ function getOrCreateClient($pdo) {
     return $clientId;
 }
 
-// FONCTION : Générer une facture via l'API facture.php
 // FONCTION : Générer une facture
-// Remplacer cette fonction dans acheter.php
 function genererFactureAPI($idCommande, $format = 'html') {
     error_log("🔄 Génération facture pour commande: " . $idCommande . " format: " . $format);
     
@@ -644,7 +642,8 @@ if ($action == 'generer_facture_pdf') {
             'status' => 200,
             'data' => [
                 'fichier_facture' => $fichierFacture,
-                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/' . $fichierFacture,                'message' => 'Facture PDF générée avec succès'
+                'url_facture' => 'http://' . $_SERVER['HTTP_HOST'] . '/' . $fichierFacture,
+                'message' => 'Facture PDF générée avec succès'
             ]
         ]);
     } else {
@@ -1070,14 +1069,15 @@ if ($action == 'get_produits_pagines') {
     $offset = ($page - 1) * $limit;
     
     try {
-        // Compter le nombre total de produits
-        $stmt = $pdo->query("SELECT COUNT(*) as total FROM Origami");
+        // Compter le nombre total de produits (uniquement visibles)
+        $stmt = $pdo->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 1");
         $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
         
-        // Récupérer les produits paginés
+        // Récupérer les produits paginés (uniquement visibles)
         $stmt = $pdo->prepare("
             SELECT idOrigami, nom, description, photo, prixHorsTaxe 
             FROM Origami 
+            WHERE visible = 1
             ORDER BY idOrigami 
             LIMIT :limit OFFSET :offset
         ");
@@ -1260,6 +1260,7 @@ try {
         }
 
         // RÉCUPÉRER LE RÉCAPITULATIF DU PANIER AVANT DE CRÉER LE TOKEN
+        // MODIFICATION : Ajout de la condition o.visible = 1 pour n'afficher que les produits visibles
         $stmt = $pdo->prepare("
             SELECT 
                 lp.idLignePanier,
@@ -1272,7 +1273,7 @@ try {
                 (lp.quantite * lp.prixUnitaire) as totalLigne
             FROM LignePanier lp
             JOIN Origami o ON lp.idOrigami = o.idOrigami
-            WHERE lp.idPanier = ?
+            WHERE lp.idPanier = ? AND o.visible = 1
         ");
         $stmt->execute([$panierPermanent['idPanier']]);
         $articlesPanier = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2133,8 +2134,8 @@ try {
             $idPanier = $panier['idPanier'];
         }
 
-        // Récupérer le prix de l'origami
-        $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ?");
+        // Récupérer le prix de l'origami (uniquement si produit visible)
+        $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ? AND visible = 1");
         $stmt->execute([$idOrigami]);
         $origami = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -2204,7 +2205,7 @@ try {
             exit;
         }
 
-        // Récupérer les articles du panier avec les détails des origamis
+        // Récupérer les articles du panier avec les détails des origamis (uniquement produits visibles)
         $stmt = $pdo->prepare("
             SELECT 
                 lp.idLignePanier,
@@ -2217,7 +2218,7 @@ try {
                 (lp.quantite * lp.prixUnitaire) as totalLigne
             FROM LignePanier lp
             JOIN Origami o ON lp.idOrigami = o.idOrigami
-            WHERE lp.idPanier = ?
+            WHERE lp.idPanier = ? AND o.visible = 1
         ");
         $stmt->execute([$panier['idPanier']]);
         $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2596,7 +2597,7 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
         exit;
     }
     
-    // 2. Récupérer les articles du panier
+    // 2. Récupérer les articles du panier (uniquement produits visibles)
     $stmt = $pdo->prepare("
         SELECT 
             lp.idOrigami,
@@ -2604,7 +2605,8 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
             lp.prixUnitaire,
             (lp.quantite * lp.prixUnitaire) as totalLigne
         FROM LignePanier lp
-        WHERE lp.idPanier = ?
+        JOIN Origami o ON lp.idOrigami = o.idOrigami
+        WHERE lp.idPanier = ? AND o.visible = 1
     ");
     $stmt->execute([$panier['idPanier']]);
     $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
