@@ -55,7 +55,8 @@ function getProduitsFiltres($filtres) {
                 WHERE principale = 1 
                 ORDER BY ordre LIMIT 1
             ) img ON p.id_produit = img.id_produit
-            WHERE p.statut = 'actif'";
+            WHERE p.statut = 'actif'
+            AND p.visible = 1";
     
     $params = [];
     $conditions = [];
@@ -196,7 +197,8 @@ $pdo = getPDOConnection();
 $sqlCount = "SELECT COUNT(*) as total 
              FROM produits p 
              JOIN categories c ON p.id_categorie = c.id_categorie
-             WHERE p.statut = 'actif'";
+             WHERE p.statut = 'actif'
+             AND p.visible = 1";
              
 $paramsCount = [];
 $conditionsCount = [];

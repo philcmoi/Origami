@@ -1,211 +1,256 @@
 <?php
-// Inclure la protection au tout début
+// admin_produits.php - Gestion des produits origami (adapté à la structure existante)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+require_once 'config.php';
 require_once 'admin_protection.php';
 
-// Configuration de la base de données
-require_once 'config.php';
-
-// Configuration de l'upload d'images
-$upload_dir = 'uploads/produits/';
-$upload_max_size = 5 * 1024 * 1024; // 5 Mo
-$allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-$allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+$bdd = getConnexionBD();
 
 // Créer le dossier d'upload s'il n'existe pas
+$upload_dir = 'uploads/origami/';
 if (!file_exists($upload_dir)) {
-    mkdir($upload_dir, 0755, true);
+    mkdir($upload_dir, 0777, true);
 }
 
-// Fonction pour gérer l'upload d'image
-function uploadImage($file, $upload_dir, $allowed_types, $allowed_extensions, $max_size) {
-    $result = [
-        'success' => false,
-        'message' => '',
-        'filename' => ''
-    ];
+// ==============================================
+// TRAITEMENT DES ACTIONS
+// ==============================================
+
+// Ajouter un produit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
     
-    // Vérifier s'il y a une erreur d'upload
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        $upload_errors = [
-            UPLOAD_ERR_INI_SIZE => 'Le fichier dépasse la taille maximale autorisée par PHP',
-            UPLOAD_ERR_FORM_SIZE => 'Le fichier dépasse la taille maximale autorisée par le formulaire',
-            UPLOAD_ERR_PARTIAL => 'Le fichier n\'a été que partiellement téléchargé',
-            UPLOAD_ERR_NO_FILE => 'Aucun fichier n\'a été téléchargé',
-            UPLOAD_ERR_NO_TMP_DIR => 'Dossier temporaire manquant',
-            UPLOAD_ERR_CANT_WRITE => 'Échec de l\'écriture du fichier sur le disque',
-            UPLOAD_ERR_EXTENSION => 'Une extension PHP a arrêté le téléchargement'
-        ];
+    if ($action === 'ajouter') {
+        $nom = trim($_POST['nom']);
+        $description = trim($_POST['description']);
+        $prix = floatval($_POST['prix']);
         
-        $result['message'] = isset($upload_errors[$file['error']]) 
-            ? $upload_errors[$file['error']] 
-            : 'Erreur inconnue lors de l\'upload';
-        return $result;
-    }
-    
-    // Vérifier la taille du fichier
-    if ($file['size'] > $max_size) {
-        $result['message'] = 'Le fichier est trop volumineux (max ' . ($max_size / 1024 / 1024) . ' Mo)';
-        return $result;
-    }
-    
-    // Vérifier le type MIME
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime_type = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-    
-    if (!in_array($mime_type, $allowed_types)) {
-        $result['message'] = 'Type de fichier non autorisé. Types acceptés: JPG, PNG, GIF, WEBP';
-        return $result;
-    }
-    
-    // Vérifier l'extension
-    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!in_array($extension, $allowed_extensions)) {
-        $result['message'] = 'Extension de fichier non autorisée';
-        return $result;
-    }
-    
-    // Générer un nom de fichier unique
-    $new_filename = uniqid('produit_', true) . '.' . $extension;
-    $upload_path = $upload_dir . $new_filename;
-    
-    // Déplacer le fichier uploadé
-    if (move_uploaded_file($file['tmp_name'], $upload_path)) {
-        $result['success'] = true;
-        $result['message'] = 'Image uploadée avec succès';
-        $result['filename'] = $upload_path; // Chemin complet pour la BDD
-    } else {
-        $result['message'] = 'Erreur lors du déplacement du fichier uploadé';
-    }
-    
-    return $result;
-}
-
-try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Gérer les actions sur les produits
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'ajouter':
-                $nom = $_POST['nom'] ?? '';
-                $description = $_POST['description'] ?? '';
-                $prixHorsTaxe = $_POST['prixHorsTaxe'] ?? 0;
-                $photo = '';
-                
-                // Gérer l'upload d'image
-                if (isset($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-                    $upload_result = uploadImage($_FILES['photo'], $upload_dir, $allowed_types, $allowed_extensions, $upload_max_size);
-                    
-                    if ($upload_result['success']) {
-                        $photo = $upload_result['filename'];
-                    } else {
-                        $error = "Erreur upload image: " . $upload_result['message'];
-                        break;
-                    }
-                } else {
-                    // Image par défaut si aucune n'est uploadée
-                    $photo = 'img/placeholder.jpg';
-                }
-                
-                if ($nom && $description && $prixHorsTaxe > 0) {
-                    $stmt = $pdo->prepare("INSERT INTO Origami (nom, description, photo, prixHorsTaxe) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$nom, $description, $photo, $prixHorsTaxe]);
-                    $success = "Produit ajouté avec succès!";
-                } else {
-                    $error = "Tous les champs obligatoires doivent être remplis";
-                }
-                break;
-                
-            case 'modifier':
-                $idOrigami = $_POST['idOrigami'] ?? null;
-                $nom = $_POST['nom'] ?? '';
-                $description = $_POST['description'] ?? '';
-                $prixHorsTaxe = $_POST['prixHorsTaxe'] ?? 0;
-                
-                if ($idOrigami && $nom && $description && $prixHorsTaxe > 0) {
-                    // Récupérer l'ancienne photo
-                    $stmt = $pdo->prepare("SELECT photo FROM Origami WHERE idOrigami = ?");
-                    $stmt->execute([$idOrigami]);
-                    $ancien_produit = $stmt->fetch(PDO::FETCH_ASSOC);
-                    $photo = $ancien_produit['photo'];
-                    
-                    // Gérer le nouvel upload si fourni
-                    if (isset($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-                        $upload_result = uploadImage($_FILES['photo'], $upload_dir, $allowed_types, $allowed_extensions, $upload_max_size);
-                        
-                        if ($upload_result['success']) {
-                            // Supprimer l'ancienne image si ce n'est pas l'image par défaut
-                            if ($photo && $photo != 'img/placeholder.jpg' && file_exists($photo)) {
-                                unlink($photo);
-                            }
-                            $photo = $upload_result['filename'];
-                        } else {
-                            $error = "Erreur upload image: " . $upload_result['message'];
-                            break;
-                        }
-                    }
-                    
-                    $stmt = $pdo->prepare("UPDATE Origami SET nom = ?, description = ?, photo = ?, prixHorsTaxe = ? WHERE idOrigami = ?");
-                    $stmt->execute([$nom, $description, $photo, $prixHorsTaxe, $idOrigami]);
-                    $success = "Produit modifié avec succès!";
-                } else {
-                    $error = "Tous les champs obligatoires doivent être remplis";
-                }
-                break;
-                
-            case 'supprimer':
-                $idOrigami = $_POST['idOrigami'] ?? null;
-                if ($idOrigami) {
-                    // Vérifier si le produit est utilisé dans des commandes
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM LigneCommande WHERE idOrigami = ?");
-                    $stmt->execute([$idOrigami]);
-                    $count = $stmt->fetchColumn();
-                    
-                    if ($count == 0) {
-                        // Récupérer le chemin de la photo avant suppression
-                        $stmt = $pdo->prepare("SELECT photo FROM Origami WHERE idOrigami = ?");
-                        $stmt->execute([$idOrigami]);
-                        $produit = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        // Supprimer le produit de la BDD
-                        $stmt = $pdo->prepare("DELETE FROM Origami WHERE idOrigami = ?");
-                        $stmt->execute([$idOrigami]);
-                        
-                        // Supprimer l'image associée si ce n'est pas l'image par défaut
-                        if ($produit && $produit['photo'] != 'img/placeholder.jpg' && file_exists($produit['photo'])) {
-                            unlink($produit['photo']);
-                        }
-                        
-                        $success = "Produit supprimé avec succès!";
-                    } else {
-                        $error = "Impossible de supprimer ce produit : il est associé à des commandes";
-                    }
-                }
-                break;
+        // Gestion de l'upload d'image
+        $photo = '';
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $photoName = uploadImage($_FILES['photo']);
+            if ($photoName) {
+                $photo = 'uploads/origami/' . $photoName; // Chemin complet
+            }
         }
         
-        // Recharger la page pour voir les modifications
+        try {
+            $stmt = $bdd->prepare("
+                INSERT INTO Origami (nom, description, photo, prixHorsTaxe, visible)
+                VALUES (?, ?, ?, ?, 1)
+            ");
+            $stmt->execute([$nom, $description, $photo, $prix]);
+            $_SESSION['success'] = "Produit ajouté avec succès !";
+        } catch (PDOException $e) {
+            error_log("Erreur ajout produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors de l'ajout : " . $e->getMessage();
+        }
         header('Location: admin_produits.php');
         exit;
     }
     
-    // Récupérer tous les produits
-    $stmt = $pdo->query("SELECT * FROM Origami ORDER BY idOrigami DESC");
-    $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    elseif ($action === 'modifier') {
+        $id = intval($_POST['id']);
+        $nom = trim($_POST['nom']);
+        $description = trim($_POST['description']);
+        $prix = floatval($_POST['prix']);
+        
+        // Gestion de l'upload d'image
+        $photo = $_POST['photo_actuelle'] ?? '';
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            // Supprimer l'ancienne image si elle existe
+            if ($photo && file_exists($photo)) {
+                unlink($photo);
+            }
+            $photoName = uploadImage($_FILES['photo']);
+            if ($photoName) {
+                $photo = 'uploads/origami/' . $photoName;
+            }
+        }
+        
+        try {
+            $stmt = $bdd->prepare("
+                UPDATE Origami 
+                SET nom = ?, description = ?, photo = ?, prixHorsTaxe = ?
+                WHERE idOrigami = ?
+            ");
+            $stmt->execute([$nom, $description, $photo, $prix, $id]);
+            $_SESSION['success'] = "Produit modifié avec succès !";
+        } catch (PDOException $e) {
+            error_log("Erreur modification produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors de la modification : " . $e->getMessage();
+        }
+        header('Location: admin_produits.php');
+        exit;
+    }
+}
+
+// Actions GET
+if (isset($_GET['action'])) {
+    $action = $_GET['action'];
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     
-    // Récupérer un produit spécifique pour édition
-    $produitEdit = null;
-    if (isset($_GET['edit'])) {
-        $stmt = $pdo->prepare("SELECT * FROM Origami WHERE idOrigami = ?");
-        $stmt->execute([$_GET['edit']]);
-        $produitEdit = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Masquer un produit (NOUVEAU)
+    if ($action === 'masquer' && $id > 0) {
+        try {
+            $stmt = $bdd->prepare("UPDATE Origami SET visible = 0 WHERE idOrigami = ?");
+            $stmt->execute([$id]);
+            $_SESSION['success'] = "Produit masqué avec succès ! Il n'apparaîtra plus dans la boutique.";
+        } catch (PDOException $e) {
+            error_log("Erreur masquage produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors du masquage.";
+        }
+        header('Location: admin_produits.php' . (isset($_GET['afficher_masques']) ? '?afficher_masques=1' : ''));
+        exit;
     }
     
-} catch (PDOException $e) {
-    die("Erreur de connexion à la base de données: " . $e->getMessage());
+    // Réactiver un produit (NOUVEAU)
+    if ($action === 'reactiver' && $id > 0) {
+        try {
+            $stmt = $bdd->prepare("UPDATE Origami SET visible = 1 WHERE idOrigami = ?");
+            $stmt->execute([$id]);
+            $_SESSION['success'] = "Produit réactivé avec succès !";
+        } catch (PDOException $e) {
+            error_log("Erreur réactivation produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors de la réactivation.";
+        }
+        header('Location: admin_produits.php');
+        exit;
+    }
+    
+    // Supprimer un produit (conservé pour les produits sans commandes)
+    if ($action === 'supprimer' && $id > 0) {
+        try {
+            // Vérifier si le produit est dans des commandes
+            $stmt = $bdd->prepare("SELECT COUNT(*) as total FROM LigneCommande WHERE idOrigami = ?");
+            $stmt->execute([$id]);
+            $count = $stmt->fetch()['total'];
+            
+            if ($count > 0) {
+                $_SESSION['warning'] = "Ce produit ne peut pas être supprimé car il est référencé dans des commandes. Il a été masqué à la place.";
+                $stmt = $bdd->prepare("UPDATE Origami SET visible = 0 WHERE idOrigami = ?");
+                $stmt->execute([$id]);
+            } else {
+                // Vérifier aussi dans les paniers
+                $stmt = $bdd->prepare("SELECT COUNT(*) as total FROM LignePanier WHERE idOrigami = ?");
+                $stmt->execute([$id]);
+                $countPanier = $stmt->fetch()['total'];
+                
+                if ($countPanier > 0) {
+                    // Supprimer d'abord les lignes panier
+                    $stmt = $bdd->prepare("DELETE FROM LignePanier WHERE idOrigami = ?");
+                    $stmt->execute([$id]);
+                }
+                
+                // Supprimer l'image
+                $stmt = $bdd->prepare("SELECT photo FROM Origami WHERE idOrigami = ?");
+                $stmt->execute([$id]);
+                $produit = $stmt->fetch();
+                if ($produit && $produit['photo'] && file_exists($produit['photo'])) {
+                    unlink($produit['photo']);
+                }
+                
+                $stmt = $bdd->prepare("DELETE FROM Origami WHERE idOrigami = ?");
+                $stmt->execute([$id]);
+                $_SESSION['success'] = "Produit supprimé définitivement !";
+            }
+        } catch (PDOException $e) {
+            error_log("Erreur suppression produit: " . $e->getMessage());
+            $_SESSION['error'] = "Erreur lors de la suppression.";
+        }
+        header('Location: admin_produits.php');
+        exit;
+    }
 }
+
+// ==============================================
+// FONCTION D'UPLOAD D'IMAGE
+// ==============================================
+function uploadImage($file) {
+    $dossier_upload = 'uploads/origami/';
+    if (!file_exists($dossier_upload)) {
+        mkdir($dossier_upload, 0755, true);
+    }
+    
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $extensions_autorisees = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    if (!in_array($extension, $extensions_autorisees)) {
+        $_SESSION['error'] = "Format d'image non autorisé. Utilisez JPG, PNG, GIF ou WEBP.";
+        return '';
+    }
+    
+    $max_size = 5 * 1024 * 1024;
+    if ($file['size'] > $max_size) {
+        $_SESSION['error'] = "L'image ne doit pas dépasser 5 Mo.";
+        return '';
+    }
+    
+    $nom_fichier = 'produit_' . uniqid() . '_' . date('Ymd_His') . '.' . $extension;
+    $chemin_destination = $dossier_upload . $nom_fichier;
+    
+    if (move_uploaded_file($file['tmp_name'], $chemin_destination)) {
+        return $nom_fichier; // Retourne juste le nom, le chemin sera ajouté au moment du stockage
+    }
+    
+    return '';
+}
+
+// ==============================================
+// PAGINATION ET FILTRES
+// ==============================================
+$page_courante = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recherche = isset($_GET['search']) ? trim($_GET['search']) : '';
+$afficher_masques = isset($_GET['afficher_masques']) && $_GET['afficher_masques'] == '1';
+$elements_par_page = 15;
+
+// Construction de la requête
+$where_conditions = [];
+$params = [];
+
+if (!empty($recherche)) {
+    $where_conditions[] = "(nom LIKE :search OR description LIKE :search)";
+    $params[':search'] = "%$recherche%";
+}
+
+// Filtre visibilité
+if (!$afficher_masques) {
+    $where_conditions[] = "visible = 1";
+}
+
+$where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+
+// Pagination
+$count_sql = "SELECT COUNT(*) as total FROM Origami $where_clause";
+$stmt = $bdd->prepare($count_sql);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
+$stmt->execute();
+$total_elements = $stmt->fetch()['total'];
+$total_pages = ceil($total_elements / $elements_par_page);
+$offset = ($page_courante - 1) * $elements_par_page;
+
+// Récupération des produits
+$sql = "SELECT * FROM Origami $where_clause ORDER BY idOrigami DESC LIMIT :offset, :limit";
+$stmt = $bdd->prepare($sql);
+foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+}
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->bindValue(':limit', $elements_par_page, PDO::PARAM_INT);
+$stmt->execute();
+$produits = $stmt->fetchAll();
+
+// Statistiques
+$stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 1");
+$stats_visibles = $stmt->fetch()['total'];
+$stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 0");
+$stats_masques = $stmt->fetch()['total'];
+$stmt = $bdd->query("SELECT COUNT(*) as total FROM Origami");
+$stats_total = $stmt->fetch()['total'];
 ?>
 
 <!DOCTYPE html>
@@ -213,574 +258,845 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Produits - Youki and Co</title>
+    <title>Gestion des produits - Youki and Co</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Styles spécifiques à la gestion des produits */
-        .product-grid {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #d40000;
+            --primary-dark: #b30000;
+            --secondary: #764ba2;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --gray-light: #e9ecef;
+            --border-radius: 16px;
+            --box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .logo h1 {
+            color: var(--primary);
+            font-size: 24px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: var(--primary);
+            color: white;
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .btn-logout:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Navigation */
+        .nav-admin {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            padding: 10px 20px;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
-        .product-card {
+
+        .stat-card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
             transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stat-card .label {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        /* Filters Bar */
+        .filters-bar {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
-        .product-card:hover {
-            transform: translateY(-5px);
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            max-width: 400px;
         }
-        
-        .product-image {
-            height: 200px;
+
+        .search-box input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .search-box button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 15px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        /* Table */
+        .table-container {
+            background: white;
+            border-radius: var(--border-radius);
+            overflow-x: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
             background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .product-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .product-image-placeholder {
+            width: 60px;
+            height: 60px;
+            background: #f8f9fa;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            position: relative;
+            color: #ccc;
         }
-        
-        .product-image img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s;
-        }
-        
-        .product-card:hover .product-image img {
-            transform: scale(1.05);
-        }
-        
-        .product-image .image-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+
+        .actions {
             display: flex;
-            align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
-        
-        .product-info {
-            padding: 20px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .product-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .product-description {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 15px;
-            line-height: 1.4;
-            flex: 1;
-        }
-        
-        .product-price {
-            font-size: 20px;
-            font-weight: bold;
-            color: #d40000;
-            margin-bottom: 15px;
-        }
-        
-        .product-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: auto;
-        }
-        
-        .btn-edit, .btn-delete {
-            padding: 8px 15px;
+
+        .btn-icon {
+            padding: 6px 12px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             text-decoration: none;
-            font-size: 14px;
-            transition: all 0.3s;
-            flex: 1;
-            text-align: center;
+            font-size: 0.8rem;
         }
-        
+
         .btn-edit {
-            background: #ffc107;
-            color: black;
-        }
-        
-        .btn-edit:hover {
-            background: #e0a800;
-        }
-        
-        .btn-delete {
-            background: #dc3545;
+            background: var(--info);
             color: white;
         }
-        
-        .btn-delete:hover {
-            background: #c82333;
-        }
-        
-        .form-container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
+
+        .btn-hide {
+            background: var(--warning);
             color: #333;
         }
-        
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+
+        .btn-reactiver {
+            background: var(--success);
+            color: white;
         }
-        
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-            outline: none;
-            border-color: #d40000;
-            box-shadow: 0 0 0 3px rgba(212, 0, 0, 0.1);
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
         }
-        
-        .form-group textarea {
-            height: 100px;
-            resize: vertical;
-        }
-        
-        .form-group input[type="file"] {
-            padding: 8px;
-            background: #f8f9fa;
-            border: 1px dashed #d40000;
-        }
-        
-        .form-group input[type="file"]:hover {
-            background: #f0f0f0;
-        }
-        
-        .image-preview {
-            margin-top: 10px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            text-align: center;
-            border: 2px dashed #ddd;
-        }
-        
-        .image-preview img {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .image-preview p {
-            margin: 10px 0 0;
-            color: #666;
-            font-size: 12px;
-        }
-        
-        .image-info {
+
+        .status-badge {
             display: inline-block;
-            padding: 5px 10px;
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 4px;
-            color: #004085;
-            font-size: 13px;
-            margin-top: 5px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
         }
-        
-        .btn-submit {
-            background: #d40000;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
+
+        .status-visible {
+            background: #d4edda;
+            color: #155724;
         }
-        
-        .btn-submit:hover {
-            background: #b30000;
+
+        .status-hidden {
+            background: #f8d7da;
+            color: #721c24;
         }
-        
-        .btn-cancel {
-            background: #6c757d;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .pagination a, .pagination span {
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
             text-decoration: none;
-            margin-left: 10px;
-            transition: background 0.3s;
+            color: var(--primary);
+            font-weight: 500;
         }
-        
-        .btn-cancel:hover {
-            background: #5a6268;
+
+        .pagination .current {
+            background: var(--primary);
+            color: white;
         }
-        
+
+        /* Alertes */
         .alert {
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 10px;
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
+
         .alert-success {
             background: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border-left: 4px solid var(--success);
         }
-        
+
         .alert-error {
             background: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border-left: 4px solid var(--danger);
         }
-        
-        /* Reprendre les styles de base */
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-        }
-        
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #f5f5f5; 
-            color: #333; 
-        }
-        
-        .header { 
-            background: white; 
-            padding: 20px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        }
-        
-        .logo h1 { 
-            color: #d40000; 
-            font-size: 24px; 
-        }
-        
-        .admin-info { 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-        }
-        
-        .btn-logout { 
-            background: #d40000; 
-            color: white; 
-            padding: 8px 15px; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            font-size: 14px; 
-            transition: background 0.3s;
-        }
-        
-        .btn-logout:hover {
-            background: #b30000;
-        }
-        
-        .container { 
-            display: flex; 
-            min-height: calc(100vh - 80px); 
-        }
-        
-        .sidebar { 
-            width: 250px; 
-            background: white; 
-            padding: 20px; 
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1); 
-        }
-        
-        .nav-item { 
-            display: block; 
-            padding: 12px 15px; 
-            color: #333; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            margin-bottom: 5px; 
-            transition: all 0.3s; 
-        }
-        
-        .nav-item:hover, .nav-item.active { 
-            background: #d40000; 
-            color: white; 
-        }
-        
-        .main-content { 
-            flex: 1; 
-            padding: 30px; 
-        }
-        
-        .upload-info {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            color: #004085;
-            font-size: 14px;
-        }
-        
-        .upload-info i {
-            margin-right: 8px;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: normal;
-            background: #e0e0e0;
-            color: #333;
-        }
-        
-        .badge-warning {
+
+        .alert-warning {
             background: #fff3cd;
             color: #856404;
+            border-left: 4px solid var(--warning);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header .close {
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .modal-footer {
+            padding: 15px 25px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .image-preview {
+            max-width: 150px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+        
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-toggle label {
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h1>Youki and Co - Gestion des Produits</h1>
-        </div>
-        <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
-            <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
-        </div>
-    </div>
-    
     <div class="container">
-        <div class="sidebar">
-            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_factures.php" class="nav-item">Gestion des Factures</a>
-            <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item active">Gestion des Produits</a>
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <h1>Youki and Co - Gestion des Produits</h1>
+            </div>
+            <div class="user-info">
+                <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email'] ?? 'Admin') ?></span>
+                <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
+            </div>
         </div>
-        
-        <div class="main-content">
-            <?php if (isset($success)): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-            <?php endif; ?>
+
+        <!-- Navigation -->
+        <div class="nav-admin">
+            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
+            <a href="admin_commandes.php" class="nav-item">Commandes</a>
+            <a href="admin_factures.php" class="nav-item">Factures</a>
+            <a href="admin_clients.php" class="nav-item">Clients</a>
+            <a href="admin_produits.php" class="nav-item active">Produits</a>
+        </div>
+
+        <!-- Messages -->
+        <?php if(isset($_SESSION['success'])): ?>
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <?= $_SESSION['success']; unset($_SESSION['success']); ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if(isset($_SESSION['error'])): ?>
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if(isset($_SESSION['warning'])): ?>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <?= $_SESSION['warning']; unset($_SESSION['warning']); ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="window.location.href='admin_produits.php'">
+                <i class="fas fa-box"></i>
+                <div class="number"><?= $stats_visibles ?></div>
+                <div class="label">Produits visibles</div>
+            </div>
+            <div class="stat-card" onclick="window.location.href='admin_produits.php?afficher_masques=1'">
+                <i class="fas fa-eye-slash"></i>
+                <div class="number"><?= $stats_masques ?></div>
+                <div class="label">Produits masqués</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-database"></i>
+                <div class="number"><?= $stats_total ?></div>
+                <div class="label">Total produits</div>
+            </div>
+        </div>
+
+        <!-- Filtres -->
+        <div class="filters-bar">
+            <form method="GET" class="search-box">
+                <input type="text" name="search" placeholder="Rechercher un produit..." 
+                       value="<?= htmlspecialchars($recherche) ?>">
+                <?php if($afficher_masques): ?>
+                    <input type="hidden" name="afficher_masques" value="1">
+                <?php endif; ?>
+                <button type="submit"><i class="fas fa-search"></i></button>
+                <?php if(!empty($recherche) || $afficher_masques): ?>
+                    <a href="admin_produits.php" class="btn-outline">
+                        <i class="fas fa-times"></i> Réinitialiser
+                    </a>
+                <?php endif; ?>
+            </form>
             
-            <?php if (isset($error)): ?>
-                <div class="alert alert-error"><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+            <div class="filter-toggle">
+                <input type="checkbox" id="afficherMasques" <?= $afficher_masques ? 'checked' : '' ?>
+                       onchange="window.location.href='admin_produits.php?afficher_masques=' + (this.checked ? 1 : 0)">
+                <label for="afficherMasques">
+                    <i class="fas fa-eye-slash"></i> Afficher les produits masqués
+                </label>
+            </div>
             
-            <!-- Information sur l'upload -->
-            <div class="upload-info">
-                <i>📸</i> 
-                Formats acceptés : JPG, PNG, GIF, WEBP - Taille max : 5 Mo
-                <?php if ($produitEdit && $produitEdit['photo'] && $produitEdit['photo'] != 'img/placeholder.jpg'): ?>
-                    <br><i>📁</i> Image actuelle : <code><?= basename($produitEdit['photo']) ?></code>
+            <button onclick="openAjoutModal()" class="btn-primary">
+                <i class="fas fa-plus"></i> Ajouter un produit
+            </button>
+        </div>
+
+        <!-- Table des produits -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Image</th>
+                        <th>Nom</th>
+                        <th>Description</th>
+                        <th>Prix HT</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($produits)): ?>
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px;">
+                                <i class="fas fa-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
+                                <p>Aucun produit trouvé</p>
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach($produits as $p): ?>
+                        <tr>
+                            <td><strong>#<?= $p['idOrigami'] ?></strong></td>
+                            <td>
+                                <?php if($p['photo'] && file_exists($p['photo'])): ?>
+                                    <img src="<?= htmlspecialchars($p['photo']) ?>" class="product-image" alt="<?= htmlspecialchars($p['nom']) ?>">
+                                <?php else: ?>
+                                    <div class="product-image-placeholder">
+                                        <i class="fas fa-image"></i>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <strong><?= htmlspecialchars($p['nom']) ?></strong>
+                                <?php if($afficher_masques && isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <br><span class="status-badge status-hidden"><i class="fas fa-eye-slash"></i> Masqué</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars(substr($p['description'], 0, 80)) ?>...</td>
+                            <td><?= number_format($p['prixHorsTaxe'], 2) ?> €</td>
+                            <td>
+                                <?php if(isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <span class="status-badge status-hidden">Masqué</span>
+                                <?php else: ?>
+                                    <span class="status-badge status-visible">Visible</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="actions">
+                                <button onclick="editProduit(<?= $p['idOrigami'] ?>)" class="btn-icon btn-edit" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <?php if(isset($p['visible']) && $p['visible'] == 0): ?>
+                                    <a href="?action=reactiver&id=<?= $p['idOrigami'] ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>" 
+                                       class="btn-icon btn-reactiver" 
+                                       onclick="return confirm('Réactiver ce produit ? Il réapparaîtra dans la boutique.')" 
+                                       title="Réactiver">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="?action=masquer&id=<?= $p['idOrigami'] ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>" 
+                                       class="btn-icon btn-hide" 
+                                       onclick="return confirm('Masquer ce produit ? Il n\'apparaîtra plus dans la boutique (mais restera dans l\'historique des commandes).')" 
+                                       title="Masquer">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </a>
+                                <?php endif; ?>
+                                <a href="?action=supprimer&id=<?= $p['idOrigami'] ?>" 
+                                   class="btn-icon btn-delete" 
+                                   onclick="return confirm('Supprimer définitivement ce produit ? (uniquement possible s\'il n\'a pas de commandes associées)')" 
+                                   title="Supprimer">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <?php if($total_pages > 1): ?>
+            <div class="pagination">
+                <?php if($page_courante > 1): ?>
+                    <a href="?page=<?= $page_courante - 1 ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                <?php endif; ?>
+
+                <?php for($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php if($i == $page_courante): ?>
+                        <span class="current"><?= $i ?></span>
+                    <?php else: ?>
+                        <a href="?page=<?= $i ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>"><?= $i ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if($page_courante < $total_pages): ?>
+                    <a href="?page=<?= $page_courante + 1 ?>&search=<?= urlencode($recherche) ?><?= $afficher_masques ? '&afficher_masques=1' : '' ?>">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
                 <?php endif; ?>
             </div>
-            
-            <div class="form-container">
-                <h2><?= $produitEdit ? 'Modifier le Produit' : 'Ajouter un Nouveau Produit' ?></h2>
-                <form method="POST" enctype="multipart/form-data">
-                    <?php if ($produitEdit): ?>
-                        <input type="hidden" name="idOrigami" value="<?= $produitEdit['idOrigami'] ?>">
-                    <?php endif; ?>
-                    
-                    <div class="form-group">
-                        <label for="nom">Nom du produit *</label>
-                        <input type="text" id="nom" name="nom" 
-                               value="<?= htmlspecialchars($produitEdit['nom'] ?? '') ?>" 
-                               required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="description">Description *</label>
-                        <textarea id="description" name="description" required><?= htmlspecialchars($produitEdit['description'] ?? '') ?></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="prixHorsTaxe">Prix Hors Taxe (€) *</label>
-                        <input type="number" id="prixHorsTaxe" name="prixHorsTaxe" 
-                               step="0.01" min="0" 
-                               value="<?= htmlspecialchars($produitEdit['prixHorsTaxe'] ?? '') ?>" 
-                               required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="photo">Image du produit</label>
-                        <input type="file" id="photo" name="photo" 
-                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
-                        <small style="color: #666; display: block; margin-top: 5px;">
-                            Laissez vide pour conserver l'image actuelle (en mode modification)
-                        </small>
-                    </div>
-                    
-                    <!-- Aperçu de l'image actuelle -->
-                    <?php if ($produitEdit && $produitEdit['photo']): ?>
-                    <div class="image-preview">
-                        <p>Image actuelle :</p>
-                        <img src="<?= htmlspecialchars($produitEdit['photo']) ?>" 
-                             alt="Aperçu" 
-                             onerror="this.src='img/placeholder.jpg'">
-                        <p>
-                            <span class="badge badge-warning">
-                                <?= basename($produitEdit['photo']) ?>
-                            </span>
-                        </p>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div style="margin-top: 20px;">
-                        <button type="submit" name="action" value="<?= $produitEdit ? 'modifier' : 'ajouter' ?>" class="btn-submit">
-                            <?= $produitEdit ? 'Modifier le Produit' : 'Ajouter le Produit' ?>
-                        </button>
-                        
-                        <?php if ($produitEdit): ?>
-                            <a href="admin_produits.php" class="btn-cancel">Annuler</a>
-                        <?php endif; ?>
-                    </div>
-                </form>
-            </div>
-            
-            <div class="section">
-                <h2 style="margin-bottom: 20px;">Catalogue des Produits (<?= count($produits) ?>)</h2>
-                
-                <div class="product-grid">
-                    <?php foreach ($produits as $produit): ?>
-                    <div class="product-card">
-                        <div class="product-image">
-                            <img src="<?= htmlspecialchars($produit['photo']) ?>" 
-                                 alt="<?= htmlspecialchars($produit['nom']) ?>" 
-                                 onerror="this.src='img/placeholder.jpg'">
-                            <div class="image-badge">
-                                <span>📸</span>
-                                <?= basename($produit['photo']) ?>
-                            </div>
-                        </div>
-                        
-                        <div class="product-info">
-                            <div class="product-name"><?= htmlspecialchars($produit['nom']) ?></div>
-                            <div class="product-description"><?= htmlspecialchars($produit['description']) ?></div>
-                            <div class="product-price"><?= number_format($produit['prixHorsTaxe'], 2, ',', ' ') ?>€</div>
-                            
-                            <div class="product-actions">
-                                <a href="admin_produits.php?edit=<?= $produit['idOrigami'] ?>" class="btn-edit">✏️ Modifier</a>
-                                
-                                <form method="POST" style="display: inline; flex: 1;">
-                                    <input type="hidden" name="idOrigami" value="<?= $produit['idOrigami'] ?>">
-                                    <button type="submit" name="action" value="supprimer" class="btn-delete" 
-                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.')">
-                                        🗑️ Supprimer
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                
-                <?php if (empty($produits)): ?>
-                    <div style="text-align: center; padding: 60px; background: white; border-radius: 10px;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">📦</div>
-                        <p style="color: #666; font-size: 18px; margin-bottom: 10px;">Aucun produit trouvé dans le catalogue.</p>
-                        <p style="color: #999;">Utilisez le formulaire ci-dessus pour ajouter votre premier produit.</p>
-                    </div>
-                <?php endif; ?>
-            </div>
+        <?php endif; ?>
+
+        <div class="footer">
+            <p>&copy; <?= date('Y') ?> Youki and Co - Tous droits réservés</p>
         </div>
     </div>
-    
+
+    <!-- MODAL AJOUT/MODIFICATION PRODUIT -->
+    <div id="modalProduit" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle"><i class="fas fa-plus"></i> Ajouter un produit</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="produitForm" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" id="formAction" value="ajouter">
+                <input type="hidden" name="id" id="produitId" value="">
+                <input type="hidden" name="photo_actuelle" id="photoActuelle" value="">
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nom du produit *</label>
+                        <input type="text" name="nom" id="nom" required placeholder="ex: Grue en origami">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" id="description" rows="3" placeholder="Description détaillée du produit..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Prix HT (€) *</label>
+                        <input type="number" name="prix" id="prix" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Photo du produit</label>
+                        <input type="file" name="photo" id="photo" accept="image/*">
+                        <div id="previewImage"></div>
+                        <small>Formats acceptés : JPG, PNG, GIF, WEBP — Taille max : 5 Mo</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeModal()">Annuler</button>
+                    <button type="submit" class="btn-primary" id="submitBtn">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Confirmation avant suppression
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteButtons = document.querySelectorAll('.btn-delete');
-            deleteButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.')) {
-                        e.preventDefault();
+        let isLoading = false;
+        
+        function openAjoutModal() {
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus"></i> Ajouter un produit';
+            document.getElementById('formAction').value = 'ajouter';
+            document.getElementById('produitId').value = '';
+            document.getElementById('photoActuelle').value = '';
+            document.getElementById('produitForm').reset();
+            document.getElementById('previewImage').innerHTML = '';
+            document.getElementById('modalProduit').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function editProduit(id) {
+            if(isLoading) return;
+            isLoading = true;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="loading"></span> Chargement...';
+            submitBtn.disabled = true;
+            
+            console.log('Chargement du produit ID:', id);
+            
+            fetch('get_produit.php?id=' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur HTTP: ' + response.status);
                     }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Données reçues:', data);
+                    if(data.success) {
+                        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit"></i> Modifier le produit';
+                        document.getElementById('formAction').value = 'modifier';
+                        document.getElementById('produitId').value = id;
+                        document.getElementById('photoActuelle').value = data.photo || '';
+                        document.getElementById('nom').value = data.nom || '';
+                        document.getElementById('description').value = data.description || '';
+                        document.getElementById('prix').value = data.prixHorsTaxe || '';
+                        
+                        const previewDiv = document.getElementById('previewImage');
+                        previewDiv.innerHTML = '';
+                        if(data.photo && data.photo !== '') {
+                            const img = document.createElement('img');
+                            img.src = data.photo;
+                            img.className = 'image-preview';
+                            img.onerror = function() {
+                                console.log('Image non trouvée:', data.photo);
+                                previewDiv.innerHTML = '<p style="color: #dc3545; font-size: 0.8rem;">Image actuelle introuvable</p>';
+                            };
+                            previewDiv.appendChild(img);
+                        }
+                        
+                        document.getElementById('modalProduit').style.display = 'block';
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        alert('Erreur: ' + (data.error || 'Produit non trouvé'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur détaillée:', error);
+                    alert('Erreur lors du chargement: ' + error.message + '\n\nVérifiez que le fichier get_produit.php existe et est accessible.');
+                })
+                .finally(() => {
+                    isLoading = false;
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                 });
-            });
+        }
+        
+        function closeModal() {
+            document.getElementById('modalProduit').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        window.onclick = function(event) {
+            if(event.target.classList.contains('modal')) {
+                closeModal();
+            }
+        }
+        
+        document.getElementById('photo').addEventListener('change', function(e) {
+            const preview = document.getElementById('previewImage');
+            if(e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const img = document.createElement('img');
+                    img.src = ev.target.result;
+                    img.className = 'image-preview';
+                    if(preview.querySelector('img')) {
+                        preview.replaceChild(img, preview.querySelector('img'));
+                    } else {
+                        preview.appendChild(img);
+                    }
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
         });
         
-        // Aperçu de l'image avant upload
-        document.getElementById('photo')?.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                // Vérifier la taille
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('Le fichier est trop volumineux (max 5 Mo)');
-                    this.value = '';
-                    return;
-                }
-                
-                // Vérifier le type
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                if (!allowedTypes.includes(file.type)) {
-                    alert('Type de fichier non autorisé. Utilisez JPG, PNG, GIF ou WEBP');
-                    this.value = '';
-                    return;
-                }
-                
-                // Créer un aperçu
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Chercher ou créer le conteneur d'aperçu
-                    let previewDiv = document.querySelector('.image-preview.upload-preview');
-                    if (!previewDiv) {
-                        previewDiv = document.createElement('div');
-                        previewDiv.className = 'image-preview upload-preview';
-                        document.querySelector('.form-group:last-of-type').appendChild(previewDiv);
-                    }
-                    
-                    previewDiv.innerHTML = `
-                        <p>Nouvelle image :</p>
-                        <img src="${e.target.result}" alt="Aperçu">
-                        <p>
-                            <span class="badge">${file.name}</span>
-                            <span class="badge">${(file.size / 1024).toFixed(1)} Ko</span>
-                        </p>
-                    `;
-                };
-                reader.readAsDataURL(file);
+        // Validation du formulaire avant soumission
+        document.getElementById('produitForm').addEventListener('submit', function(e) {
+            const nom = document.getElementById('nom').value.trim();
+            const prix = document.getElementById('prix').value;
+            
+            if(!nom) {
+                e.preventDefault();
+                alert('Veuillez saisir un nom de produit');
+                return false;
             }
+            
+            if(!prix || parseFloat(prix) < 0) {
+                e.preventDefault();
+                alert('Veuillez saisir un prix valide');
+                return false;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<span class="loading"></span> Enregistrement...';
+            submitBtn.disabled = true;
         });
     </script>
 </body>
