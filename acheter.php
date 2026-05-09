@@ -2193,20 +2193,24 @@ try {
         }
 
     } elseif ($action == 'ajouter_au_panier') {
-        // Vérifier qu'on a bien un client
-        if (!$idClient) {
-            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
-            exit;
-        }
+    // Vérifier qu'on a bien un client
+    if (!$idClient) {
+        echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
+        exit;
+    }
 
-        $idOrigami = $data['idOrigami'] ?? null;
-        $quantite = $data['quantite'] ?? 1;
+    $idOrigami = $data['idOrigami'] ?? null;
+    $quantite = $data['quantite'] ?? 1;
 
-        if (!$idOrigami) {
-            echo json_encode(['status' => 400, 'error' => 'ID origami manquant']);
-            exit;
-        }
+    if (!$idOrigami) {
+        echo json_encode(['status' => 400, 'error' => 'ID origami manquant']);
+        exit;
+    }
 
+    // 🔧 FIX : Commencer une transaction pour éviter les incohérences
+    try {
+        $pdo->beginTransaction();
+        
         // Vérifier si le panier existe, sinon le créer
         $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
         $stmt->execute([$idClient]);
@@ -2220,14 +2224,17 @@ try {
             $idPanier = $panier['idPanier'];
         }
 
+        // 🔧 FIX : Nettoyer les éventuelles lignes orphelines avant d'ajouter
+        $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ? AND idOrigami IS NULL");
+        $stmt->execute([$idPanier]);
+
         // Récupérer le prix de l'origami (uniquement si produit visible)
         $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ? AND visible = 1");
         $stmt->execute([$idOrigami]);
         $origami = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$origami) {
-            echo json_encode(['status' => 404, 'error' => 'Origami non trouvé']);
-            exit;
+            throw new Exception('Origami non trouvé');
         }
 
         $prixUnitaire = $origami['prixHorsTaxe'];
@@ -2238,12 +2245,10 @@ try {
         $ligneExistante = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($ligneExistante) {
-            // Mettre à jour la quantité
             $nouvelleQuantite = $ligneExistante['quantite'] + $quantite;
             $stmt = $pdo->prepare("UPDATE LignePanier SET quantite = ?, prixUnitaire = ? WHERE idLignePanier = ?");
             $stmt->execute([$nouvelleQuantite, $prixUnitaire, $ligneExistante['idLignePanier']]);
         } else {
-            // Ajouter une nouvelle ligne
             $stmt = $pdo->prepare("INSERT INTO LignePanier (idPanier, idOrigami, quantite, prixUnitaire) VALUES (?, ?, ?, ?)");
             $stmt->execute([$idPanier, $idOrigami, $quantite, $prixUnitaire]);
         }
@@ -2251,10 +2256,17 @@ try {
         // Mettre à jour la date de modification du panier
         $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
         $stmt->execute([$idPanier]);
+        
+        $pdo->commit();
 
         echo json_encode(['status' => 200, 'message' => 'Article ajouté au panier']);
-
-    } elseif ($action == 'get_panier') {
+        
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Erreur ajout panier: " . $e->getMessage());
+        echo json_encode(['status' => 500, 'error' => 'Erreur: ' . $e->getMessage()]);
+    }
+} elseif ($action == 'get_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
             // Retourner un panier vide si pas de client
