@@ -4,6 +4,32 @@ require_once('tcpdf/tcpdf.php');
 function genererFacturePDF($pdo, $idCommande) {
     error_log("🔄 GENERER FACTURE PDF - Début pour commande: " . $idCommande);
     
+    // ============================================
+    // 🔐 CRÉATION ET VÉRIFICATION DU DOSSIER FACTURES
+    // ============================================
+    $factureDir = __DIR__ . '/factures';
+    
+    // Créer le dossier s'il n'existe pas
+    if (!is_dir($factureDir)) {
+        if (mkdir($factureDir, 0755, true)) {
+            error_log("📁 Dossier factures créé avec succès: " . $factureDir);
+        } else {
+            error_log("❌ Échec création dossier factures: " . $factureDir);
+            return false;
+        }
+    }
+    
+    // Vérifier les droits d'écriture
+    if (!is_writable($factureDir)) {
+        error_log("❌ Dossier factures non accessible en écriture: " . $factureDir);
+        // Tenter de corriger les permissions
+        @chmod($factureDir, 0755);
+        if (!is_writable($factureDir)) {
+            error_log("❌ Échec correction permissions pour: " . $factureDir);
+            return false;
+        }
+    }
+    
     try {
         // Récupérer les informations complètes de la commande
         $stmt = $pdo->prepare("
@@ -340,24 +366,19 @@ function genererFacturePDF($pdo, $idCommande) {
         // Écrire le contenu HTML
         $pdf->writeHTML($html, true, false, true, false, '');
         
-        // Créer le répertoire factures s'il n'existe pas
-        $factureDir = __DIR__ . '/factures';
-        if (!is_dir($factureDir)) {
-            mkdir($factureDir, 0755, true);
-        }
-        
-        // Nom du fichier
-        $filename = 'facture_' . $idCommande . '_' . date('Ymd') . '.pdf';
+        // Nom du fichier (avec timestamp pour éviter les doublons)
+        $filename = 'facture_' . $idCommande . '_' . date('Ymd_His') . '.pdf';
         $filepath = $factureDir . '/' . $filename;
         
-        // Sauvegarder le PDF
+        // Sauvegarder le PDF avec gestion d'erreur renforcée
         $pdf->Output($filepath, 'F');
         
-        if (file_exists($filepath)) {
-            error_log("✅ PDF créé avec succès: " . $filepath);
+        // Vérifier que le fichier a bien été créé
+        if (file_exists($filepath) && filesize($filepath) > 0) {
+            error_log("✅ PDF créé avec succès: " . $filepath . " (" . filesize($filepath) . " octets)");
             return $filepath;
         } else {
-            throw new Exception("Le fichier PDF n'a pas été créé");
+            throw new Exception("Le fichier PDF n'a pas été créé correctement");
         }
         
     } catch (Exception $e) {
@@ -442,7 +463,15 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
         $body .= "Content-Type: application/pdf; name=\"$filename\"\r\n";
         $body .= "Content-Transfer-Encoding: base64\r\n";
         $body .= "Content-Disposition: attachment; filename=\"$filename\"\r\n\r\n";
-        $body .= chunk_split(base64_encode(file_get_contents($cheminFichier))) . "\r\n";
+        
+        // Vérifier que le fichier existe avant de le lire
+        if (file_exists($cheminFichier)) {
+            $body .= chunk_split(base64_encode(file_get_contents($cheminFichier))) . "\r\n";
+        } else {
+            error_log("❌ Fichier PDF introuvable pour envoi: " . $cheminFichier);
+            return false;
+        }
+        
         $body .= "--$boundary--";
         
         $success = mail($to, $subject, $body, $headers);
@@ -470,7 +499,7 @@ function traiterPaiementReussi($pdo, $idCommande) {
     $resultatFacture = genererFacturePDF($pdo, $idCommande);
     
     if ($resultatFacture) {
-        error_log("✅ Paiement traité avec succès - Facture générée");
+        error_log("✅ Paiement traité avec succès - Facture générée: " . $resultatFacture);
         return true;
     } else {
         error_log("⚠️ Paiement traité mais problème avec la facture");
