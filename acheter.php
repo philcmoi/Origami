@@ -239,66 +239,13 @@ function nettoyerTokensExpires($pdo) {
 }
 
 // FONCTION AMÉLIORÉE : Nettoyage complet des clients temporaires et zombies
+// FONCTION AMÉLIORÉE : Nettoyage complet des clients temporaires et zombies
 function nettoyerClientsTemporairesAmeliore($pdo) {
     try {
         error_log("🔍 Début du nettoyage des clients temporaires et zombies");
         $countTotal = 0;
 
-        // 1. Nettoyage des clients temporaires anciens (avec ou sans colonne type)
-        try {
-            $stmt = $pdo->prepare("DELETE FROM Client WHERE (type = 'temporaire' OR email LIKE 'temp_%@origamizen.fr') AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
-            $stmt->execute();
-            $countTemp = $stmt->rowCount();
-            $countTotal += $countTemp;
-            if ($countTemp > 0) {
-                error_log("🧹 Clients temporaires supprimés: " . $countTemp);
-            }
-        } catch (Exception $e) {
-            // Si colonne type manquante, nettoyer par email et date
-            error_log("Colonne type manquante, utilisation alternative");
-            try {
-                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr' AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)");
-                $stmt->execute();
-                $countTemp = $stmt->rowCount();
-                $countTotal += $countTemp;
-                if ($countTemp > 0) {
-                    error_log("🧹 Clients temporaires (sans type) supprimés: " . $countTemp);
-                }
-            } catch (Exception $e2) {
-                // Si date_creation manquante, nettoyer seulement par email
-                error_log("Colonne date_creation manquante, nettoyage par email uniquement");
-                $stmt = $pdo->prepare("DELETE FROM Client WHERE email LIKE 'temp_%@origamizen.fr'");
-                $stmt->execute();
-                $countTemp = $stmt->rowCount();
-                $countTotal += $countTemp;
-                if ($countTemp > 0) {
-                    error_log("🧹 Clients temporaires (email uniquement) supprimés: " . $countTemp);
-                }
-            }
-        }
-
-        // 2. Nettoyer les clients sans panier ni commande (zombis) - plus agressif (2 heures)
-        try {
-            $stmt = $pdo->prepare("
-                DELETE c FROM Client c 
-                LEFT JOIN Panier p ON c.idClient = p.idClient 
-                LEFT JOIN Commande cmd ON c.idClient = cmd.idClient 
-                WHERE p.idPanier IS NULL 
-                AND cmd.idCommande IS NULL 
-                AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
-                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@origamizen.fr')
-            ");
-            $stmt->execute();
-            $countZombies = $stmt->rowCount();
-            $countTotal += $countZombies;
-            if ($countZombies > 0) {
-                error_log("🧟 Clients zombies supprimés: " . $countZombies);
-            }
-        } catch (Exception $e) {
-            error_log("Erreur nettoyage zombies: " . $e->getMessage());
-        }
-
-        // 3. Nettoyer les paniers orphelins (sans client)
+        // 1. D'ABORD, nettoyer les paniers orphelins (sans client correspondant)
         try {
             $stmt = $pdo->prepare("
                 DELETE p FROM Panier p 
@@ -314,7 +261,7 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
             error_log("Erreur nettoyage paniers orphelins: " . $e->getMessage());
         }
 
-        // 4. Nettoyer les lignes de panier orphelines
+        // 2. ENSUITE, nettoyer les lignes de panier orphelines
         try {
             $stmt = $pdo->prepare("
                 DELETE lp FROM LignePanier lp 
@@ -328,6 +275,94 @@ function nettoyerClientsTemporairesAmeliore($pdo) {
             }
         } catch (Exception $e) {
             error_log("Erreur nettoyage lignes panier: " . $e->getMessage());
+        }
+
+        // 3. MAINTENANT, supprimer les clients temporaires avec leurs paniers (en cascade)
+        // Récupérer d'abord les IDs des clients à supprimer
+        try {
+            // Récupérer les IDs des clients temporaires à supprimer (plus vieux que 24h)
+            $stmt = $pdo->prepare("
+                SELECT idClient FROM Client 
+                WHERE (type = 'temporaire' OR email LIKE 'temp_%@YoukiAndCo%')
+                AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
+            ");
+            $stmt->execute();
+            $clientsASupprimer = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($clientsASupprimer)) {
+                // Pour chaque client, supprimer d'abord son panier
+                foreach ($clientsASupprimer as $clientId) {
+                    try {
+                        // Supprimer le panier du client (supprimera les lignes automatiquement)
+                        $stmt = $pdo->prepare("DELETE FROM Panier WHERE idClient = ?");
+                        $stmt->execute([$clientId]);
+                    } catch (Exception $e) {
+                        error_log("Erreur suppression panier client $clientId: " . $e->getMessage());
+                    }
+                }
+                
+                // Maintenant supprimer les clients
+                $stmt = $pdo->prepare("
+                    DELETE FROM Client 
+                    WHERE (type = 'temporaire' OR email LIKE 'temp_%@YoukiAndCo%')
+                    AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
+                ");
+                $stmt->execute();
+                $countTemp = $stmt->rowCount();
+                $countTotal += $countTemp;
+                if ($countTemp > 0) {
+                    error_log("🧹 Clients temporaires supprimés: " . $countTemp);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Erreur nettoyage clients temporaires: " . $e->getMessage());
+        }
+
+        // 4. Nettoyer les clients sans panier ni commande (zombis) - avec suppression préalable des paniers
+        try {
+            // Récupérer les IDs des clients zombies
+            $stmt = $pdo->prepare("
+                SELECT c.idClient FROM Client c 
+                LEFT JOIN Panier p ON c.idClient = p.idClient 
+                LEFT JOIN Commande cmd ON c.idClient = cmd.idClient 
+                WHERE p.idPanier IS NULL 
+                AND cmd.idCommande IS NULL 
+                AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@YoukiAndCo%')
+            ");
+            $stmt->execute();
+            $zombies = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            if (!empty($zombies)) {
+                // Pour chaque zombie, supprimer d'abord le panier (si par miracle il existe)
+                foreach ($zombies as $clientId) {
+                    try {
+                        $stmt = $pdo->prepare("DELETE FROM Panier WHERE idClient = ?");
+                        $stmt->execute([$clientId]);
+                    } catch (Exception $e) {
+                        // Ignorer, le panier n'existe probablement pas
+                    }
+                }
+                
+                // Supprimer les clients zombies
+                $stmt = $pdo->prepare("
+                    DELETE c FROM Client c 
+                    LEFT JOIN Panier p ON c.idClient = p.idClient 
+                    LEFT JOIN Commande cmd ON c.idClient = cmd.idClient 
+                    WHERE p.idPanier IS NULL 
+                    AND cmd.idCommande IS NULL 
+                    AND c.date_creation < DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                    AND (c.type = 'temporaire' OR c.email LIKE 'temp_%@YoukiAndCo%')
+                ");
+                $stmt->execute();
+                $countZombies = $stmt->rowCount();
+                $countTotal += $countZombies;
+                if ($countZombies > 0) {
+                    error_log("🧟 Clients zombies supprimés: " . $countZombies);
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Erreur nettoyage zombies: " . $e->getMessage());
         }
 
         if ($countTotal > 0) {
@@ -397,7 +432,7 @@ function getOrCreateClient($pdo) {
     try {
         // Essayer d'insérer avec la colonne type
         $stmt = $pdo->prepare("INSERT INTO Client (email, nom, prenom, type, date_creation, session_id) VALUES (?, 'Invité', 'Client', 'temporaire', NOW(), ?)");
-        $emailTemp = 'temp_' . uniqid() . '@YoukiAndCO';
+        $emailTemp = 'temp_' . uniqid() . '@YoukiAndCo.fr';
         $stmt->execute([$emailTemp, $sessionId]);
     } catch (Exception $e) {
         // Si échec (colonne type manquante), insérer sans type
@@ -569,6 +604,32 @@ function envoyerFactureEmail($pdo, $idCommande, $emailClient, $format = 'pdf') {
         error_log("❌ Erreur envoi facture email: " . $e->getMessage());
         return ['success' => false, 'error' => $e->getMessage()];
     }
+}
+
+// ============================================
+// NOUVELLE ACTION : Génération du sitemap XML (SEO)
+// ============================================
+if ($_SERVER['REQUEST_URI'] == '/sitemap.xml' || (isset($_GET['action']) && $_GET['action'] == 'sitemap')) {
+    header("Content-Type: application/xml");
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    
+    // Page d'accueil
+    echo '<url><loc>https://youkiandco.fr/</loc><priority>1.0</priority></url>';
+    
+    // Produits visibles
+    $stmt = $pdo->query("SELECT idOrigami, nom, dateModification FROM Origami WHERE visible = 1");
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $slug = strtolower(trim(preg_replace('/[^a-zA-Z0-9-]+/', '-', $row['nom']), '-'));
+        echo '<url>';
+        echo '<loc>https://youkiandco.fr/produit.php?id=' . $row['idOrigami'] . '&slug=' . $slug . '</loc>';
+        echo '<lastmod>' . date('Y-m-d', strtotime($row['dateModification'] ?? 'now')) . '</lastmod>';
+        echo '<priority>0.8</priority>';
+        echo '</url>';
+    }
+    
+    echo '</urlset>';
+    exit;
 }
 
 // Récupération des données JSON (uniquement pour les requêtes API)
@@ -941,6 +1002,16 @@ if ($action == 'paypal_success') {
         <head>
             <meta charset="UTF-8">
             <title>Paiement Réussi - Youki and Co</title>
+            <!-- Open Graph pour le partage sur les réseaux sociaux -->
+            <meta property="og:title" content="Merci pour votre achat - Youki and Co">
+            <meta property="og:description" content="Votre paiement a été confirmé. Nous préparons votre commande d'origamis artisanaux.">
+            <meta property="og:image" content="https://youkiandco.fr/img/og-share.jpg">
+            <meta property="og:url" content="https://youkiandco.fr/acheter.php?action=paypal_success">
+            <meta property="og:type" content="website">
+            <meta property="og:site_name" content="Youki and Co">
+            <meta name="twitter:card" content="summary_large_image">
+            <meta name="twitter:title" content="Merci pour votre achat - Youki and Co">
+            <meta name="twitter:description" content="Paiement confirmé pour vos origamis artisanaux.">
             <style>
                 body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                 .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 600px; }
@@ -1071,7 +1142,10 @@ if ($action == 'get_produits_pagines') {
     try {
         // Compter le nombre total de produits (uniquement visibles)
         $stmt = $pdo->query("SELECT COUNT(*) as total FROM Origami WHERE visible = 1");
-        $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+        $totalRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        $total = $totalRow ? (int)$totalRow['total'] : 0;
+        
+        error_log("📊 Nombre total de produits visibles: " . $total);
         
         // Récupérer les produits paginés (uniquement visibles)
         $stmt = $pdo->prepare("
@@ -1087,17 +1161,20 @@ if ($action == 'get_produits_pagines') {
         
         $produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        error_log("📦 Produits récupérés pour page $page: " . count($produits));
+        
         echo json_encode([
             'status' => 200,
             'data' => [
                 'produits' => $produits,
-                'total' => (int)$total,
+                'total' => $total,
                 'page' => $page,
                 'limit' => $limit,
-                'total_pages' => ceil($total / $limit)
+                'total_pages' => $total > 0 ? ceil($total / $limit) : 1
             ]
         ]);
     } catch (Exception $e) {
+        error_log("❌ Erreur get_produits_pagines: " . $e->getMessage());
         echo json_encode(['status' => 500, 'error' => 'Erreur: ' . $e->getMessage()]);
     }
     exit;
@@ -1577,6 +1654,13 @@ try {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Adresses de Livraison et Facturation - Youki and Co</title>
+            <!-- Open Graph pour le partage sur les réseaux sociaux -->
+            <meta property="og:title" content="Finalisez votre commande - Youki and Co">
+            <meta property="og:description" content="Complétez vos adresses pour recevoir vos origamis artisanaux.">
+            <meta property="og:image" content="https://youkiandco.fr/img/og-share.jpg">
+            <meta property="og:url" content="https://youkiandco.fr/acheter.php?action=saisir_adresse&token=<?= $token ?>">
+            <meta property="og:type" content="website">
+            <meta property="og:site_name" content="Youki and Co">
             <style>
                 body { 
                     font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -1914,6 +1998,11 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paiement - Youki and Co</title>
+    <meta property="og:title" content="Paiement sécurisé - Youki and Co">
+    <meta property="og:description" content="Finalisez l'achat de vos origamis artisanaux.">
+    <meta property="og:image" content="https://youkiandco.fr/img/og-share.jpg">
+    <meta property="og:url" content="https://youkiandco.fr/acheter.php?action=confirmer_commande&token=<?= $token ?>">
+    <meta property="og:type" content="website">
     <style>
         .btn-paypal-account { 
             background-color: #0070ba; 
@@ -1940,9 +2029,6 @@ try {
 </head>
 <body>
     <div class="container">
-        <!--<h1>💳 Finaliser le Paiement</h1>
-        <p>Votre commande #<?= $idCommande ?> a été créée avec succès.</p> -->
-        
         <div class="payment-options">
             <!-- Option 1 : Compte PayPal -->
             <button class="btn-paypal-account" onclick="paiementPayPalCompte()">
@@ -1987,7 +2073,7 @@ try {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Lien Invalide</title>
+                <title>Lien Invalide - Youki and Co</title>
                 <style>
                     body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                     .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -2021,7 +2107,7 @@ try {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Lien Déjà Utilisé</title>
+                <title>Lien Déjà Utilisé - Youki and Co</title>
                 <style>
                     body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                     .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -2055,7 +2141,7 @@ try {
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>Lien Expiré</title>
+                <title>Lien Expiré - Youki and Co</title>
                 <style>
                     body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                     .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
@@ -2107,20 +2193,24 @@ try {
         }
 
     } elseif ($action == 'ajouter_au_panier') {
-        // Vérifier qu'on a bien un client
-        if (!$idClient) {
-            echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
-            exit;
-        }
+    // Vérifier qu'on a bien un client
+    if (!$idClient) {
+        echo json_encode(['status' => 400, 'error' => 'Client non initialisé']);
+        exit;
+    }
 
-        $idOrigami = $data['idOrigami'] ?? null;
-        $quantite = $data['quantite'] ?? 1;
+    $idOrigami = $data['idOrigami'] ?? null;
+    $quantite = $data['quantite'] ?? 1;
 
-        if (!$idOrigami) {
-            echo json_encode(['status' => 400, 'error' => 'ID origami manquant']);
-            exit;
-        }
+    if (!$idOrigami) {
+        echo json_encode(['status' => 400, 'error' => 'ID origami manquant']);
+        exit;
+    }
 
+    // 🔧 FIX : Commencer une transaction pour éviter les incohérences
+    try {
+        $pdo->beginTransaction();
+        
         // Vérifier si le panier existe, sinon le créer
         $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
         $stmt->execute([$idClient]);
@@ -2134,14 +2224,17 @@ try {
             $idPanier = $panier['idPanier'];
         }
 
+        // 🔧 FIX : Nettoyer les éventuelles lignes orphelines avant d'ajouter
+        $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ? AND idOrigami IS NULL");
+        $stmt->execute([$idPanier]);
+
         // Récupérer le prix de l'origami (uniquement si produit visible)
         $stmt = $pdo->prepare("SELECT prixHorsTaxe FROM Origami WHERE idOrigami = ? AND visible = 1");
         $stmt->execute([$idOrigami]);
         $origami = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$origami) {
-            echo json_encode(['status' => 404, 'error' => 'Origami non trouvé']);
-            exit;
+            throw new Exception('Origami non trouvé');
         }
 
         $prixUnitaire = $origami['prixHorsTaxe'];
@@ -2152,12 +2245,10 @@ try {
         $ligneExistante = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($ligneExistante) {
-            // Mettre à jour la quantité
             $nouvelleQuantite = $ligneExistante['quantite'] + $quantite;
             $stmt = $pdo->prepare("UPDATE LignePanier SET quantite = ?, prixUnitaire = ? WHERE idLignePanier = ?");
             $stmt->execute([$nouvelleQuantite, $prixUnitaire, $ligneExistante['idLignePanier']]);
         } else {
-            // Ajouter une nouvelle ligne
             $stmt = $pdo->prepare("INSERT INTO LignePanier (idPanier, idOrigami, quantite, prixUnitaire) VALUES (?, ?, ?, ?)");
             $stmt->execute([$idPanier, $idOrigami, $quantite, $prixUnitaire]);
         }
@@ -2165,10 +2256,17 @@ try {
         // Mettre à jour la date de modification du panier
         $stmt = $pdo->prepare("UPDATE Panier SET dateModification = NOW() WHERE idPanier = ?");
         $stmt->execute([$idPanier]);
+        
+        $pdo->commit();
 
         echo json_encode(['status' => 200, 'message' => 'Article ajouté au panier']);
-
-    } elseif ($action == 'get_panier') {
+        
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Erreur ajout panier: " . $e->getMessage());
+        echo json_encode(['status' => 500, 'error' => 'Erreur: ' . $e->getMessage()]);
+    }
+} elseif ($action == 'get_panier') {
         // Vérifier qu'on a bien un client
         if (!$idClient) {
             // Retourner un panier vide si pas de client
@@ -2391,6 +2489,13 @@ function afficherChoixAdresse($pdo, $token, $adresseExistante, $idClient) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Choix de l'adresse - Youki and Co</title>
+        <!-- Open Graph pour le partage sur les réseaux sociaux -->
+        <meta property="og:title" content="Choix de l'adresse de livraison - Youki and Co">
+        <meta property="og:description" content="Finalisez votre commande d'origamis artisanaux.">
+        <meta property="og:image" content="https://youkiandco.fr/img/og-share.jpg">
+        <meta property="og:url" content="https://youkiandco.fr/acheter.php?action=confirmer_commande&token=<?= $token ?>">
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="Youki and Co">
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
@@ -2671,6 +2776,11 @@ function finaliserCommande($pdo, $idClient, $idAdresseLivraison, $idAdresseFactu
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Paiement - Youki and Co</title>
+        <meta property="og:title" content="Paiement sécurisé - Youki and Co">
+        <meta property="og:description" content="Finalisez votre commande d'origamis artisanaux.">
+        <meta property="og:image" content="https://youkiandco.fr/img/og-share.jpg">
+        <meta property="og:url" content="https://youkiandco.fr/acheter.php">
+        <meta property="og:type" content="website">
         <style>
             body { 
                 font-family: 'Helvetica Neue', Arial, sans-serif; 
