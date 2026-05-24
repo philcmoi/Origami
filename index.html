@@ -3,7 +3,55 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Youki and Co - Créations artisanales japonaises</title>
+    <title>Youki and Co - Créations artisanales japonaises d'origami</title>
+
+    <!-- Balises SEO essentielles -->
+    <meta
+      name="description"
+      content="Découvrez des créations uniques d'origami pliées à la main avec passion et précision. Artisanat japonais, papier fait main, cadeaux originaux."
+    />
+    <meta
+      name="keywords"
+      content="origami, artisanat japonais, papier plié, création unique, cadeau fait main, Youki and Co"
+    />
+    <meta name="author" content="Youki and Co" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="French" />
+    <link rel="canonical" href="https://youkiandco.fr/" />
+
+    <!-- Open Graph pour Facebook / LinkedIn -->
+    <meta
+      property="og:title"
+      content="Youki and Co - Créations artisanales japonaises d'origami"
+    />
+    <meta
+      property="og:description"
+      content="Découvrez des créations uniques d'origami pliées à la main avec passion et précision."
+    />
+    <meta
+      property="og:image"
+      content="https://youkiandco.fr/img/og-share.jpg"
+    />
+    <meta property="og:url" content="https://youkiandco.fr/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Youki and Co" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Youki and Co - Créations artisanales japonaises d'origami"
+    />
+    <meta
+      name="twitter:description"
+      content="Découvrez des créations uniques d'origami pliées à la main avec passion et précision."
+    />
+    <meta
+      name="twitter:image"
+      content="https://youkiandco.fr/img/og-share.jpg"
+    />
+
     <style>
       * {
         margin: 0;
@@ -443,76 +491,6 @@
         color: #888;
       }
 
-      /* Section contact */
-      .contact {
-        padding: 80px 0;
-        background-color: #f9f9f9;
-      }
-
-      .contact-container {
-        display: flex;
-        gap: 50px;
-      }
-
-      .contact-info {
-        flex: 1;
-      }
-
-      .contact-info h3 {
-        font-size: 1.5rem;
-        margin-bottom: 20px;
-        font-weight: 400;
-        position: relative;
-      }
-
-      .contact-info p {
-        margin-bottom: 30px;
-        color: #666;
-      }
-
-      .contact-details {
-        margin-bottom: 30px;
-      }
-
-      .contact-detail {
-        display: flex;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-
-      .contact-icon {
-        margin-right: 15px;
-        color: #d40000;
-      }
-
-      .contact-form {
-        flex: 1;
-      }
-
-      .form-group {
-        margin-bottom: 20px;
-      }
-
-      .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-size: 0.9rem;
-        color: #555;
-      }
-
-      .form-control {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 2px;
-        font-family: inherit;
-      }
-
-      textarea.form-control {
-        height: 150px;
-        resize: vertical;
-      }
-
       /* Pied de page */
       footer {
         background-color: #333;
@@ -636,10 +614,6 @@
         }
 
         .about-content {
-          flex-direction: column;
-        }
-
-        .contact-container {
           flex-direction: column;
         }
 
@@ -848,24 +822,15 @@
 
         <!-- Grille des produits -->
         <div class="products-grid" id="produits-grid">
-          <!-- Les produits seront chargés dynamiquement -->
           <div class="loading-spinner">Chargement des créations...</div>
         </div>
 
         <!-- Contrôles de pagination -->
         <div class="pagination" id="pagination-controls">
-          <button
-            class="pagination-btn"
-            id="btn-premiere"
-            onclick="changerPage(1)"
-          >
+          <button class="pagination-btn" id="btn-premiere" onclick="changerPage(1)">
             ⏮️ Première
           </button>
-          <button
-            class="pagination-btn"
-            id="btn-precedente"
-            onclick="changerPage(currentPage - 1)"
-          >
+          <button class="pagination-btn" id="btn-precedente" onclick="changerPage(currentPage - 1)">
             ◀️ Précédente
           </button>
 
@@ -874,18 +839,10 @@
             <span id="total-pages">1</span></span
           >
 
-          <button
-            class="pagination-btn"
-            id="btn-suivante"
-            onclick="changerPage(currentPage + 1)"
-          >
+          <button class="pagination-btn" id="btn-suivante" onclick="changerPage(currentPage + 1)">
             Suivante ▶️
           </button>
-          <button
-            class="pagination-btn"
-            id="btn-derniere"
-            onclick="changerPage(totalPages)"
-          >
+          <button class="pagination-btn" id="btn-derniere" onclick="changerPage(totalPages)">
             Dernière ⏭️
           </button>
         </div>
@@ -1033,11 +990,35 @@
               </div>
               <button type="submit" class="btn">S'inscrire</button>
             </form>
+            <!-- Liens vers les réseaux sociaux -->
+            <div style="margin-top: 20px">
+              <h3>Suivez-nous</h3>
+              <div class="social-links">
+                <a
+                  href="https://facebook.com/youkiandco"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >📘</a
+                >
+                <a
+                  href="https://instagram.com/youkiandco"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >📸</a
+                >
+                <a
+                  href="https://linkedin.com/company/youkiandco"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >🔗</a
+                >
+              </div>
+            </div>
           </div>
         </div>
 
         <div class="copyright">
-          <p>&copy; 2023 Youki and Co. Tous droits réservés.</p>
+          <p>&copy; 2025 Youki and Co. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
@@ -1365,21 +1346,33 @@
 
         async getProduitsPagines(page = 1, limit = 8) {
           try {
-            const response = await fetch(this.baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                action: "get_produits_pagines",
-                page: page,
-                limit: limit,
-              }),
-            });
-            return await response.json();
+            // Utiliser test_produits.php qui fonctionne parfaitement
+            const response = await fetch('test_produits.php');
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            // Transformer le format de test_produits.php vers le format attendu
+            if (result.success) {
+              return {
+                status: 200,
+                data: {
+                  produits: result.produits,
+                  total: result.total_produits,
+                  page: page,
+                  limit: limit,
+                  total_pages: Math.ceil(result.total_produits / limit)
+                }
+              };
+            } else {
+              return { status: 500, error: result.error };
+            }
           } catch (error) {
             console.error("Erreur chargement produits:", error);
-            return { status: 500, error: "Erreur réseau" };
+            return { status: 500, error: "Erreur réseau: " + error.message };
           }
         }
 
@@ -1497,28 +1490,33 @@
       // FONCTIONS DE PAGINATION
       async function chargerProduits(page = 1) {
         const grid = document.getElementById("produits-grid");
-        grid.innerHTML =
-          '<div class="loading-spinner">Chargement des créations...</div>';
+        if (!grid) return;
+        
+        grid.innerHTML = '<div class="loading-spinner">Chargement des créations...</div>';
 
         try {
-          const result = await origamiAPI.getProduitsPagines(
-            page,
-            produitsParPage,
-          );
+          const result = await origamiAPI.getProduitsPagines(page, produitsParPage);
+          
+          console.log("Réponse API produits:", result);
 
           if (result.status === 200 && result.data) {
             afficherProduits(result.data.produits);
-            currentPage = result.data.page;
+            currentPage = page;
             totalPages = result.data.total_pages;
             mettreAJourPagination();
           } else {
-            grid.innerHTML =
-              '<div style="text-align: center; padding: 50px; color: #666;">Erreur de chargement des produits</div>';
+            console.error("Erreur API:", result.error || "Erreur inconnue");
+            grid.innerHTML = `<div style="text-align: center; padding: 50px; color: #666;">
+              <i class="fas fa-exclamation-triangle"></i> 
+              Erreur: ${result.error || 'Erreur de chargement des produits'}
+            </div>`;
           }
         } catch (error) {
-          console.error("Erreur:", error);
-          grid.innerHTML =
-            '<div style="text-align: center; padding: 50px; color: #666;">Erreur de connexion</div>';
+          console.error("Erreur chargement produits:", error);
+          grid.innerHTML = `<div style="text-align: center; padding: 50px; color: #666;">
+            <i class="fas fa-exclamation-triangle"></i> 
+            Erreur de connexion: ${error.message}
+          </div>`;
         }
       }
 
@@ -1526,13 +1524,16 @@
         const grid = document.getElementById("produits-grid");
 
         if (!produits || produits.length === 0) {
-          grid.innerHTML =
-            '<div style="text-align: center; padding: 50px; color: #666;">Aucun produit disponible</div>';
+          grid.innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">Aucun produit disponible</div>';
           return;
         }
 
         let html = "";
         produits.forEach((produit) => {
+          // Nettoyer la description (supprimer les caractères Unicode problématiques)
+          let description = produit.description || "Description non disponible";
+          description = description.replace(/[^\x20-\x7E\u00C0-\u00FF]/g, '');
+          
           html += `
             <div class="product-card" data-id="${produit.idOrigami}">
               <div class="product-image">
@@ -1540,7 +1541,7 @@
               </div>
               <div class="product-info">
                 <h3>${produit.nom}</h3>
-                <p>${produit.description || "Description non disponible"}</p>
+                <p>${description.substring(0, 100)}</p>
                 <div class="product-price">
                   <span class="price">${produit.prixHorsTaxe}€</span>
                   <a href="#" class="btn" onclick="ajouterAuPanierDepuisBouton(event, ${produit.idOrigami}, '${produit.nom.replace(/'/g, "\\'")}')">Commander</a>
@@ -1559,10 +1560,8 @@
 
         document.getElementById("btn-premiere").disabled = currentPage === 1;
         document.getElementById("btn-precedente").disabled = currentPage === 1;
-        document.getElementById("btn-suivante").disabled =
-          currentPage === totalPages;
-        document.getElementById("btn-derniere").disabled =
-          currentPage === totalPages;
+        document.getElementById("btn-suivante").disabled = currentPage === totalPages;
+        document.getElementById("btn-derniere").disabled = currentPage === totalPages;
       }
 
       function changerPage(page) {
@@ -1601,7 +1600,7 @@
             bouton.disabled = false;
             showNotification(
               "Erreur: " + (result.error || "Impossible d'ajouter au panier"),
-              "error",
+              "error"
             );
           }
         } catch (error) {
@@ -1886,7 +1885,7 @@
         try {
           const result = await origamiAPI.modifierQuantite(
             idLignePanier,
-            nouvelleQuantite,
+            nouvelleQuantite
           );
 
           if (result.status === 200) {
@@ -2013,7 +2012,7 @@
         sessionStorage.setItem("email_confirmation", email);
 
         const btn = document.querySelector(
-          '#etape-saisie-email button[type="submit"]',
+          '#etape-saisie-email button[type="submit"]'
         );
         const texteOriginal = btn.textContent;
         btn.textContent = "Envoi en cours...";
@@ -2052,7 +2051,7 @@
                 (result.data.client_existant
                   ? " (client existant)"
                   : " (nouveau client)"),
-              "success",
+              "success"
             );
             return {
               success: true,
@@ -2066,7 +2065,7 @@
           console.error("Erreur envoi email:", error);
           showNotification(
             "Erreur de connexion au serveur: " + error.message,
-            "error",
+            "error"
           );
           return {
             success: false,
