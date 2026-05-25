@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Ajout Panier</title>
+  </head>
+  <body>
+    <h1>Test d'ajout au panier</h1>
+    <button onclick="testerAjout()">Ajouter produit ID=2</button>
+    <pre id="resultat"></pre>
+
+    <script>
+      async function testerAjout() {
+        const resultat = document.getElementById("resultat");
+        resultat.textContent = "Envoi en cours...";
+
+        try {
+          const response = await fetch("acheter.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "ajouter_au_panier",
+              idOrigami: 2,
+              quantite: 1,
+            }),
+          });
+
+          const text = await response.text();
+          resultat.textContent = "Réponse brute: " + text + "\n\n";
+
+          try {
+            const json = JSON.parse(text);
+            resultat.textContent +=
+              "JSON parsé: " + JSON.stringify(json, null, 2);
+          } catch (e) {
+            resultat.textContent += "Erreur parsing JSON: " + e.message;
+          }
+        } catch (error) {
+          resultat.textContent = "Erreur: " + error.message;
+        }
+      }
+    </script>
+  </body>
+</html>

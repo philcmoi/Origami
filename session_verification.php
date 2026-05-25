@@ -37,7 +37,7 @@ if (!defined('SESSION_KEY_COMMANDE')) {
 // CONSTANTES DE CONFIGURATION BDD
 // ============================================
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'heureducadeau');
+define('DB_NAME', 'origami');
 define('DB_USER', 'Philippe');
 define('DB_PASS', 'l@99339R');
 define('DB_CHARSET', 'utf8mb4');
@@ -125,11 +125,48 @@ function initPanier() {
 
 /**
  * Vérifie si le panier contient des articles
+ * Version améliorée qui vérifie aussi via l'API si nécessaire
  * @return bool
  */
 function hasValidCart() {
     initPanier();
-    return !empty($_SESSION[SESSION_KEY_PANIER]);
+    
+    // Vérifier d'abord la session
+    if (!empty($_SESSION[SESSION_KEY_PANIER])) {
+        return true;
+    }
+    
+    // Si session vide, essayer de récupérer via l'API
+    static $apiChecked = false;
+    if (!$apiChecked) {
+        $apiChecked = true;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'http://' . $_SERVER['HTTP_HOST'] . '/acheter.php?action=get_panier');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        if ($response) {
+            $data = json_decode($response, true);
+            if ($data['status'] === 200 && !empty($data['data']['articles'])) {
+                // Reconstruire le panier en session
+                $_SESSION[SESSION_KEY_PANIER] = [];
+                foreach ($data['data']['articles'] as $article) {
+                    $_SESSION[SESSION_KEY_PANIER][] = [
+                        'id_produit' => $article['idOrigami'],
+                        'quantite' => $article['quantite'],
+                        'prix' => $article['prixUnitaire'],
+                        'nom' => $article['nom']
+                    ];
+                }
+                return true;
+            }
+        }
+    }
+    
+    return false;
 }
 
 /**
