@@ -2,18 +2,6 @@
 // Inclure la protection au tout début - COMME DANS admin_dashboard.php
 require_once 'admin_protection.php';
 
-// Redirection après connexion vers dashboard.php
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: admin_login.php');
-    exit;
-}
-
-// Redirection silencieuse : si l'admin est connecté et arrive sur cette page,
-// on le redirige vers dashboard.php
-// Désactivé pour permettre l'accès à la page de gestion des factures
-// header('Location: dashboard.php');
-// exit;
-
 require_once 'smtp_config.php';
 
 // Inclure PHPMailer
@@ -594,7 +582,7 @@ $commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     <div class="container">
         <div class="sidebar">
-            <a href="dashboard.php" class="nav-item">Tableau de Bord</a>
+            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
             <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
             <a href="admin_factures.php" class="nav-item active">Gestion des Factures</a>
             <a href="admin_clients.php" class="nav-item">Gestion des Clients</a>
