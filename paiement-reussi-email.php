@@ -28,7 +28,9 @@ $commande_valide = false;
 $email_envoye = false;
 $commande = null;
 $items = [];
-$total = 0;
+$sous_total = 0;      // Total des articles hors livraison
+$frais_livraison = 0; // Frais de port
+$total_global = 0;    // Total général (articles + livraison)
 
 if ($pdo) {
     try {
@@ -58,6 +60,7 @@ if ($pdo) {
         
         if ($commande) {
             $commande_valide = true;
+            $frais_livraison = floatval($commande['fraisDePort'] ?? 0);
             
             // Récupérer les articles de la commande
             $stmt_items = $pdo->prepare("
@@ -73,39 +76,24 @@ if ($pdo) {
             $stmt_items->execute([$commande_id]);
             $items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
             
-            // Calculer le total
+            // Calculer le sous-total des articles (sans frais de port)
+            $sous_total = 0;
             foreach ($items as $item) {
-                $total += $item['quantite'] * $item['prixUnitaire'];
+                $sous_total += $item['quantite'] * $item['prixUnitaire'];
             }
+            
+            // Total général = articles + frais de port
+            $total_global = $sous_total + $frais_livraison;
             
             // ============================================
             // ENVOI DE L'EMAIL AVEC FACTURE (si non déjà fait)
             // ============================================
             $email_deja_envoye = false;
             
-            // Vérifier si l'email a déjà été envoyé (table logs ou flag en session)
+            // Vérifier si l'email a déjà été envoyé (flag session)
             if (isset($_SESSION['facture_envoyee_' . $commande_id]) && $_SESSION['facture_envoyee_' . $commande_id] === true) {
                 $email_deja_envoye = true;
                 error_log("Email déjà envoyé pour commande #$commande_id (flag session)");
-            }
-            
-            // Vérifier via la BDD (table paiement ou logs)
-            if (!$email_deja_envoye && $pdo) {
-                try {
-                    $stmt_check = $pdo->prepare("
-                        SELECT COUNT(*) as count FROM Paiement 
-                        WHERE idCommande = ? AND email_envoye = 1
-                    ");
-                    $stmt_check->execute([$commande_id]);
-                    $check = $stmt_check->fetch();
-                    if ($check && $check['count'] > 0) {
-                        $email_deja_envoye = true;
-                        error_log("Email déjà envoyé pour commande #$commande_id (BDD)");
-                    }
-                } catch (Exception $e) {
-                    // La colonne email_envoye peut ne pas exister
-                    error_log("Vérification email_envoye ignorée: " . $e->getMessage());
-                }
             }
             
             // Envoyer l'email si pas déjà fait
@@ -126,18 +114,6 @@ if ($pdo) {
                         if ($email_envoye) {
                             // Marquer comme envoyé en session
                             $_SESSION['facture_envoyee_' . $commande_id] = true;
-                            
-                            // Optionnel: marquer dans la BDD
-                            try {
-                                $stmt_update = $pdo->prepare("
-                                    UPDATE Paiement SET email_envoye = 1 
-                                    WHERE idCommande = ?
-                                ");
-                                $stmt_update->execute([$commande_id]);
-                            } catch (Exception $e) {
-                                // Ignorer si colonne n'existe pas
-                            }
-                            
                             error_log("✅ Email avec facture envoyé pour commande #$commande_id à " . $commande['email']);
                         } else {
                             error_log("❌ Échec envoi email pour commande #$commande_id");
@@ -184,10 +160,10 @@ unset($_SESSION[SESSION_KEY_COMMANDE]);
 // Régénérer l'ID de session pour sécurité
 session_regenerate_id(true);
 
-// Calcul de la TVA (taux 20%)
+// Calcul de la TVA (taux 20%) pour information uniquement
 $taux_tva = 20;
-$montant_ht = $total / (1 + $taux_tva / 100);
-$montant_tva = $total - $montant_ht;
+$montant_ht = $sous_total / (1 + $taux_tva / 100);
+$montant_tva = $sous_total - $montant_ht;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -472,15 +448,17 @@ $montant_tva = $total - $montant_ht;
                     <div class="order-item" style="margin-top: 10px;">
                         <span class="item-name">Frais de livraison</span>
                         <span class="item-qty"></span>
-                        <span class="item-price"><?php echo number_format($commande['fraisDePort'] ?? 0, 2, ',', ' '); ?> €</span>
+                        <span class="item-price"><?php echo number_format($frais_livraison, 2, ',', ' '); ?> €</span>
                     </div>
                     
+                    <!-- Total général : somme des articles + frais de livraison -->
                     <div class="order-total">
-                        <span>Total TTC</span>
-                        <span><strong><?php echo number_format($total, 2, ',', ' '); ?> €</strong></span>
+                        <span>Total</span>
+                        <span><strong><?php echo number_format($total_global, 2, ',', ' '); ?> €</strong></span>
                     </div>
                     
-                    <div style="margin-top: 10px; font-size: 0.85rem; color: #7f8c8d; text-align: right;">
+                    <!-- Information TVA (affichée en petit, sans mention TTC) -->
+                    <div style="margin-top: 10px; font-size: 0.75rem; color: #95a5a6; text-align: right;">
                         <small>dont TVA (20%) : <?php echo number_format($montant_tva, 2, ',', ' '); ?> €</small>
                     </div>
                 </div>
@@ -532,7 +510,7 @@ $montant_tva = $total - $montant_ht;
          * Télécharge la facture PDF
          */
         function telechargerFacture(idCommande) {
-            window.open('acheter.php?action=telecharger_facture&id_commande=' + idCommande, '_blank');
+            window.open('telecharger-facture.php?commande_id=' + idCommande, '_blank');
         }
         
         /**
@@ -587,29 +565,6 @@ $montant_tva = $total - $montant_ht;
                 if (el.style) el.style.display = 'none';
             });
         }, 500);
-        
-        // Enregistrer l'événement de conversion (si Google Analytics est utilisé)
-        setTimeout(() => {
-            if (typeof gtag === 'function') {
-                gtag('event', 'purchase', {
-                    transaction_id: '<?php echo $commande_id; ?>',
-                    value: <?php echo $total; ?>,
-                    currency: 'EUR',
-                    items: <?php 
-                        $items_ga = [];
-                        foreach ($items as $item) {
-                            $items_ga[] = [
-                                'id' => $item['produit_nom'],
-                                'name' => $item['produit_nom'],
-                                'quantity' => $item['quantite'],
-                                'price' => $item['prixUnitaire']
-                            ];
-                        }
-                        echo json_encode($items_ga);
-                    ?>
-                });
-            }
-        }, 1000);
     </script>
 </body>
 </html>

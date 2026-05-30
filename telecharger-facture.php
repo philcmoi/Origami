@@ -1,6 +1,7 @@
 <?php
 // telecharger-facture.php - Téléchargement automatique de la facture
 // Version HTML - Fonctionne immédiatement sans bibliothèque externe
+// La mention "TTC" a été supprimée du total
 
 session_start();
 error_reporting(E_ALL);
@@ -130,13 +131,19 @@ try {
     foreach ($items as $item) {
         $sous_total += $item['quantite'] * $item['prixUnitaire'];
     }
-    $total_general = $sous_total + ($commande['fraisDePort'] ?? 0);
+    $frais_livraison = floatval($commande['fraisDePort'] ?? 0);
+    $total_general = $sous_total + $frais_livraison;
     
     // Nom du client
     $client_nom_complet = trim(($commande['client_prenom'] ?? '') . ' ' . ($commande['client_nom'] ?? ''));
     if (empty($client_nom_complet)) {
         $client_nom_complet = ($commande['livraison_prenom'] ?? '') . ' ' . ($commande['livraison_nom'] ?? '');
     }
+    
+    // Calcul TVA (20%) pour information
+    $taux_tva = 20;
+    $montant_ht = $sous_total / (1 + $taux_tva / 100);
+    $montant_tva = $sous_total - $montant_ht;
     
     // ============================================
     // GÉNÉRATION DU CONTENU HTML DE LA FACTURE
@@ -360,8 +367,11 @@ try {
             
             <div class="totals">
                 <p>Sous-total : ' . number_format($sous_total, 2, ',', ' ') . ' €</p>
-                <p>Frais de port : ' . number_format($commande['fraisDePort'] ?? 0, 2, ',', ' ') . ' €</p>
-                <p class="grand-total">TOTAL TTC : ' . number_format($total_general, 2, ',', ' ') . ' €</p>
+                <p>Frais de port : ' . number_format($frais_livraison, 2, ',', ' ') . ' €</p>
+                <div style="margin: 5px 0; font-size: 11px; color: #95a5a6;">
+                    <small>dont TVA (20%) : ' . number_format($montant_tva, 2, ',', ' ') . ' €</small>
+                </div>
+                <p class="grand-total">TOTAL : ' . number_format($total_general, 2, ',', ' ') . ' €</p>
             </div>
             
             <div class="legal-mention">
