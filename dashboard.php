@@ -1,61 +1,77 @@
 <?php
-// dashboard.php - Adapté à heureducadeau
-require_once 'admin_protection.php';
+// dashboard.php - Adapté à la base de données origami
+session_start();
+
+// Vérifier si l'admin est connecté
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: admin_login.php');
+    exit;
+}
+
+require_once 'config.php';
 
 // ============================================
 // RÉCUPÉRATION DES STATISTIQUES
 // ============================================
 try {
-    // Nombre total de produits
-    $sql = "SELECT COUNT(*) as total_produits FROM produits";
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Nombre total de produits (Origami)
+    $sql = "SELECT COUNT(*) as total_produits FROM Origami WHERE visible = 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $total_produits = $stmt->fetch(PDO::FETCH_ASSOC)['total_produits'];
     
     // Nombre total de commandes
-    $sql = "SELECT COUNT(*) as total_commandes FROM commandes";
+    $sql = "SELECT COUNT(*) as total_commandes FROM Commande";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $total_commandes = $stmt->fetch(PDO::FETCH_ASSOC)['total_commandes'];
     
     // Nombre total de clients
-    $sql = "SELECT COUNT(*) as total_clients FROM clients";
+    $sql = "SELECT COUNT(*) as total_clients FROM Client WHERE type = 'permanent'";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $total_clients = $stmt->fetch(PDO::FETCH_ASSOC)['total_clients'];
     
-    // Produits en alerte de stock
-    $sql = "SELECT COUNT(*) as alert_stock FROM produits WHERE quantite_stock <= seuil_alerte AND statut = 'actif'";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $alert_stock = $stmt->fetch(PDO::FETCH_ASSOC)['alert_stock'];
-    
     // Commandes en attente
-    $sql = "SELECT COUNT(*) as commandes_attente FROM commandes WHERE statut = 'en_attente'";
+    $sql = "SELECT COUNT(*) as commandes_attente FROM Commande WHERE statut = 'en_attente'";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $commandes_attente = $stmt->fetch(PDO::FETCH_ASSOC)['commandes_attente'];
     
-    // Chiffre d'affaires total
-    $sql = "SELECT SUM(total_ttc) as chiffre_affaires FROM commandes WHERE statut_paiement = 'paye'";
+    // Chiffre d'affaires total (commandes payées)
+    $sql = "SELECT SUM(montantTotal) as chiffre_affaires FROM Commande WHERE statut_paiement = 'payee'";
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
     $chiffre_affaires = $stmt->fetch(PDO::FETCH_ASSOC)['chiffre_affaires'] ?? 0;
+    
+    // Récupérer les commandes récentes
+    $sql = "SELECT c.idCommande, c.dateCommande, c.montantTotal, c.statut, 
+                   cl.nom, cl.prenom, cl.email
+            FROM Commande c
+            JOIN Client cl ON c.idClient = cl.idClient
+            ORDER BY c.dateCommande DESC 
+            LIMIT 5";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $commandes_recentes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch(PDOException $e) {
     $error_stats = "Erreur lors du chargement des statistiques: " . $e->getMessage();
 }
 
 // Récupérer le nom de l'admin depuis la session
-$admin_username = $_SESSION['admin_username'] ?? 'Administrateur';
-$admin_role = $_SESSION['admin_role'] ?? 'Non défini';
+$admin_email = $_SESSION['admin_email'] ?? 'Administrateur';
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de bord - Heure du Cadeau</title>
+    <title>Tableau de bord - Youki and Co</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -79,7 +95,7 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         
         /* Header */
         .header {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            background: linear-gradient(135deg, #d40000 0%, #8b0000 100%);
             color: white;
             padding: 25px;
             border-radius: 15px;
@@ -96,13 +112,13 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         }
         
         .header h1 {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 600;
             margin-bottom: 10px;
         }
         
         .header p {
-            font-size: 16px;
+            font-size: 14px;
             opacity: 0.9;
         }
         
@@ -110,19 +126,20 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             text-align: right;
         }
         
-        .role-badge {
-            display: inline-block;
-            background-color: #4CAF50;
+        .btn-logout {
+            background-color: rgba(255, 255, 255, 0.2);
             color: white;
             padding: 8px 20px;
             border-radius: 20px;
+            text-decoration: none;
             font-size: 14px;
-            font-weight: 500;
+            transition: background-color 0.3s;
+            display: inline-block;
             margin-top: 10px;
         }
         
-        .superadmin-badge {
-            background-color: #f44336;
+        .btn-logout:hover {
+            background-color: rgba(255, 255, 255, 0.3);
         }
         
         /* Stats Grid */
@@ -151,7 +168,6 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         .stat-card.orders { border-left-color: #4CAF50; }
         .stat-card.clients { border-left-color: #FF9800; }
         .stat-card.revenue { border-left-color: #9C27B0; }
-        .stat-card.alerts { border-left-color: #F44336; }
         .stat-card.pending { border-left-color: #FFC107; }
         
         .stat-header {
@@ -176,7 +192,6 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         .stat-card.orders .stat-icon { background-color: #4CAF50; }
         .stat-card.clients .stat-icon { background-color: #FF9800; }
         .stat-card.revenue .stat-icon { background-color: #9C27B0; }
-        .stat-card.alerts .stat-icon { background-color: #F44336; }
         .stat-card.pending .stat-icon { background-color: #FFC107; }
         
         .stat-title {
@@ -196,9 +211,6 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             font-size: 14px;
             color: #666;
         }
-        
-        .stat-change.positive { color: #4CAF50; }
-        .stat-change.negative { color: #F44336; }
         
         /* Quick Actions */
         .quick-actions {
@@ -232,13 +244,13 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         .action-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-            border-color: #2196F3;
+            border-color: #d40000;
         }
         
         .action-icon {
             font-size: 36px;
             margin-bottom: 15px;
-            color: #2196F3;
+            color: #d40000;
         }
         
         .action-title {
@@ -252,8 +264,8 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             color: #666;
         }
         
-        /* Recent Activity */
-        .recent-activity {
+        /* Recent Orders */
+        .recent-orders {
             background-color: white;
             border-radius: 12px;
             padding: 30px;
@@ -261,7 +273,7 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             margin-bottom: 40px;
         }
         
-        .recent-activity h2 {
+        .recent-orders h2 {
             font-size: 24px;
             margin-bottom: 25px;
             color: #333;
@@ -270,45 +282,57 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             gap: 10px;
         }
         
-        .activity-list {
-            list-style: none;
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
         }
         
-        .activity-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 0;
+        .orders-table th,
+        .orders-table td {
+            padding: 12px;
+            text-align: left;
             border-bottom: 1px solid #eee;
         }
         
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-        
-        .activity-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: #f0f8ff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #2196F3;
-        }
-        
-        .activity-content {
-            flex: 1;
-        }
-        
-        .activity-title {
+        .orders-table th {
+            background-color: #f8f9fa;
             font-weight: 600;
-            margin-bottom: 5px;
+            color: #555;
         }
         
-        .activity-time {
-            font-size: 14px;
-            color: #666;
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-en_attente {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-payee {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-expediee {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        
+        .btn-view {
+            background-color: #d40000;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        
+        .btn-view:hover {
+            background-color: #b30000;
         }
         
         /* System Info */
@@ -352,6 +376,15 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             color: #333;
         }
         
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .header-content {
@@ -370,47 +403,31 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             .actions-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .orders-table {
+                font-size: 14px;
+            }
+            
+            .orders-table th,
+            .orders-table td {
+                padding: 8px;
+            }
         }
         
-        /* Session Info */
-        .session-info {
-            background-color: #f0f8ff;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 30px;
-            border-left: 4px solid #2196F3;
+        /* Animation */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
-        .session-info h3 {
-            color: #2196F3;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .session-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            font-size: 14px;
-        }
-        
-        .session-item {
-            background-color: white;
-            padding: 10px 15px;
-            border-radius: 6px;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .session-label {
-            color: #666;
-            font-weight: 500;
-        }
-        
-        .session-value {
-            color: #333;
-            font-weight: 600;
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
         }
     </style>
 </head>
@@ -420,20 +437,20 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         <div class="header">
             <div class="header-content">
                 <div>
-                    <h1><i class="fas fa-gift"></i> Tableau de bord - Heure du Cadeau</h1>
-                    <p>Gestion complète de votre boutique en ligne</p>
+                    <h1><i class="fas fa-gift"></i> Youki and Co - Administration</h1>
+                    <p>Gestion complète de votre boutique d'origami</p>
                 </div>
                 <div class="user-info">
-                    <p>Bienvenue, <strong><?php echo htmlspecialchars($admin_username); ?></strong></p>
-                    <div class="role-badge <?php echo $admin_role === 'superadmin' ? 'superadmin-badge' : ''; ?>">
-                        <i class="fas fa-user-shield"></i> <?php echo htmlspecialchars(ucfirst($admin_role)); ?>
-                    </div>
+                    <p>Bienvenue, <strong><?php echo htmlspecialchars($admin_email); ?></strong></p>
+                    <a href="admin_logout.php" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Déconnexion
+                    </a>
                 </div>
             </div>
         </div>
         
         <?php if (isset($error_stats)): ?>
-            <div style="background-color: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <div class="error-message">
                 <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error_stats); ?>
             </div>
         <?php endif; ?>
@@ -451,7 +468,7 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
                     </div>
                 </div>
                 <div class="stat-change">
-                    <i class="fas fa-chart-line"></i> Total des produits en boutique
+                    <i class="fas fa-chart-line"></i> Produits en boutique
                 </div>
             </div>
             
@@ -496,22 +513,7 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
                     </div>
                 </div>
                 <div class="stat-change">
-                    <i class="fas fa-chart-pie"></i> CA total
-                </div>
-            </div>
-            
-            <div class="stat-card alerts">
-                <div class="stat-header">
-                    <div class="stat-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div>
-                        <div class="stat-title">Alertes stock</div>
-                        <div class="stat-value"><?php echo number_format($alert_stock ?? 0); ?></div>
-                    </div>
-                </div>
-                <div class="stat-change negative">
-                    <i class="fas fa-bell"></i> Produits à réapprovisionner
+                    <i class="fas fa-chart-pie"></i> CA total (commandes payées)
                 </div>
             </div>
             
@@ -535,20 +537,12 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
         <div class="quick-actions">
             <h2><i class="fas fa-bolt"></i> Actions rapides</h2>
             <div class="actions-grid">
-                <a href="admin_produits.php?action=add" class="action-card">
-                    <div class="action-icon">
-                        <i class="fas fa-plus-circle"></i>
-                    </div>
-                    <div class="action-title">Ajouter un produit</div>
-                    <div class="action-desc">Créez un nouveau produit dans votre catalogue</div>
-                </a>
-                
-                <a href="admin_produits.php?action=list" class="action-card">
+                <a href="admin_produits.php" class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-boxes"></i>
                     </div>
                     <div class="action-title">Gérer les produits</div>
-                    <div class="action-desc">Modifiez, supprimez vos produits</div>
+                    <div class="action-desc">Modifiez, ajoutez ou supprimez des origamis</div>
                 </a>
                 
                 <a href="admin_commandes.php" class="action-card">
@@ -559,6 +553,14 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
                     <div class="action-desc">Gérez les commandes clients</div>
                 </a>
                 
+                <a href="admin_factures.php" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div class="action-title">Factures</div>
+                    <div class="action-desc">Générez et envoyez des factures</div>
+                </a>
+                
                 <a href="admin_clients.php" class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-users"></i>
@@ -566,24 +568,47 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
                     <div class="action-title">Gérer les clients</div>
                     <div class="action-desc">Consultez la liste des clients</div>
                 </a>
-                
-                <a href="admin_categories.php" class="action-card">
-                    <div class="action-icon">
-                        <i class="fas fa-tags"></i>
-                    </div>
-                    <div class="action-title">Catégories</div>
-                    <div class="action-desc">Organisez vos produits par catégories</div>
-                </a>
-                
-                <a href="admin_promotions.php" class="action-card">
-                    <div class="action-icon">
-                        <i class="fas fa-percent"></i>
-                    </div>
-                    <div class="action-title">Promotions</div>
-                    <div class="action-desc">Créez des codes promotionnels</div>
-                </a>
             </div>
         </div>
+        
+        <!-- Commandes récentes -->
+        <?php if (!empty($commandes_recentes)): ?>
+        <div class="recent-orders">
+            <h2><i class="fas fa-history"></i> Commandes récentes</h2>
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Client</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($commandes_recentes as $commande): ?>
+                    <tr>
+                        <td>#<?php echo $commande['idCommande']; ?></td>
+                        <td><?php echo date('d/m/Y H:i', strtotime($commande['dateCommande'])); ?></td>
+                        <td><?php echo htmlspecialchars($commande['prenom'] . ' ' . $commande['nom']); ?></td>
+                        <td><?php echo number_format($commande['montantTotal'], 2, ',', ' '); ?> €</td>
+                        <td>
+                            <span class="status-badge status-<?php echo $commande['statut']; ?>">
+                                <?php echo $commande['statut']; ?>
+                            </span>
+                        </td>
+                        <td>
+                            <a href="admin_commande_detail.php?id=<?php echo $commande['idCommande']; ?>" class="btn-view">
+                                <i class="fas fa-eye"></i> Voir
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
         
         <!-- Informations système -->
         <div class="system-info">
@@ -596,7 +621,7 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
                 
                 <div class="info-item">
                     <div class="info-label">Base de données</div>
-                    <div class="info-value">heureducadeau</div>
+                    <div class="info-value">origami</div>
                 </div>
                 
                 <div class="info-item">
@@ -611,130 +636,15 @@ $admin_role = $_SESSION['admin_role'] ?? 'Non défini';
             </div>
         </div>
         
-        <!-- Informations de session -->
-        <div class="session-info">
-            <h3><i class="fas fa-user-circle"></i> Informations de session</h3>
-            <div class="session-details">
-                <div class="session-item">
-                    <div class="session-label">ID Admin</div>
-                    <div class="session-value"><?php echo htmlspecialchars($_SESSION['admin_id'] ?? 'Non défini'); ?></div>
-                </div>
-                
-                <div class="session-item">
-                    <div class="session-label">Nom d'utilisateur</div>
-                    <div class="session-value"><?php echo htmlspecialchars($_SESSION['admin_username'] ?? 'Non défini'); ?></div>
-                </div>
-                
-                <div class="session-item">
-                    <div class="session-label">Rôle</div>
-                    <div class="session-value"><?php echo htmlspecialchars($_SESSION['admin_role'] ?? 'Non défini'); ?></div>
-                </div>
-                
-                <div class="session-item">
-                    <div class="session-label">IP Client</div>
-                    <div class="session-value"><?php echo getClientIp(); ?></div>
-                </div>
-                
-                <div class="session-item">
-                    <div class="session-label">Session ID</div>
-                    <div class="session-value"><?php echo session_id(); ?></div>
-                </div>
-                
-                <div class="session-item">
-                    <div class="session-label">Dernière activité</div>
-                    <div class="session-value"><?php echo isset($_SESSION['last_activity']) ? date('H:i:s', $_SESSION['last_activity']) : 'Maintenant'; ?></div>
-                </div>
-            </div>
+        <!-- Lien vers l'ancien dashboard -->
+        <div style="margin-top: 30px; text-align: center; padding: 20px; background-color: #f0f0f0; border-radius: 12px;">
+            <a href="admin_dashboard.php" style="color: #d40000; text-decoration: none;">
+                <i class="fas fa-tachometer-alt"></i> Accéder à l'ancien tableau de bord
+            </a>
         </div>
-        
-        <!-- Menu de navigation -->
-        <div style="margin-top: 40px; padding: 25px; background-color: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);">
-            <h2 style="margin-bottom: 20px; color: #333;"><i class="fas fa-cogs"></i> Administration complète</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <a href="admin_produits.php" style="background-color: #2196F3; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-box"></i> Produits
-                </a>
-                
-                <a href="admin_categories.php" style="background-color: #4CAF50; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-tags"></i> Catégories
-                </a>
-                
-                <a href="admin_commandes.php" style="background-color: #FF9800; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-shopping-cart"></i> Commandes
-                </a>
-                
-                <a href="admin_clients.php" style="background-color: #9C27B0; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-users"></i> Clients
-                </a>
-                
-                <a href="admin_promotions.php" style="background-color: #F44336; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-percent"></i> Promotions
-                </a>
-                
-                <a href="admin_pages.php" style="background-color: #607D8B; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-file-alt"></i> Pages
-                </a>
-                
-                <a href="admin_configuration.php" style="background-color: #795548; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-cog"></i> Configuration
-                </a>
-                
-                <a href="logout.php" style="background-color: #333; color: white; padding: 15px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; transition: background-color 0.3s;">
-                    <i class="fas fa-sign-out-alt"></i> Déconnexion
-                </a>
-            </div>
-        </div>
-        
-        <!-- Super Admin Features -->
-        <?php if ($admin_role === 'superadmin'): ?>
-        <div style="margin-top: 30px; padding: 25px; background: linear-gradient(135deg, #ff6b6b 0%, #ffa8a8 100%); border-radius: 12px; color: white;">
-            <h2 style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-crown"></i> Fonctions Super Admin
-            </h2>
-            <p style="margin-bottom: 20px; opacity: 0.9;">En tant que Super Admin, vous avez accès à toutes les fonctionnalités :</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
-                    <i class="fas fa-user-shield"></i> <strong>Gestion administrateurs</strong>
-                    <p style="font-size: 14px; margin-top: 5px;">Ajoutez/modifiez/supprimez des administrateurs</p>
-                </div>
-                <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
-                    <i class="fas fa-database"></i> <strong>Sauvegarde BDD</strong>
-                    <p style="font-size: 14px; margin-top: 5px;">Sauvegardez/restaurez la base de données</p>
-                </div>
-                <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
-                    <i class="fas fa-chart-line"></i> <strong>Statistiques avancées</strong>
-                    <p style="font-size: 14px; margin-top: 5px;">Analyses détaillées et rapports</p>
-                </div>
-                <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
-                    <i class="fas fa-cogs"></i> <strong>Configuration système</strong>
-                    <p style="font-size: 14px; margin-top: 5px;">Paramètres avancés du site</p>
-                </div>
-            </div>
-            <div style="margin-top: 20px;">
-                <a href="admin_administrateurs.php" style="background-color: white; color: #ff6b6b; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
-                    <i class="fas fa-users-cog"></i> Gérer les administrateurs
-                </a>
-            </div>
-        </div>
-        <?php endif; ?>
     </div>
     
     <script>
-        // Mettre à jour l'heure toutes les minutes
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('fr-FR');
-            document.querySelectorAll('.time-display').forEach(el => {
-                el.textContent = timeString;
-            });
-        }
-        
-        // Mettre à jour toutes les minutes
-        setInterval(updateTime, 60000);
-        
-        // Initialiser l'heure
-        updateTime();
-        
         // Animation des cartes statistiques
         document.addEventListener('DOMContentLoaded', function() {
             const statCards = document.querySelectorAll('.stat-card');

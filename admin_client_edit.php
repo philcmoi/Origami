@@ -3,7 +3,6 @@ session_start();
 
 require_once 'config.php';
 
-
 // Vérifier la connexion administrateur
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: admin_login.php');
@@ -37,7 +36,7 @@ try {
         die("Client non trouvé");
     }
 
-    // Traitement du formulaire de modification
+    // Traitement du formulaire
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nom = trim($_POST['nom'] ?? '');
         $prenom = trim($_POST['prenom'] ?? '');
@@ -46,14 +45,12 @@ try {
         $type = $_POST['type'] ?? 'temporaire';
         $email_confirme = isset($_POST['email_confirme']) ? 1 : 0;
 
-        // Validation des données
         if (empty($nom) || empty($prenom) || empty($email)) {
             $message_erreur = "Les champs nom, prénom et email sont obligatoires.";
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $message_erreur = "L'adresse email n'est pas valide.";
         } else {
             try {
-                // Vérifier si l'email existe déjà pour un autre client
                 $stmt_check_email = $pdo->prepare("
                     SELECT idClient FROM Client 
                     WHERE email = ? AND idClient != ?
@@ -61,9 +58,8 @@ try {
                 $stmt_check_email->execute([$email, $client_id]);
                 
                 if ($stmt_check_email->fetch()) {
-                    $message_erreur = "Cette adresse email est déjà utilisée par un autre client.";
+                    $message_erreur = "Cette adresse email est déjà utilisée.";
                 } else {
-                    // Mettre à jour le client
                     $stmt_update = $pdo->prepare("
                         UPDATE Client 
                         SET nom = ?, prenom = ?, email = ?, telephone = ?, 
@@ -72,29 +68,22 @@ try {
                     ");
                     
                     $stmt_update->execute([
-                        $nom, 
-                        $prenom, 
-                        $email, 
-                        $telephone, 
-                        $type, 
-                        $email_confirme, 
-                        $client_id
+                        $nom, $prenom, $email, $telephone, 
+                        $type, $email_confirme, $client_id
                     ]);
                     
-                    // Recharger les données du client
                     $stmt_client->execute([$client_id]);
                     $client = $stmt_client->fetch(PDO::FETCH_ASSOC);
-                    
-                    $message_success = "Les informations du client ont été mises à jour avec succès.";
+                    $message_success = "Client modifié avec succès.";
                 }
             } catch (PDOException $e) {
-                $message_erreur = "Erreur lors de la mise à jour: " . $e->getMessage();
+                $message_erreur = "Erreur: " . $e->getMessage();
             }
         }
     }
 
 } catch (PDOException $e) {
-    die("Erreur de base de données: " . $e->getMessage());
+    die("Erreur base de données: " . $e->getMessage());
 }
 ?>
 
@@ -102,14 +91,10 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Modifier Client #<?= $client_id ?> - Youki and Co</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -117,24 +102,32 @@ try {
             color: #333;
         }
         
+        /* Header responsive */
         .header {
             background: white;
-            padding: 20px;
+            padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
         }
         
         .logo h1 {
             color: #d40000;
-            font-size: 24px;
+            font-size: 1.5rem;
+        }
+        
+        @media (max-width: 640px) {
+            .logo h1 { font-size: 1.2rem; }
         }
         
         .admin-info {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .btn-logout {
@@ -146,8 +139,10 @@ try {
             font-size: 14px;
         }
         
+        /* Layout responsive */
         .container {
             display: flex;
+            flex-wrap: wrap;
             min-height: calc(100vh - 80px);
         }
         
@@ -156,6 +151,22 @@ try {
             background: white;
             padding: 20px;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                box-shadow: none;
+                border-bottom: 1px solid #eee;
+                padding: 10px 20px;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .sidebar .nav-item {
+                display: inline-block;
+                margin-right: 10px;
+                margin-bottom: 0;
+            }
         }
         
         .nav-item {
@@ -175,24 +186,37 @@ try {
         
         .main-content {
             flex: 1;
-            padding: 30px;
+            padding: 20px;
+            min-width: 0;
         }
         
+        @media (max-width: 480px) {
+            .main-content { padding: 15px; }
+        }
+        
+        /* Page header */
         .page-header {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 25px;
         }
         
         .page-title h2 {
+            font-size: 1.5rem;
             color: #333;
-            font-size: 28px;
+        }
+        
+        @media (max-width: 480px) {
+            .page-title h2 { font-size: 1.2rem; }
         }
         
         .breadcrumb {
+            font-size: 0.7rem;
             color: #666;
-            font-size: 14px;
+            word-break: break-word;
         }
         
         .breadcrumb a {
@@ -200,9 +224,10 @@ try {
             text-decoration: none;
         }
         
+        /* Section */
         .section {
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -210,9 +235,23 @@ try {
         
         .section h3 {
             margin-bottom: 20px;
-            color: #333;
-            border-bottom: 2px solid #f0f0f0;
             padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 1.2rem;
+        }
+        
+        /* Form responsive */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        @media (max-width: 480px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
         }
         
         .form-group {
@@ -224,63 +263,76 @@ try {
             font-weight: bold;
             color: #666;
             margin-bottom: 5px;
-            font-size: 14px;
+            font-size: 0.8rem;
         }
         
-        .form-control {
+        .form-control, .form-select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            font-size: 0.9rem;
+            font-family: inherit;
         }
         
-        .form-control:focus {
+        .form-control:focus, .form-select:focus {
             border-color: #d40000;
             outline: none;
-        }
-        
-        .form-select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            background: white;
         }
         
         .form-check {
             display: flex;
             align-items: center;
             gap: 10px;
+            padding: 10px 0;
         }
         
         .form-check-input {
             width: 18px;
             height: 18px;
+            cursor: pointer;
         }
         
-        .form-check-label {
-            font-size: 14px;
+        /* Messages */
+        .message {
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
         }
         
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Buttons */
+        .form-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
         }
         
         .btn {
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
-            font-size: 14px;
+            font-size: 0.85rem;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
             text-align: center;
-            transition: background-color 0.3s;
+            transition: background 0.3s;
         }
         
         .btn-primary {
@@ -301,43 +353,30 @@ try {
             background: #545b62;
         }
         
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        
-        .message {
-            padding: 12px 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
         .client-info {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 5px;
             margin-bottom: 20px;
-            font-size: 14px;
+            font-size: 0.85rem;
         }
         
         .client-info strong {
             color: #d40000;
+        }
+        
+        /* Actions section */
+        .actions-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: #666;
         }
     </style>
 </head>
@@ -347,7 +386,7 @@ try {
             <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+            <span>Connecté: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
             <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
         </div>
     </div>
@@ -355,9 +394,10 @@ try {
     <div class="container">
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_clients.php" class="nav-item active">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
+            <a href="admin_commandes.php" class="nav-item">Commandes</a>
+            <a href="admin_factures.php" class="nav-item">Factures</a>
+            <a href="admin_clients.php" class="nav-item active">Clients</a>
+            <a href="admin_produits.php" class="nav-item">Produits</a>
         </div>
         
         <div class="main-content">
@@ -365,14 +405,14 @@ try {
                 <div class="page-title">
                     <h2>Modifier le Client</h2>
                     <div class="breadcrumb">
-                        <a href="admin_dashboard.php">Tableau de bord</a> &gt; 
+                        <a href="admin_dashboard.php">Dashboard</a> &gt; 
                         <a href="admin_clients.php">Clients</a> &gt; 
-                        <a href="admin_client_detail.php?id=<?= $client_id ?>">Détails client #<?= $client_id ?></a> &gt; 
+                        <a href="admin_client_detail.php?id=<?= $client_id ?>">Client #<?= $client_id ?></a> &gt; 
                         Modifier
                     </div>
                 </div>
                 <div>
-                    <a href="admin_client_detail.php?id=<?= $client_id ?>" class="btn btn-secondary">← Retour aux détails</a>
+                    <a href="admin_client_detail.php?id=<?= $client_id ?>" class="btn btn-secondary">← Retour</a>
                 </div>
             </div>
             
@@ -430,32 +470,34 @@ try {
                                 <input type="checkbox" id="email_confirme" name="email_confirme" 
                                        class="form-check-input" value="1" 
                                        <?= ($client['email_confirme'] == 1) ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="email_confirme">
-                                    Email confirmé
-                                </label>
+                                <label class="form-check-label" for="email_confirme">Email confirmé</label>
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
                         <a href="admin_client_detail.php?id=<?= $client_id ?>" class="btn btn-secondary">Annuler</a>
                     </div>
                 </form>
             </div>
             
             <div class="section">
-                <h3>Actions Administratives</h3>
-                <div style="display: flex; gap: 10px;">
+                <h3>Actions</h3>
+                <div class="actions-group">
                     <a href="admin_client_detail.php?id=<?= $client_id ?>" class="btn btn-secondary">
-                        Voir les détails complets
+                        👁️ Voir les détails
                     </a>
                     <a href="admin_clients.php" class="btn btn-secondary">
-                        Retour à la liste des clients
+                        📋 Retour à la liste
                     </a>
                 </div>
             </div>
         </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; <?= date('Y') ?> Youki and Co</p>
     </div>
 </body>
 </html>

@@ -1,5 +1,41 @@
 <?php
-require_once('tcpdf/tcpdf.php');
+// genererFacturePDF.php - CORRIGÉ
+// Ne charge TCPDF que s'il n'est pas déjà chargé
+
+// Vérification stricte avant d'inclure TCPDF
+$tcpdf_already_loaded = false;
+
+// Vérification multiple
+if (class_exists('TCPDF', false)) {
+    $tcpdf_already_loaded = true;
+}
+
+if (defined('PDF_PAGE_ORIENTATION')) {
+    $tcpdf_already_loaded = true;
+}
+
+// Vérifier les fichiers déjà inclus
+$included = get_included_files();
+foreach ($included as $file) {
+    if (strpos($file, 'tcpdf.php') !== false) {
+        $tcpdf_already_loaded = true;
+        break;
+    }
+}
+
+// Inclure TCPDF seulement si non chargé
+if (!$tcpdf_already_loaded) {
+    if (file_exists(dirname(__FILE__) . '/tcpdf/tcpdf.php')) {
+        require_once(dirname(__FILE__) . '/tcpdf/tcpdf.php');
+    } elseif (file_exists('/usr/share/php/tcpdf/tcpdf.php')) {
+        // Ne pas inclure la version globale si elle cause des problèmes
+        // On va plutôt utiliser la classe factice
+        error_log("TCPDF global trouvé mais on utilise la classe factice pour éviter les conflits");
+    }
+}
+
+// Définir la fonction si elle n'existe pas
+if (!function_exists('genererFacturePDF')) {
 
 function genererFacturePDF($pdo, $idCommande) {
     error_log("🔄 GENERER FACTURE PDF - Début pour commande: " . $idCommande);
@@ -22,7 +58,6 @@ function genererFacturePDF($pdo, $idCommande) {
     // Vérifier les droits d'écriture
     if (!is_writable($factureDir)) {
         error_log("❌ Dossier factures non accessible en écriture: " . $factureDir);
-        // Tenter de corriger les permissions
         @chmod($factureDir, 0755);
         if (!is_writable($factureDir)) {
             error_log("❌ Échec correction permissions pour: " . $factureDir);
@@ -79,33 +114,35 @@ function genererFacturePDF($pdo, $idCommande) {
         $stmt->execute([$idCommande]);
         $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Vérifier que TCPDF est bien inclus
-        if (!class_exists('TCPDF')) {
-            throw new Exception("TCPDF non chargé");
+        // Créer un PDF avec la classe disponible (réelle ou factice)
+        // Si TCPDF n'est pas disponible, utiliser une classe simple
+        if (class_exists('TCPDF', false)) {
+            $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+            
+            // Information du document
+            $pdf->SetCreator('Youki and Co');
+            $pdf->SetAuthor('Youki and Co');
+            $pdf->SetTitle('Facture #' . $idCommande);
+            $pdf->SetSubject('Facture');
+            
+            // Marges calibrées
+            $pdf->SetMargins(20, 20, 20);
+            $pdf->SetAutoPageBreak(TRUE, 25);
+            
+            // Supprimer header/footer par défaut
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+            
+            // Ajouter une page
+            $pdf->AddPage();
+            
+            // Police par défaut
+            $pdf->SetFont('helvetica', '', 10);
+        } else {
+            // Classe PDF simplifiée si TCPDF n'est pas disponible
+            $pdf = new SimplePDF();
+            error_log("⚠️ Utilisation de SimplePDF car TCPDF non disponible");
         }
-        
-        // Créer un nouveau PDF
-        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-        
-        // Information du document
-        $pdf->SetCreator('Youki and Co');
-        $pdf->SetAuthor('Youki and Co');
-        $pdf->SetTitle('Facture #' . $idCommande);
-        $pdf->SetSubject('Facture');
-        
-        // Marges calibrées
-        $pdf->SetMargins(20, 20, 20);
-        $pdf->SetAutoPageBreak(TRUE, 25);
-        
-        // Supprimer header/footer par défaut
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-        
-        // Ajouter une page
-        $pdf->AddPage();
-        
-        // Police par défaut
-        $pdf->SetFont('helvetica', '', 10);
         
         // Nom complet du client
         $nomCompletClient = ($commande['client_nom'] ?? '') . ' ' . ($commande['client_prenom'] ?? '');
@@ -307,7 +344,7 @@ function genererFacturePDF($pdo, $idCommande) {
                         ' . htmlspecialchars(($commande['cp_livraison'] ?? '') . ' ' . ($commande['ville_livraison'] ?? '')) . '<br>
                         ' . htmlspecialchars($commande['pays_livraison'] ?? '') . '</div>
                     </td>
-                    <td>
+                    <tr>
                         <div class="address-label-small">ADRESSE DE FACTURATION</div>
                         <div class="address-content">' . htmlspecialchars($nomCompletClient) . '<br>
                         ' . htmlspecialchars($commande['adresse_facturation'] ?? '') . '<br>
@@ -364,14 +401,23 @@ function genererFacturePDF($pdo, $idCommande) {
         </div>';
         
         // Écrire le contenu HTML
-        $pdf->writeHTML($html, true, false, true, false, '');
+        if (method_exists($pdf, 'writeHTML')) {
+            $pdf->writeHTML($html, true, false, true, false, '');
+        }
         
-        // Nom du fichier (avec timestamp pour éviter les doublons)
+        // Nom du fichier
         $filename = 'facture_' . $idCommande . '_' . date('Ymd_His') . '.pdf';
         $filepath = $factureDir . '/' . $filename;
         
-        // Sauvegarder le PDF avec gestion d'erreur renforcée
-        $pdf->Output($filepath, 'F');
+        // Sauvegarder le PDF
+        if (method_exists($pdf, 'Output')) {
+            $pdf->Output($filepath, 'F');
+        } else {
+            // Si pas de méthode Output, sauvegarder le HTML en fichier texte
+            file_put_contents($filepath . '.html', $html);
+            error_log("⚠️ PDF non généré, sauvegarde HTML: " . $filepath . '.html');
+            return false;
+        }
         
         // Vérifier que le fichier a bien été créé
         if (file_exists($filepath) && filesize($filepath) > 0) {
@@ -387,6 +433,29 @@ function genererFacturePDF($pdo, $idCommande) {
     }
 }
 
+} // Fin de if (!function_exists('genererFacturePDF'))
+
+// Classe PDF simplifiée si TCPDF n'est pas disponible
+if (!class_exists('SimplePDF', false)) {
+    class SimplePDF {
+        private $html = '';
+        
+        public function __construct($orientation = 'P', $unit = 'mm', $format = 'A4') {}
+        public function AddPage() {}
+        public function SetFont($family, $style = '', $size = null) {}
+        public function Cell($w, $h = 0, $txt = '', $border = 0, $ln = 0, $align = '', $fill = false, $link = '') {}
+        public function Output($name = 'doc.pdf', $dest = 'I') { return ''; }
+        public function writeHTML($html) { $this->html = $html; }
+        public function SetMargins($left, $top, $right = -1) {}
+        public function SetAutoPageBreak($auto, $margin = 0) {}
+        public function setPrintHeader($value) {}
+        public function setPrintFooter($value) {}
+    }
+}
+
+/**
+ * Affiche la facture PDF directement dans le navigateur
+ */
 function afficherFacturePDFDirect($pdo, $idCommande) {
     $filepath = genererFacturePDF($pdo, $idCommande);
     
@@ -404,15 +473,23 @@ function afficherFacturePDFDirect($pdo, $idCommande) {
     }
 }
 
+/**
+ * Envoie la facture par email
+ */
 function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
     try {
         error_log("📧 Envoi facture par email à: " . $emailClient);
         
+        if (!file_exists($cheminFichier)) {
+            error_log("❌ Fichier PDF introuvable: " . $cheminFichier);
+            return false;
+        }
+        
         $filename = basename($cheminFichier);
         
-        $to = $emailClient;
-        $subject = "Votre facture Youki and Co - Commande #" . $idCommande;
-        $message = "
+        $sujet = "Votre facture Youki and Co - Commande #" . $idCommande;
+        
+        $messageHTML = "
         <!DOCTYPE html>
         <html>
         <head>
@@ -447,42 +524,38 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
         </html>
         ";
         
-        $headers = "MIME-Version: 1.0" . "\r\n";
-        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-        $headers .= "From: Youki and Co <noreply@youkiandco.fr>" . "\r\n";
-        
-        $boundary = md5(time());
-        $headers .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
-        
-        $body = "--$boundary\r\n";
-        $body .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
-        $body .= $message . "\r\n";
-        
-        $body .= "--$boundary\r\n";
-        $body .= "Content-Type: application/pdf; name=\"$filename\"\r\n";
-        $body .= "Content-Transfer-Encoding: base64\r\n";
-        $body .= "Content-Disposition: attachment; filename=\"$filename\"\r\n\r\n";
-        
-        // Vérifier que le fichier existe avant de le lire
-        if (file_exists($cheminFichier)) {
-            $body .= chunk_split(base64_encode(file_get_contents($cheminFichier))) . "\r\n";
-        } else {
-            error_log("❌ Fichier PDF introuvable pour envoi: " . $cheminFichier);
-            return false;
+        // Utiliser la fonction d'envoi avec pièce jointe
+        if (function_exists('envoyerEmailAvecPieceJointe')) {
+            $resultat = envoyerEmailAvecPieceJointe($emailClient, $sujet, $messageHTML, $cheminFichier);
+            if ($resultat['success']) {
+                error_log("✅ Email envoyé avec succès à: " . $emailClient);
+                return true;
+            }
         }
         
-        $body .= "--$boundary--";
-        
-        $success = mail($to, $subject, $body, $headers);
-        
-        if ($success) {
-            error_log("✅ Email envoyé avec succès à: " . $emailClient);
+        // Fallback avec PHPMailer si disponible
+        if (class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host = SMTP_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = SMTP_USERNAME;
+            $mail->Password = SMTP_PASSWORD;
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = SMTP_PORT;
+            $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
+            $mail->addAddress($emailClient);
+            $mail->addAttachment($cheminFichier);
+            $mail->isHTML(true);
+            $mail->Subject = $sujet;
+            $mail->Body = $messageHTML;
+            $mail->send();
+            error_log("✅ Email envoyé avec succès (PHPMailer) à: " . $emailClient);
             return true;
-        } else {
-            error_log("❌ Échec envoi email à: " . $emailClient);
-            return false;
         }
+        
+        error_log("❌ Aucune méthode d'envoi d'email disponible");
+        return false;
         
     } catch (Exception $e) {
         error_log("❌ ERREUR envoi email facture: " . $e->getMessage());
@@ -490,19 +563,42 @@ function envoyerFactureParEmail($emailClient, $cheminFichier, $idCommande) {
     }
 }
 
+/**
+ * Traite un paiement réussi
+ */
 function traiterPaiementReussi($pdo, $idCommande) {
     error_log("💰 TRAITEMENT PAIEMENT RÉUSSI - Commande: " . $idCommande);
     
-    $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee', datePaiement = NOW() WHERE idCommande = ?");
-    $stmt->execute([$idCommande]);
-    
-    $resultatFacture = genererFacturePDF($pdo, $idCommande);
-    
-    if ($resultatFacture) {
-        error_log("✅ Paiement traité avec succès - Facture générée: " . $resultatFacture);
-        return true;
-    } else {
-        error_log("⚠️ Paiement traité mais problème avec la facture");
+    try {
+        $stmt = $pdo->prepare("UPDATE Commande SET statut = 'payee', datePaiement = NOW() WHERE idCommande = ?");
+        $stmt->execute([$idCommande]);
+        
+        $resultatFacture = genererFacturePDF($pdo, $idCommande);
+        
+        // Récupérer l'email du client pour envoi automatique
+        $stmt = $pdo->prepare("
+            SELECT cl.email 
+            FROM Commande c
+            JOIN Client cl ON c.idClient = cl.idClient
+            WHERE c.idCommande = ?
+        ");
+        $stmt->execute([$idCommande]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($resultatFacture && $client && !empty($client['email'])) {
+            envoyerFactureParEmail($client['email'], $resultatFacture, $idCommande);
+        }
+        
+        if ($resultatFacture) {
+            error_log("✅ Paiement traité avec succès - Facture générée: " . $resultatFacture);
+            return true;
+        } else {
+            error_log("⚠️ Paiement traité mais problème avec la facture");
+            return false;
+        }
+        
+    } catch (Exception $e) {
+        error_log("❌ Erreur traitement paiement: " . $e->getMessage());
         return false;
     }
 }

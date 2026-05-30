@@ -1,355 +1,378 @@
 <?php
 // ============================================
-// PAGE DE PAIEMENT - VERSION CORRIGÉE FINALE
+// PAGE DE PAIEMENT - VERSION CORRIGÉE
+// SOLUTION : Utilisation du bouton PayPal Direct au lieu des Hosted Fields
 // ============================================
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once __DIR__ . '/session_verification.php';
+require_once __DIR__ . '/smtp_config.php';
 
-// ============================================
-// DÉTECTION DU TYPE DE REQUÊTE (API ou HTML)
-// ============================================
-$is_api_request = false;
-if (isset($_GET['action']) || 
-    ($_SERVER['REQUEST_METHOD'] === 'POST' && 
-     strpos($_SERVER['CONTENT_TYPE'] ?? '', 'application/json') !== false)) {
-    $is_api_request = true;
-}
+// Configuration PayPal
+define('PAYPAL_CLIENT_ID', 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5');
+define('PAYPAL_CURRENCY', 'EUR');
 
-// ============================================
-// CONNEXION BDD
-// ============================================
+// Vérification d'accès
+checkPaiementAccess();
+
+// Connexion BDD
 $pdo = getPDOConnection();
 
-// Synchroniser le panier
+// Synchronisation panier
 if ($pdo) {
     synchroniserPanierSessionBDD($pdo, session_id());
 }
 
-// ============================================
-// TRAITEMENT DES ACTIONS API
-// ============================================
-if ($is_api_request) {
-    ob_clean();
-    header("Content-Type: application/json; charset=UTF-8");
-    
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        http_response_code(200);
-        exit;
+// Nettoyer les flags PayPal
+cleanPayPalFlags();
+
+// Récupérer les messages
+$messages = getSessionMessages();
+
+// Récupérer les données du checkout
+$checkout = $_SESSION[SESSION_KEY_CHECKOUT] ?? [];
+$adresse = $checkout['adresse_livraison'] ?? [];
+$mode_livraison = $checkout['mode_livraison'] ?? 'standard';
+$emballage_cadeau = $checkout['emballage_cadeau'] ?? false;
+
+// Récupérer les articles du panier
+$panier_details = [];
+$sous_total = 0;
+
+if (isset($_SESSION[SESSION_KEY_PANIER]) && !empty($_SESSION[SESSION_KEY_PANIER])) {
+    foreach ($_SESSION[SESSION_KEY_PANIER] as $item) {
+        $produit = getProductDetails($item['id_produit'], $pdo);
+        $prix_unitaire = floatval($produit['prix_ttc'] ?? $item['prix'] ?? 0);
+        $quantite = intval($item['quantite'] ?? 1);
+        $prix_total = $quantite * $prix_unitaire;
+        $sous_total += $prix_total;
+        
+        $panier_details[] = [
+            'id_produit' => $item['id_produit'],
+            'quantite' => $quantite,
+            'nom' => $produit['nom'] ?? $item['nom'] ?? 'Produit',
+            'description' => $produit['description'] ?? '',
+            'prix_unitaire' => $prix_unitaire,
+            'prix_total' => $prix_total,
+            'image' => $produit['photo'] ?? 'img/default-product.jpg'
+        ];
     }
-    
-    $action = $_GET['action'] ?? '';
-    
-    switch ($action) {
-        case 'redirect_paypal':
-            $montant = $_GET['montant'] ?? 0;
-            $commande_id = $_GET['commande'] ?? 0;
+}
+
+// Si panier vide via BDD
+if (empty($panier_details) && $pdo && isset($checkout['panier_id'])) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT lp.idOrigami, lp.quantite, lp.prixUnitaire, o.nom, o.description, o.photo
+            FROM LignePanier lp
+            JOIN Origami o ON lp.idOrigami = o.idOrigami
+            JOIN Panier p ON lp.idPanier = p.idPanier
+            WHERE p.idPanier = ?
+        ");
+        $stmt->execute([$checkout['panier_id']]);
+        $bdItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($bdItems as $item) {
+            $prix_total = $item['quantite'] * $item['prixUnitaire'];
+            $sous_total += $prix_total;
             
-            // Nettoyer tout ancien flag PayPal
-            cleanPayPalFlags();
-            
-            echo json_encode([
-                'success' => true,
-                'redirect_url' => "paiement_paypal.php?commande=$commande_id&montant=$montant&from=paiement&t=" . time()
-            ]);
-            break;
-            
-        case 'redirect_cb':
-            $montant = $_GET['montant'] ?? 0;
-            $commande_id = $_GET['commande'] ?? 0;
-            
-            echo json_encode([
-                'success' => true,
-                'redirect_url' => "paiement_cb.php?commande=$commande_id&montant=$montant&from=paiement&t=" . time()
-            ]);
-            break;
-            
-        case 'get_commande':
-            // Récupérer les données de la commande en cours
-            $panier_details = [];
-            $sous_total = 0;
-            
-            foreach ($_SESSION[SESSION_KEY_PANIER] as $item) {
-                $produit = getProductDetails($item['id_produit'], $pdo);
-                $prix_unitaire = floatval($produit['prix_ttc'] ?? $item['prix'] ?? 0);
-                $quantite = intval($item['quantite'] ?? 1);
-                $prix_total = $quantite * $prix_unitaire;
-                $sous_total += $prix_total;
-                
-                $panier_details[] = [
-                    'id_produit' => $item['id_produit'],
-                    'quantite' => $quantite,
-                    'nom' => $produit['nom'] ?? 'Produit',
-                    'prix_unitaire' => $prix_unitaire,
-                    'prix_total' => $prix_total,
-                    'reference' => $produit['reference'] ?? '',
-                    'image' => $produit['image'] ?? 'img/default-product.jpg'
-                ];
-            }
-            
-            $totaux = calculerTotauxPanier($panier_details, $_SESSION[SESSION_KEY_CHECKOUT] ?? []);
-            $adresse = $_SESSION[SESSION_KEY_CHECKOUT]['adresse_livraison'] ?? [];
-            
-            echo json_encode([
-                'success' => true,
-                'commande' => [
-                    'adresse_livraison' => $adresse,
-                    'livraison' => [
-                        'mode' => $_SESSION[SESSION_KEY_CHECKOUT]['mode_livraison'] ?? 'standard',
-                        'frais' => $totaux['frais_livraison']
-                    ],
-                    'emballage_cadeau' => $_SESSION[SESSION_KEY_CHECKOUT]['emballage_cadeau'] ?? false,
-                    'frais_emballage' => $totaux['frais_emballage']
-                ],
-                'panier' => [
-                    'items_count' => $totaux['total_items'],
-                    'sous_total' => $totaux['sous_total']
-                ],
-                'totaux' => $totaux
-            ]);
-            break;
-            
-        default:
-            echo json_encode(['success' => false, 'message' => 'Action API non reconnue']);
+            $panier_details[] = [
+                'id_produit' => $item['idOrigami'],
+                'quantite' => $item['quantite'],
+                'nom' => $item['nom'],
+                'description' => $item['description'] ?? '',
+                'prix_unitaire' => $item['prixUnitaire'],
+                'prix_total' => $prix_total,
+                'image' => $item['photo'] ?? 'img/default-product.jpg'
+            ];
+        }
+    } catch (Exception $e) {
+        error_log("Erreur récupération panier BDD: " . $e->getMessage());
     }
+}
+
+// Calcul des totaux
+$totaux = calculerTotauxPanier($panier_details, $checkout);
+$total_commande = $totaux['total'];
+
+// Si panier vide, rediriger
+if (empty($panier_details)) {
+    addSessionMessage('Votre panier est vide', 'error');
+    header('Location: index.html');
     exit;
 }
 
-// ============================================
-// VÉRIFICATION D'ACCÈS STANDARDISÉE
-// ============================================
-checkPaiementAccess();
-
-// Nettoyer tout ancien flag PayPal avant d'afficher la page
-cleanPayPalFlags();
-
-// ============================================
-// RÉCUPÉRATION DES DONNÉES POUR AFFICHAGE
-// ============================================
-$messages = getSessionMessages();
-$nb_articles = countCartItems();
-
-// Récupérer les détails du panier
-$panier_details = [];
-foreach ($_SESSION[SESSION_KEY_PANIER] as $item) {
-    $produit = getProductDetails($item['id_produit'], $pdo);
-    $prix_unitaire = floatval($produit['prix_ttc'] ?? $item['prix'] ?? 0);
-    $quantite = intval($item['quantite'] ?? 1);
-    $panier_details[] = [
-        'id_produit' => $item['id_produit'],
-        'quantite' => $quantite,
-        'nom' => $produit['nom'] ?? 'Produit',
-        'prix_unitaire' => $prix_unitaire,
-        'prix_total' => $quantite * $prix_unitaire,
-        'reference' => $produit['reference'] ?? '',
-        'image' => $produit['image'] ?? 'img/default-product.jpg'
-    ];
+// Si pas d'adresse, rediriger
+if (empty($adresse)) {
+    addSessionMessage('Veuillez renseigner votre adresse de livraison', 'warning');
+    header('Location: livraison_form.php');
+    exit;
 }
 
-$totaux = calculerTotauxPanier($panier_details, $_SESSION[SESSION_KEY_CHECKOUT] ?? []);
-$adresse = $_SESSION[SESSION_KEY_CHECKOUT]['adresse_livraison'] ?? [];
-
-// Le reste du HTML...
+// Traitement du paiement
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    if (isset($input['process_payment'])) {
+        $methode = $input['methode_paiement'] ?? 'paypal';
+        $reference = $input['reference_paiement'] ?? null;
+        
+        try {
+            $pdo->beginTransaction();
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO Commande (
+                    idClient, idAdresseLivraison, idAdresseFacturation,
+                    dateCommande, modeReglement, delaiLivraison,
+                    fraisDePort, montantTotal, statut, statut_paiement
+                ) VALUES (
+                    ?, ?, ?,
+                    NOW(), ?, DATE_ADD(NOW(), INTERVAL 5 DAY),
+                    ?, ?, 'payee', 'payee'
+                )
+            ");
+            
+            $idClient = $checkout['client_id'] ?? $_SESSION[SESSION_KEY_CLIENT_ID] ?? null;
+            $idAdresseLivraison = $adresse['id'] ?? null;
+            $idAdresseFacturation = $checkout['adresse_facturation']['id'] ?? $idAdresseLivraison;
+            $modeReglement = ($methode === 'paypal') ? 'PayPal' : 'Carte Bancaire (PayPal)';
+            $fraisDePort = $totaux['frais_livraison'] + $totaux['frais_emballage'];
+            
+            $stmt->execute([
+                $idClient,
+                $idAdresseLivraison,
+                $idAdresseFacturation,
+                $modeReglement,
+                $fraisDePort,
+                $total_commande
+            ]);
+            
+            $commande_id = $pdo->lastInsertId();
+            
+            $stmt_item = $pdo->prepare("
+                INSERT INTO LigneCommande (idCommande, idOrigami, quantite, prixUnitaire)
+                VALUES (?, ?, ?, ?)
+            ");
+            
+            foreach ($panier_details as $item) {
+                $stmt_item->execute([
+                    $commande_id,
+                    $item['id_produit'],
+                    $item['quantite'],
+                    $item['prix_unitaire']
+                ]);
+            }
+            
+            $stmt_paiement = $pdo->prepare("
+                INSERT INTO Paiement (idCommande, montant, currency, statut, methode_paiement, reference, date_creation)
+                VALUES (?, ?, 'EUR', 'payee', ?, ?, NOW())
+            ");
+            $reference_finale = $reference ?? 'PAY_' . time() . '_' . $commande_id;
+            $stmt_paiement->execute([$commande_id, $total_commande, $modeReglement, $reference_finale]);
+            
+            if (isset($checkout['panier_id'])) {
+                $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ?");
+                $stmt->execute([$checkout['panier_id']]);
+            }
+            
+            $_SESSION[SESSION_KEY_PANIER] = [];
+            unset($_SESSION[SESSION_KEY_PANIER_ID]);
+            unset($_SESSION[SESSION_KEY_CHECKOUT]);
+            
+            $pdo->commit();
+            
+            if (file_exists('genererFacturePDF.php')) {
+                require_once 'genererFacturePDF.php';
+                if (function_exists('genererFacturePDF')) {
+                    $cheminFacture = genererFacturePDF($pdo, $commande_id);
+                    if ($cheminFacture && !empty($adresse['email'])) {
+                        envoyerFactureParEmail($adresse['email'], $cheminFacture, $commande_id);
+                    }
+                }
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Commande créée avec succès',
+                'commande_id' => $commande_id,
+                'redirect' => 'paiement-reussi-email.php?commande=' . $commande_id . '&token=' . urlencode($reference_finale)
+            ]);
+            exit;
+            
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("Erreur création commande: " . $e->getMessage());
+            echo json_encode([
+                'success' => false,
+                'message' => 'Erreur lors de la création de la commande: ' . $e->getMessage()
+            ]);
+            exit;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement - HEURE DU CADEAU</title>
+    <title>Paiement Sécurisé - Youki and Co</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chargement du SDK PayPal avec client-id -->
+    <script src="https://www.paypal.com/sdk/js?client-id=<?php echo PAYPAL_CLIENT_ID; ?>&currency=EUR&components=buttons&enable-funding=paypal,card&locale=fr_FR"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px;
         }
-        header {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            padding: 20px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .logo {
-            color: white;
-            text-decoration: none;
-            font-size: 1.8rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .logo i { color: #e74c3c; }
-        nav { display: flex; gap: 25px; align-items: center; }
-        nav a {
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: all 0.3s;
-        }
-        nav a:hover { background: rgba(255,255,255,0.1); }
-        .cart-link { position: relative; }
-        .cart-count {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #e74c3c;
-            color: white;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .paiement-page { padding: 40px 0; min-height: 70vh; }
-        .paiement-header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .paiement-header h1 {
-            font-size: 2.5rem;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #2c3e50, #3498db);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .paiement-content {
+        .payment-layout {
             display: grid;
-            grid-template-columns: 1fr 350px;
+            grid-template-columns: 1fr 420px;
             gap: 30px;
         }
         @media (max-width: 992px) {
-            .paiement-content { grid-template-columns: 1fr; }
+            .payment-layout { grid-template-columns: 1fr; }
         }
-        .paiement-form {
+        .payment-main, .payment-sidebar {
             background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border-radius: 30px;
+            padding: 35px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.5s ease;
         }
-        .section-title {
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h2, h3 {
             color: #2c3e50;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f8f9fa;
+            margin-bottom: 20px;
+        }
+        h2 { border-bottom: 3px solid #e74c3c; padding-bottom: 15px; display: flex; align-items: center; gap: 15px; font-size: 1.5rem; }
+        h2 i, h3 i { color: #e74c3c; }
+        .step-indicator {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+        .step-number {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #ecf0f1;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        .step.active .step-number { background: #e74c3c; color: white; }
+        .step.completed .step-number { background: #27ae60; color: white; }
+        .step-text { font-size: 0.85rem; color: #7f8c8d; }
+        .step.active .step-text { color: #e74c3c; font-weight: 600; }
+        .step.completed .step-text { color: #27ae60; }
+        .step-line {
+            position: absolute;
+            top: 22px;
+            left: 10%;
+            right: 10%;
+            height: 3px;
+            background: #ecf0f1;
+            z-index: 0;
         }
         .adresse-card {
             background: #f8f9fa;
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 16px;
             margin-bottom: 30px;
-            border-left: 5px solid #3498db;
+            border-left: 5px solid #e74c3c;
         }
         .adresse-line { margin-bottom: 5px; color: #4a5568; }
-        .paiement-options {
+        .payment-methods {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
             margin-bottom: 30px;
         }
-        .paiement-option {
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .paiement-option:hover { border-color: #3498db; }
-        .paiement-option.selected {
-            border-color: #27ae60;
-            background: rgba(39, 174, 96, 0.05);
-        }
-        .option-header {
+        .method-tab {
             display: flex;
-            align-items: center;
             gap: 15px;
-            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
         }
-        .btn-payer {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #27ae60, #219653);
-            color: white;
+        .method-btn {
+            padding: 12px 25px;
+            background: none;
             border: none;
-            border-radius: 12px;
-            font-size: 1.2rem;
-            font-weight: 700;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            border-radius: 30px;
             transition: all 0.3s;
-            margin-top: 20px;
         }
-        .btn-payer:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(39,174,96,0.3);
+        .method-btn.active {
+            background: #e74c3c;
+            color: white;
         }
-        .btn-payer:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
+        .method-btn:hover:not(.active) {
+            background: #f0f0f0;
         }
-        .cart-summary {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            position: sticky;
-            top: 100px;
+        .payment-panel {
+            display: none;
+            padding: 20px 0;
         }
-        .cart-item-mini {
+        .paypal-buttons-container { margin-top: 20px; min-height: 200px; }
+        .cart-item {
             display: flex;
             gap: 15px;
             padding: 15px 0;
             border-bottom: 1px solid #f0f0f0;
         }
-        .cart-item-mini:last-child { border-bottom: none; }
-        .mini-image {
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
+        .cart-item:last-child { border-bottom: none; }
+        .cart-image {
+            width: 70px;
+            height: 70px;
+            border-radius: 12px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: hidden;
         }
-        .mini-image img {
+        .cart-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        .mini-details { flex: 1; }
-        .mini-details h4 {
-            font-size: 1rem;
-            margin-bottom: 5px;
-            color: #2c3e50;
-        }
-        .mini-price {
-            font-weight: 700;
-            color: #e74c3c;
-        }
+        .cart-details { flex: 1; }
+        .cart-details h4 { color: #2c3e50; margin-bottom: 5px; font-size: 1rem; }
+        .cart-details .product-desc { color: #7f8c8d; font-size: 0.8rem; margin-bottom: 8px; }
+        .cart-price { font-weight: 700; color: #e74c3c; }
+        .cart-quantity { color: #7f8c8d; font-size: 0.85rem; margin-top: 5px; }
         .summary-row {
             display: flex;
             justify-content: space-between;
@@ -361,366 +384,260 @@ $adresse = $_SESSION[SESSION_KEY_CHECKOUT]['adresse_livraison'] ?? [];
             font-weight: 800;
             color: #e74c3c;
             border-top: 2px solid #f0f0f0;
-            padding-top: 20px;
+            padding-top: 15px;
             margin-top: 10px;
         }
-        .btn-continue {
-            display: block;
-            text-align: center;
-            padding: 15px;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
+        .security-badge {
             margin-top: 20px;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        .btn-continue:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(52,152,219,0.3);
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-        .loading i { font-size: 3rem; color: #3498db; }
-        .notification {
-            position: fixed;
-            top: 30px;
-            right: 30px;
-            background: #27ae60;
-            color: white;
-            padding: 18px 25px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            z-index: 9999;
-            animation: slideInRight 0.5s, fadeOut 0.5s 2.5s forwards;
-        }
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes fadeOut {
-            to { opacity: 0; transform: translateX(100%); }
-        }
-        .notification.error { background: #e74c3c; }
-        .info-box {
-            background: #f8f9fa;
             padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 5px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.85rem;
         }
-        .info-box i { color: #3498db; margin-right: 10px; }
         .message {
             padding: 15px;
             margin-bottom: 25px;
-            border-radius: 8px;
-            border: 1px solid transparent;
+            border-radius: 12px;
+            border-left: 5px solid transparent;
         }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border-color: #c3e6cb;
+        .message.success { background: #d4edda; color: #155724; border-left-color: #27ae60; }
+        .message.error { background: #f8d7da; color: #721c24; border-left-color: #e74c3c; }
+        .message.info { background: #d1ecf1; color: #0c5460; border-left-color: #3498db; }
+        .btn-pay-simple {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
         }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-color: #f5c6cb;
+        .btn-pay-simple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(39,174,96,0.3);
         }
-        .info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border-color: #bee5eb;
+        @media (max-width: 768px) {
+            .payment-main, .payment-sidebar { padding: 25px; }
+            .cart-image { width: 50px; height: 50px; }
+            .method-tab { flex-direction: column; align-items: stretch; gap: 10px; }
+            .method-btn { text-align: center; }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <a href="index.html" class="logo"><i class="fas fa-gift"></i> HEURE DU CADEAU</a>
-                <nav>
-                    <a href="index.html">Accueil</a>
-                    <a href="index.php">Produits</a>
-                    <a href="panier.html" class="cart-link">
-                        <i class="fas fa-shopping-cart"></i> Panier
-                        <span id="cartCount" class="cart-count"><?= $nb_articles ?></span>
-                    </a>
-                </nav>
-            </div>
+    <div class="container">
+        <div class="step-indicator">
+            <div class="step completed"><div class="step-number">1</div><span class="step-text">Panier</span></div>
+            <div class="step completed"><div class="step-number">2</div><span class="step-text">Livraison</span></div>
+            <div class="step active"><div class="step-number">3</div><span class="step-text">Paiement</span></div>
+            <div class="step-line"></div>
         </div>
-    </header>
 
-    <main class="paiement-page">
-        <div class="container">
-            <div class="paiement-header">
-                <h1>Paiement sécurisé</h1>
-                <p id="pageMessage">Finalisez votre commande</p>
+        <?php if (!empty($messages)): ?>
+            <?php foreach ($messages as $msg): ?>
+                <div class="message <?php echo htmlspecialchars($msg['type']); ?>">
+                    <?php echo htmlspecialchars($msg['message']); ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
+        <div class="payment-layout">
+            <div class="payment-main">
+                <h2><i class="fas fa-credit-card"></i> Mode de paiement</h2>
+
+                <?php if (!empty($adresse)): ?>
+                <div class="adresse-card">
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-map-marker-alt"></i> Livraison</h3>
+                    <p class="adresse-line"><strong><?php echo htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']); ?></strong></p>
+                    <p class="adresse-line"><?php echo htmlspecialchars($adresse['adresse']); ?></p>
+                    <?php if (!empty($adresse['complement'])): ?>
+                        <p class="adresse-line"><?php echo htmlspecialchars($adresse['complement']); ?></p>
+                    <?php endif; ?>
+                    <p class="adresse-line"><?php echo htmlspecialchars($adresse['code_postal'] . ' ' . $adresse['ville']); ?></p>
+                    <p class="adresse-line"><?php echo htmlspecialchars($adresse['pays']); ?></p>
+                    <a href="livraison_form.php" style="color: #e74c3c; margin-top: 10px; display: inline-block; font-size: 0.9rem;">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                </div>
+                <?php endif; ?>
+
+                <!-- UN SEUL BOUTON PAYPAL QUI FONCTIONNE -->
+                <div class="payment-methods">
+                    <p style="color: #7f8c8d; margin-bottom: 15px;">
+                        <i class="fas fa-lock"></i> Paiement sécurisé par PayPal - Carte bancaire acceptée sans compte
+                    </p>
+                    <div id="paypal-button-container" class="paypal-buttons-container"></div>
+                </div>
             </div>
 
-            <?php if (!empty($messages)): ?>
-                <?php foreach ($messages as $msg): ?>
-                    <div class="message <?php echo $msg['type']; ?>">
-                        <?php echo htmlspecialchars($msg['message']); ?>
+            <div class="payment-sidebar">
+                <h3><i class="fas fa-receipt"></i> Récapitulatif de la commande</h3>
+                
+                <div id="cart-items">
+                    <?php foreach ($panier_details as $item): ?>
+                    <div class="cart-item">
+                        <div class="cart-image">
+                            <?php if (!empty($item['image']) && file_exists($item['image'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['image']); ?>" alt="<?php echo htmlspecialchars($item['nom']); ?>">
+                            <?php else: ?>
+                                <i class="fas fa-gift" style="font-size: 28px; color: #e74c3c;"></i>
+                            <?php endif; ?>
+                        </div>
+                        <div class="cart-details">
+                            <h4><?php echo htmlspecialchars($item['nom']); ?></h4>
+                            <?php if (!empty($item['description'])): ?>
+                                <div class="product-desc"><?php echo htmlspecialchars(substr($item['description'], 0, 60)) . (strlen($item['description']) > 60 ? '...' : ''); ?></div>
+                            <?php endif; ?>
+                            <div class="cart-quantity">Quantité: <?php echo $item['quantite']; ?></div>
+                        </div>
+                        <div class="cart-price"><?php echo number_format($item['prix_total'], 2, ',', ' '); ?> €</div>
                     </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
 
-            <div id="paiementContent">
-                <div class="loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p>Chargement de votre panier...</p>
+                <div class="summary-details">
+                    <div class="summary-row">
+                        <span>Sous-total</span>
+                        <span><?php echo number_format($totaux['sous_total'], 2, ',', ' '); ?> €</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Livraison (<?php echo $mode_livraison === 'express' ? 'Express' : ($mode_livraison === 'relais' ? 'Point Relais' : 'Standard'); ?>)</span>
+                        <span><?php echo number_format($totaux['frais_livraison'], 2, ',', ' '); ?> €</span>
+                    </div>
+                    <?php if ($emballage_cadeau): ?>
+                    <div class="summary-row">
+                        <span>Emballage cadeau</span>
+                        <span><?php echo number_format($totaux['frais_emballage'], 2, ',', ' '); ?> €</span>
+                    </div>
+                    <?php endif; ?>
+                    <div class="summary-row summary-total">
+                        <span>Total TTC</span>
+                        <span><?php echo number_format($total_commande, 2, ',', ' '); ?> €</span>
+                    </div>
+                </div>
+
+                <div class="security-badge">
+                    <i class="fas fa-shield-alt"></i> Paiement 100% sécurisé par PayPal<br>
+                    <small>Vos données bancaires ne sont jamais stockées</small>
                 </div>
             </div>
         </div>
-    </main>
-
-    <footer style="background: #2c3e50; color: white; padding: 30px 0; margin-top: 60px;">
-        <div class="container">
-            <p style="text-align: center;">&copy; 2026 HEURE DU CADEAU - Paiement 100% sécurisé</p>
-        </div>
-    </footer>
+    </div>
 
     <script>
-    // ============================================
-    // JAVASCRIPT - GESTIONNAIRE DE PAIEMENT
-    // ============================================
-    const API_BASE_URL = window.location.href.split('?')[0];
-    let paiementManager = null;
+        const totalMontant = <?php echo $total_commande; ?>;
+        let paymentInProgress = false;
 
-    class PaiementManager {
-        constructor() {
-            this.apiUrl = API_BASE_URL;
-            this.panierData = null;
-            this.totaux = <?= json_encode($totaux) ?>;
-            this.adresse = <?= json_encode($adresse) ?>;
-            this.panierDetails = <?= json_encode($panier_details) ?>;
-            this.paiementMethod = "paypal";
-            this.init();
-        }
-
-        init() {
-            console.log("Initialisation page paiement...");
-            this.afficherPaiement();
-            this.initEvents();
-        }
-
-        afficherPaiement() {
-            let html = `<div class="paiement-content">`;
-            
-            html += `<div class="paiement-form">`;
-            html += `<h2 class="section-title"><i class="fas fa-credit-card"></i> Mode de paiement</h2>`;
-
-            if (this.adresse && Object.keys(this.adresse).length > 0) {
-                html += `<div class="adresse-card">`;
-                html += `<h3 style="margin-bottom: 10px;"><i class="fas fa-map-marker-alt"></i> Adresse de livraison</h3>`;
-                html += `<p><strong>${this.adresse.prenom || ''} ${this.adresse.nom || ''}</strong></p>`;
-                html += `<p>${this.adresse.adresse || ''}</p>`;
-                if (this.adresse.complement) html += `<p>${this.adresse.complement}</p>`;
-                html += `<p>${this.adresse.code_postal || ''} ${this.adresse.ville || ''}</p>`;
-                html += `<p>${this.adresse.pays || 'France'}</p>`;
-                html += `<p style="margin-top: 10px;"><i class="fas fa-envelope"></i> ${this.adresse.email || ''}</p>`;
-                if (this.adresse.telephone) html += `<p><i class="fas fa-phone"></i> ${this.adresse.telephone}</p>`;
-                
-                html += `<a href="livraison_form.php" style="color: #3498db; margin-top: 10px; display: inline-block;"><i class="fas fa-edit"></i> Modifier</a>`;
-                html += `</div>`;
-            } else {
-                html += `<div class="adresse-card" style="border-left-color: #e74c3c;">`;
-                html += `<p><i class="fas fa-exclamation-triangle"></i> <strong>Aucune adresse de livraison</strong></p>`;
-                html += `<a href="livraison_form.php" class="btn-continue" style="margin-top: 10px;">Ajouter une adresse</a>`;
-                html += `</div>`;
-            }
-
-            html += `<div class="paiement-options">`;
-            html += `<div class="paiement-option selected" id="optionPaypal">`;
-            html += `<div class="option-header">`;
-            html += `<input type="radio" name="paiement" id="paypal" value="paypal" checked hidden>`;
-            html += `<img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" alt="PayPal" style="height: 24px;">`;
-            html += `<span>PayPal</span>`;
-            html += `</div>`;
-            html += `</div>`;
-
-            html += `<div class="paiement-option" id="optionCarte">`;
-            html += `<div class="option-header">`;
-            html += `<input type="radio" name="paiement" id="carte" value="carte" hidden>`;
-            html += `<i class="fas fa-credit-card" style="font-size: 24px; color: #718096;"></i>`;
-            html += `<span>Carte bancaire (Visa, Mastercard, Amex)</span>`;
-            html += `</div>`;
-            html += `</div>`;
-            html += `</div>`;
-
-            html += `<button id="btnPayer" class="btn-payer">`;
-            html += `<i class="fas fa-lock"></i> Payer ${(this.totaux?.total || 0).toFixed(2).replace('.', ',')} €`;
-            html += `</button>`;
-
-            html += `<p style="text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 0.9rem;">`;
-            html += `<i class="fas fa-shield-alt"></i> Paiement 100% sécurisé - Cryptage SSL`;
-            html += `</p>`;
-            html += `</div>`;
-
-            html += `<div class="cart-summary">`;
-            html += `<h2 style="color: #2c3e50; margin-bottom: 25px; font-size: 1.8rem;">Votre panier</h2>`;
-
-            this.panierDetails.forEach(item => {
-                const prixTotal = (item.prix_total || 0).toFixed(2).replace('.', ',');
-                html += `<div class="cart-item-mini">`;
-                html += `<div class="mini-image">`;
-                html += `<img src="${item.image || 'img/default-product.jpg'}" alt="${item.nom}" onerror="this.src='img/default-product.jpg'">`;
-                html += `</div>`;
-                html += `<div class="mini-details">`;
-                html += `<h4>${item.nom}</h4>`;
-                html += `<div style="font-size: 0.9rem; color: #7f8c8d;">Réf: ${item.reference || ''}</div>`;
-                html += `<div style="display: flex; justify-content: space-between; margin-top: 5px;">`;
-                html += `<span>${item.quantite} x ${(item.prix_unitaire || 0).toFixed(2).replace('.', ',')} €</span>`;
-                html += `<span class="mini-price">${prixTotal} €</span>`;
-                html += `</div>`;
-                html += `</div>`;
-                html += `</div>`;
+        async function createServerOrder(method, reference = null) {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    process_payment: true, 
+                    methode_paiement: method,
+                    reference_paiement: reference,
+                    montant_total: totalMontant
+                })
             });
-
-            html += `<div style="margin-top: 25px;">`;
-            html += `<div class="summary-row">`;
-            html += `<span>Sous-total (${this.totaux?.total_items || 0} article${this.totaux?.total_items > 1 ? 's' : ''})</span>`;
-            html += `<span>${(this.totaux?.sous_total || 0).toFixed(2).replace('.', ',')} €</span>`;
-            html += `</div>`;
-
-            html += `<div class="summary-row">`;
-            html += `<span>Frais de livraison</span>`;
-            html += `<span>${(this.totaux?.frais_livraison || 0).toFixed(2).replace('.', ',')} €</span>`;
-            html += `</div>`;
-
-            if (this.totaux?.frais_emballage > 0) {
-                html += `<div class="summary-row">`;
-                html += `<span>Emballage cadeau</span>`;
-                html += `<span>${(this.totaux?.frais_emballage || 0).toFixed(2).replace('.', ',')} €</span>`;
-                html += `</div>`;
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Erreur création commande');
             }
-
-            html += `<div class="summary-row summary-total">`;
-            html += `<span>Total TTC</span>`;
-            html += `<span>${(this.totaux?.total || 0).toFixed(2).replace('.', ',')} €</span>`;
-            html += `</div>`;
-            html += `</div>`;
-
-            if (this.totaux?.sous_total < this.totaux?.seuil_livraison_gratuite) {
-                const reste = (this.totaux.seuil_livraison_gratuite - this.totaux.sous_total).toFixed(2).replace('.', ',');
-                html += `<div class="info-box">`;
-                html += `<i class="fas fa-truck"></i> Plus que <strong>${reste} €</strong> pour la livraison gratuite !`;
-                html += `</div>`;
-            } else if (this.totaux?.frais_livraison == 0) {
-                html += `<div class="info-box" style="border-left-color: #27ae60; background: #d4edda;">`;
-                html += `<i class="fas fa-check-circle" style="color: #27ae60;"></i> <strong>Livraison gratuite</strong> !`;
-                html += `</div>`;
-            }
-
-            html += `<a href="panier.html" class="btn-continue"><i class="fas fa-arrow-left"></i> Modifier le panier</a>`;
-            html += `</div>`;
-            html += `</div>`;
-
-            document.getElementById("paiementContent").innerHTML = html;
-            this.initPaiementEvents();
+            return data;
         }
 
-        initPaiementEvents() {
-            document.querySelectorAll('.paiement-option').forEach(opt => {
-                opt.addEventListener('click', (e) => {
-                    document.querySelectorAll('.paiement-option').forEach(o => o.classList.remove('selected'));
-                    opt.classList.add('selected');
-                    const radio = opt.querySelector('input[type="radio"]');
-                    if (radio) {
-                        radio.checked = true;
-                        this.paiementMethod = radio.value;
-                    }
-                });
-            });
-
-            const btnPayer = document.getElementById('btnPayer');
-            if (btnPayer) {
-                btnPayer.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.procederPaiement();
-                });
-            }
+        function redirectToSuccess(commande_id, reference) {
+            window.location.href = 'paiement-reussi-email.php?commande=' + commande_id + '&token=' + encodeURIComponent(reference);
         }
 
-        procederPaiement() {
-            if (!this.adresse || Object.keys(this.adresse).length === 0) {
-                this.showNotification("Veuillez renseigner une adresse de livraison", "error");
+        function initPayPalButtons() {
+            if (typeof paypal === 'undefined') {
+                console.error('PayPal SDK non chargé, tentative dans 1s...');
+                setTimeout(initPayPalButtons, 1000);
                 return;
             }
             
-            const btn = document.getElementById('btnPayer');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirection...';
-            btn.disabled = true;
-
-            if (this.paiementMethod === 'paypal') {
-                // Ajouter un timestamp pour éviter le cache
-                const url = `${this.apiUrl}?action=redirect_paypal&commande=1&montant=${this.totaux.total}&_=${Date.now()}`;
-                
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.redirect_url) {
-                            window.location.href = data.redirect_url;
-                        } else {
-                            window.location.href = `paiement_paypal.php?commande=1&montant=${this.totaux.total}&from=paiement&t=${Date.now()}`;
-                        }
+            console.log('Initialisation PayPal, montant:', totalMontant);
+            
+            paypal.Buttons({
+                style: {
+                    layout: 'vertical',
+                    color: 'blue',
+                    shape: 'rect',
+                    label: 'paypal',
+                    height: 55
+                },
+                createOrder: function(data, actions) {
+                    console.log('Création commande PayPal...');
+                    return fetch('paypal.php?action=create_order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            montant: totalMontant,
+                            commande_id: 0
+                        })
                     })
-                    .catch(error => {
-                        console.error("Erreur redirection:", error);
-                        window.location.href = `paiement_paypal.php?commande=1&montant=${this.totaux.total}&from=paiement&t=${Date.now()}`;
-                    });
-            } else {
-                // Paiement par carte
-                fetch(`${this.apiUrl}?action=redirect_cb&commande=1&montant=${this.totaux.total}&_=${Date.now()}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.redirect_url) {
-                            window.location.href = data.redirect_url;
-                        } else {
-                            window.location.href = `paiement_cb.php?commande=1&montant=${this.totaux.total}&from=paiement&t=${Date.now()}`;
-                        }
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
                     })
-                    .catch(error => {
-                        console.error("Erreur redirection:", error);
-                        window.location.href = `paiement_cb.php?commande=1&montant=${this.totaux.total}&from=paiement&t=${Date.now()}`;
+                    .then(function(orderData) {
+                        if (!orderData.success) throw new Error(orderData.message);
+                        console.log('Commande PayPal créée:', orderData.order_id);
+                        return orderData.order_id;
                     });
-            }
-        }
-
-        initEvents() {
-            setInterval(() => this.updateCartCounter(), 30000);
-        }
-
-        async updateCartCounter() {
-            try {
-                const response = await fetch('panier.php?action=compter&_=' + Date.now());
-                const data = await response.json();
-                if (data.success) {
-                    const counter = document.getElementById('cartCount');
-                    if (counter) {
-                        counter.textContent = data.total > 99 ? '99+' : data.total;
-                    }
+                },
+                onApprove: function(data, actions) {
+                    if (paymentInProgress) return;
+                    paymentInProgress = true;
+                    
+                    console.log('Paiement approuvé:', data);
+                    
+                    return fetch('paypal.php?action=capture_order&order_id=' + data.orderID)
+                        .then(function(response) {
+                            if (!response.ok) throw new Error('HTTP ' + response.status);
+                            return response.json();
+                        })
+                        .then(function(captureData) {
+                            if (!captureData.success) throw new Error(captureData.message);
+                            return createServerOrder('paypal', captureData.capture_id || data.orderID);
+                        })
+                        .then(function(result) {
+                            redirectToSuccess(result.commande_id, result.reference || data.orderID);
+                        })
+                        .catch(function(error) {
+                            console.error('Erreur:', error);
+                            alert('Erreur: ' + error.message);
+                            paymentInProgress = false;
+                        });
+                },
+                onError: function(err) {
+                    console.error('PayPal Error:', err);
+                    alert('Erreur PayPal. Veuillez réessayer.');
+                    paymentInProgress = false;
+                },
+                onCancel: function() {
+                    console.log('Paiement annulé');
+                    paymentInProgress = false;
                 }
-            } catch (e) { }
+            }).render('#paypal-button-container').catch(function(err) {
+                console.error('Erreur rendu:', err);
+                document.getElementById('paypal-button-container').innerHTML = 
+                    '<div style="color: red; padding: 20px; text-align: center;">' +
+                    '⚠️ Erreur de chargement PayPal. Veuillez rafraîchir la page.' +
+                    '</div>';
+            });
         }
 
-        showNotification(message, type = 'success') {
-            document.querySelectorAll('.notification').forEach(n => n.remove());
-            const notif = document.createElement('div');
-            notif.className = `notification ${type}`;
-            notif.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i> <span>${message}</span>`;
-            document.body.appendChild(notif);
-            setTimeout(() => notif.remove(), 3000);
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        paiementManager = new PaiementManager();
-    });
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initPayPalButtons, 500);
+        });
     </script>
 </body>
 </html>

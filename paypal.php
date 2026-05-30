@@ -1,250 +1,282 @@
 <?php
+// ============================================
+// paypal.php - API PayPal pour paiements
+// Version complète et fonctionnelle
+// ============================================
+
 session_start();
-require_once 'config.php';
+
+// Inclure la configuration
+require_once __DIR__ . '/session_verification.php';
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-$action = $_GET['action'] ?? '';
+// Configuration PayPal - vos identifiants
+define('PAYPAL_CLIENT_ID', 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5');
+define('PAYPAL_CLIENT_SECRET', 'EJxech0i1faRYlo0-ln2sU09ecx5rP3XEOGUTeTduI2t-I0j4xoSPqRRFQTxQsJoSBbSL8aD1b1GPPG1');
+define('PAYPAL_ENVIRONMENT', 'sandbox'); // sandbox ou live
+define('PAYPAL_CURRENCY', 'EUR');
 
-// Authentification PayPal
+// URLs de retour
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
+$base_url = $protocol . $_SERVER['HTTP_HOST'];
+define('PAYPAL_RETURN_URL', $base_url . '/paiement-reussi-email.php');
+define('PAYPAL_CANCEL_URL', $base_url . '/paiement-annule.php');
+
+/**
+ * Obtient le token d'accès PayPal
+ */
 function getPayPalAccessToken() {
-    $ch = curl_init();
+    $url = PAYPAL_ENVIRONMENT === 'live' 
+        ? 'https://api.paypal.com/v1/oauth2/token'
+        : 'https://api.sandbox.paypal.com/v1/oauth2/token';
     
+    $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => getPayPalBaseUrl() . '/v1/oauth2/token',
+        CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERPWD => PAYPAL_CLIENT_ID . ':' . PAYPAL_SECRET,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_POST => true,
+        CURLOPT_USERPWD => PAYPAL_CLIENT_ID . ':' . PAYPAL_CLIENT_SECRET,
         CURLOPT_POSTFIELDS => 'grant_type=client_credentials',
-        CURLOPT_HTTPHEADER => ['Accept: application/json', 'Accept-Language: en_US']
+        CURLOPT_HTTPHEADER => [
+            'Accept: application/json',
+            'Accept-Language: fr_FR'
+        ],
+        CURLOPT_TIMEOUT => 30
     ]);
     
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
     
-    $data = json_decode($response, true);
-    return $data['access_token'] ?? null;
-}
-
-// Créer un paiement PayPal
-if ($action === 'create_payment') {
-    $token = getPayPalAccessToken();
-    if (!$token) {
-        echo json_encode(['success' => false, 'message' => 'Erreur authentification PayPal']);
-        exit;
+    if ($httpCode === 200 && $response) {
+        $data = json_decode($response, true);
+        if (isset($data['access_token'])) {
+            error_log("PayPal: Token obtenu avec succès");
+            return $data['access_token'];
+        }
     }
     
-    $data = json_decode(file_get_contents('php://input'), true);
-    $montant = $data['montant'] ?? 0;
+    error_log("PayPal: Erreur token - HTTP $httpCode - " . substr($response, 0, 200));
+    if ($curlError) error_log("PayPal: cURL Error - $curlError");
     
-    $paymentData = [
+    return null;
+}
+
+/**
+ * Crée une commande PayPal
+ */
+function createPayPalOrder($montant, $commande_id) {
+    $access_token = getPayPalAccessToken();
+    if (!$access_token) {
+        return ['success' => false, 'message' => 'Erreur authentification PayPal'];
+    }
+    
+    $url = PAYPAL_ENVIRONMENT === 'live'
+        ? 'https://api.paypal.com/v2/checkout/orders'
+        : 'https://api.sandbox.paypal.com/v2/checkout/orders';
+    
+    $data = [
         'intent' => 'CAPTURE',
-        'purchase_units' => [[
-            'amount' => [
-                'currency_code' => CURRENCY,
-                'value' => number_format($montant, 2, '.', '')
-            ],
-            'description' => 'Commande HEURE DU CADEAU'
-        ]],
+        'purchase_units' => [
+            [
+                'reference_id' => 'commande_' . ($commande_id ?: 'temp_' . time()),
+                'custom_id' => (string)$commande_id,
+                'description' => 'Commande Youki and Co',
+                'amount' => [
+                    'currency_code' => PAYPAL_CURRENCY,
+                    'value' => number_format($montant, 2, '.', '')
+                ]
+            ]
+        ],
         'application_context' => [
-            'return_url' => RETURN_URL,
-            'cancel_url' => CANCEL_URL,
-            'brand_name' => 'HEURE DU CADEAU',
+            'brand_name' => 'Youki and Co',
             'locale' => 'fr-FR',
-            'landing_page' => 'BILLING',
-            'shipping_preference' => 'SET_PROVIDED_ADDRESS',
-            'user_action' => 'PAY_NOW'
+            'landing_page' => 'LOGIN',
+            'user_action' => 'PAY_NOW',
+            'return_url' => PAYPAL_RETURN_URL,
+            'cancel_url' => PAYPAL_CANCEL_URL
         ]
     ];
     
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => getPayPalBaseUrl() . '/v2/checkout/orders',
+        CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
         CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($paymentData),
+        CURLOPT_POSTFIELDS => json_encode($data),
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . $token,
-            'PayPal-Request-Id: ' . uniqid()
-        ]
-    ]);
-    
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    echo $response;
-    exit;
-}
-
-// Capturer un paiement
-if ($action === 'capture_payment') {
-    $token = getPayPalAccessToken();
-    $orderId = $_GET['order_id'] ?? '';
-    
-    if (!$token || !$orderId) {
-        echo json_encode(['success' => false, 'message' => 'Paramètres manquants']);
-        exit;
-    }
-    
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => getPayPalBaseUrl() . '/v2/checkout/orders/' . $orderId . '/capture',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $token,
-            'PayPal-Request-Id: ' . uniqid()
-        ]
+            'Authorization: Bearer ' . $access_token,
+            'PayPal-Request-Id: ' . uniqid('order_'),
+            'Prefer: return=representation'
+        ],
+        CURLOPT_TIMEOUT => 30
     ]);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     
-    $responseData = json_decode($response, true);
-    
-    if ($httpCode === 201 && $responseData['status'] === 'COMPLETED') {
-        // Paiement réussi - Créer la commande en BDD
-        $pdo = getPDOConnection();
-        
-        try {
-            // Récupérer le panier de la session
-            $panier = $_SESSION['panier'] ?? [];
-            
-            // Créer la commande
-            $stmt = $pdo->prepare("
-                INSERT INTO commandes (
-                    id_client, statut, sous_total, frais_livraison, 
-                    total_ttc, mode_paiement, statut_paiement, 
-                    reference_paiement, date_commande
-                ) VALUES (?, 'en_attente', ?, 0, ?, 'paypal', 'paye', ?, NOW())
-            ");
-            
-            $stmt->execute([
-                $_SESSION['id_client'] ?? null,
-                $panier['total'] ?? 0,
-                $panier['total'] ?? 0,
-                $orderId
-            ]);
-            
-            $commandeId = $pdo->lastInsertId();
-            
-            // Ajouter les articles de la commande
-            foreach ($panier['items'] ?? [] as $item) {
-                $stmtItems = $pdo->prepare("
-                    INSERT INTO commande_items (
-                        id_commande, id_produit, reference_produit, 
-                        nom_produit, quantite, prix_unitaire_ttc
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                ");
-                
-                // Générer une référence
-                $ref = 'PROD' . str_pad($item['id_produit'], 6, '0', STR_PAD_LEFT);
-                
-                $stmtItems->execute([
-                    $commandeId,
-                    $item['id_produit'],
-                    $ref,
-                    $item['nom'],
-                    $item['quantite'],
-                    $item['prix_unitaire']
-                ]);
-                
-                // Mettre à jour le stock
-                $stmtStock = $pdo->prepare("
-                    UPDATE produits 
-                    SET quantite_stock = quantite_stock - ? 
-                    WHERE id_produit = ?
-                ");
-                $stmtStock->execute([$item['quantite'], $item['id_produit']]);
-            }
-            
-            // Vider le panier après commande
-            $_SESSION['panier'] = [
-                'items' => [],
-                'count' => 0,
-                'total' => 0.00
-            ];
-            
-            echo json_encode([
+    if ($httpCode === 201 || $httpCode === 200) {
+        $result = json_decode($response, true);
+        if (isset($result['id'])) {
+            error_log("PayPal: Commande créée - ID: " . $result['id']);
+            return [
                 'success' => true,
-                'message' => 'Paiement capturé et commande créée',
-                'commande_id' => $commandeId,
-                'order_id' => $orderId,
-                'details' => $responseData
-            ]);
-            
-        } catch (PDOException $e) {
-            error_log("Erreur création commande: " . $e->getMessage());
-            echo json_encode([
-                'success' => false,
-                'message' => 'Erreur création commande: ' . $e->getMessage()
-            ]);
+                'order_id' => $result['id'],
+                'status' => $result['status']
+            ];
         }
-    } else {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Échec capture paiement',
-            'details' => $responseData
-        ]);
     }
-    exit;
+    
+    error_log("PayPal: Erreur création - HTTP $httpCode - " . substr($response, 0, 300));
+    return ['success' => false, 'message' => 'Erreur création commande PayPal', 'http_code' => $httpCode];
 }
 
-// Créer un paiement par email
-if ($action === 'create_email_payment') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $email = $input['email'] ?? '';
-    $amount = $input['amount'] ?? 0;
+/**
+ * Capture un paiement PayPal
+ */
+function capturePayPalPayment($order_id) {
+    $access_token = getPayPalAccessToken();
+    if (!$access_token) {
+        return ['success' => false, 'message' => 'Erreur authentification PayPal'];
+    }
     
-    if (!$email || $amount <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Données invalides']);
+    $url = PAYPAL_ENVIRONMENT === 'live'
+        ? 'https://api.paypal.com/v2/checkout/orders/' . $order_id . '/capture'
+        : 'https://api.sandbox.paypal.com/v2/checkout/orders/' . $order_id . '/capture';
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $access_token,
+            'Prefer: return=representation'
+        ],
+        CURLOPT_TIMEOUT => 30
+    ]);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 201 || $httpCode === 200) {
+        $result = json_decode($response, true);
+        if (isset($result['status']) && $result['status'] === 'COMPLETED') {
+            $capture_id = $result['purchase_units'][0]['payments']['captures'][0]['id'] ?? null;
+            $amount = $result['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0;
+            $custom_id = $result['purchase_units'][0]['custom_id'] ?? null;
+            
+            error_log("PayPal: Paiement capturé - ID: $capture_id, Montant: $amount");
+            
+            return [
+                'success' => true,
+                'capture_id' => $capture_id,
+                'amount' => $amount,
+                'commande_id' => $custom_id,
+                'status' => $result['status']
+            ];
+        }
+    }
+    
+    error_log("PayPal: Erreur capture - HTTP $httpCode - " . substr($response, 0, 300));
+    return ['success' => false, 'message' => 'Erreur capture paiement PayPal'];
+}
+
+// ============================================
+// GESTION DES ACTIONS
+// ============================================
+
+$action = $_GET['action'] ?? '';
+
+// Action: créer une commande
+if ($action === 'create_order') {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $montant = floatval($input['montant'] ?? 0);
+    $commande_id = intval($input['commande_id'] ?? 0);
+    
+    if ($montant <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Montant invalide']);
         exit;
     }
     
-    // Ici, vous implémenteriez la logique pour envoyer une demande de paiement par email
-    // Cette fonctionnalité nécessite un compte PayPal Business
-    
-    echo json_encode([
-        'success' => true,
-        'message' => 'Fonctionnalité à implémenter avec PayPal Business',
-        'email' => $email,
-        'amount' => $amount
-    ]);
+    $result = createPayPalOrder($montant, $commande_id);
+    echo json_encode($result);
     exit;
 }
 
-// Vérifier le statut d'une commande
-if ($action === 'check_order') {
-    $orderId = $_GET['order_id'] ?? '';
+// Action: capturer un paiement
+if ($action === 'capture_order') {
+    $order_id = $_GET['order_id'] ?? '';
     
-    if (!$orderId) {
+    if (empty($order_id)) {
         echo json_encode(['success' => false, 'message' => 'Order ID manquant']);
         exit;
     }
     
-    $token = getPayPalAccessToken();
-    $ch = curl_init();
-    
-    curl_setopt_array($ch, [
-        CURLOPT_URL => getPayPalBaseUrl() . '/v2/checkout/orders/' . $orderId,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $token
-        ]
-    ]);
-    
-    $response = curl_exec($ch);
-    curl_close($ch);
-    
-    echo $response;
+    $result = capturePayPalPayment($order_id);
+    echo json_encode($result);
     exit;
 }
 
-echo json_encode(['success' => false, 'message' => 'Action non reconnue']);
+// Action: vérifier une commande
+if ($action === 'check_order') {
+    $order_id = $_GET['order_id'] ?? '';
+    
+    if (empty($order_id)) {
+        echo json_encode(['success' => false, 'message' => 'Order ID manquant']);
+        exit;
+    }
+    
+    $access_token = getPayPalAccessToken();
+    if (!$access_token) {
+        echo json_encode(['success' => false, 'message' => 'Erreur authentification']);
+        exit;
+    }
+    
+    $url = PAYPAL_ENVIRONMENT === 'live'
+        ? 'https://api.paypal.com/v2/checkout/orders/' . $order_id
+        : 'https://api.sandbox.paypal.com/v2/checkout/orders/' . $order_id;
+    
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $access_token
+        ],
+        CURLOPT_TIMEOUT => 30
+    ]);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 200) {
+        echo $response;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Commande non trouvée']);
+    }
+    exit;
+}
+
+// Action par défaut
+echo json_encode(['success' => false, 'message' => 'Action non reconnue: ' . $action]);
 ?>
