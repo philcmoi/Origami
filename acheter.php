@@ -253,11 +253,31 @@ if ($action == 'saisir_adresse' && !isset($_GET['token'])) {
 // ============================================
 // INCLUSION DE genererFacturePDF.php SI NÉCESSAIRE
 // ============================================
-$actions_necessitant_facture = ['generer_facture_pdf', 'telecharger_facture', 'envoyer_facture_email'];
+$actions_necessitant_facture = ['generer_facture_pdf', 'envoyer_facture_email'];
 if (in_array($action, $actions_necessitant_facture) && !function_exists('genererFacturePDF')) {
     if (file_exists('genererFacturePDF.php')) {
         require_once 'genererFacturePDF.php';
     }
+}
+
+// ============================================
+// ACTION: telecharger_facture (REDIRECTION VERS telecharger-facture.php)
+// ============================================
+if ($action == 'telecharger_facture') {
+    $commande_id = isset($_GET['id_commande']) ? intval($_GET['id_commande']) : 0;
+    
+    if ($commande_id <= 0) {
+        if ($is_html_response) {
+            echo "<h1>Erreur</h1><p>ID commande invalide</p><a href='index.html'>Retour</a>";
+        } else {
+            echo json_encode(['status' => 400, 'error' => 'ID commande invalide']);
+        }
+        exit;
+    }
+    
+    // Rediriger vers le fichier dédié telecharger-facture.php
+    header('Location: telecharger-facture.php?commande_id=' . $commande_id);
+    exit;
 }
 
 // ============================================

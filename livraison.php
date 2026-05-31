@@ -188,11 +188,15 @@ try {
         $_SESSION['client_email'] = $email;
     }
     
-    // Sauvegarde de l'adresse de livraison
+    // Sauvegarde de l'adresse de livraison - CORRIGÉ : gestion NULL pour telephone
     $stmt = $pdo->prepare("
         INSERT INTO Adresse (idClient, nom, prenom, adresse, codePostal, ville, pays, telephone, instructions, societe, type, dateCreation) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'livraison', NOW())
     ");
+    
+    $telephone = !empty($input['telephone']) ? trim($input['telephone']) : null;
+    $instructions = !empty($input['instructions']) ? trim($input['instructions']) : null;
+    $societe = !empty($input['societe']) ? trim($input['societe']) : null;
     
     $stmt->execute([
         $client_id,
@@ -202,9 +206,9 @@ try {
         trim($input['code_postal']),
         trim($input['ville']),
         trim($input['pays']),
-        !empty($input['telephone']) ? trim($input['telephone']) : null,
-        !empty($input['instructions']) ? trim($input['instructions']) : null,
-        !empty($input['societe']) ? trim($input['societe']) : null
+        $telephone,
+        $instructions,
+        $societe
     ]);
     
     $adresse_livraison_id = $pdo->lastInsertId();
@@ -260,8 +264,8 @@ try {
             'nom' => trim($input['nom']),
             'prenom' => trim($input['prenom']),
             'email' => $email,
-            'telephone' => !empty($input['telephone']) ? trim($input['telephone']) : null,
-            'societe' => !empty($input['societe']) ? trim($input['societe']) : null,
+            'telephone' => $telephone,
+            'societe' => $societe,
             'adresse' => trim($input['adresse']),
             'complement' => !empty($input['complement']) ? trim($input['complement']) : null,
             'code_postal' => trim($input['code_postal']),

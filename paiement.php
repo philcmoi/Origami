@@ -1,6 +1,7 @@
 <?php
 // ============================================
 // PAGE DE PAIEMENT - VERSION CORRIGÉE
+// SOLUTION : Utilisation du bouton PayPal Direct au lieu des Hosted Fields
 // ============================================
 
 error_reporting(E_ALL);
@@ -8,6 +9,10 @@ ini_set('display_errors', 1);
 
 require_once __DIR__ . '/session_verification.php';
 require_once __DIR__ . '/smtp_config.php';
+
+// Configuration PayPal
+define('PAYPAL_CLIENT_ID', 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5');
+define('PAYPAL_CURRENCY', 'EUR');
 
 // Vérification d'accès
 checkPaiementAccess();
@@ -47,19 +52,20 @@ if (isset($_SESSION[SESSION_KEY_PANIER]) && !empty($_SESSION[SESSION_KEY_PANIER]
         $panier_details[] = [
             'id_produit' => $item['id_produit'],
             'quantite' => $quantite,
-            'nom' => $produit['nom'] ?? 'Produit',
+            'nom' => $produit['nom'] ?? $item['nom'] ?? 'Produit',
+            'description' => $produit['description'] ?? '',
             'prix_unitaire' => $prix_unitaire,
             'prix_total' => $prix_total,
-            'image' => 'img/default-product.jpg'
+            'image' => $produit['photo'] ?? 'img/default-product.jpg'
         ];
     }
 }
 
-// Si panier vide via BDD, essayer de récupérer depuis la BDD
+// Si panier vide via BDD
 if (empty($panier_details) && $pdo && isset($checkout['panier_id'])) {
     try {
         $stmt = $pdo->prepare("
-            SELECT lp.idOrigami, lp.quantite, lp.prixUnitaire, o.nom
+            SELECT lp.idOrigami, lp.quantite, lp.prixUnitaire, o.nom, o.description, o.photo
             FROM LignePanier lp
             JOIN Origami o ON lp.idOrigami = o.idOrigami
             JOIN Panier p ON lp.idPanier = p.idPanier
@@ -76,9 +82,10 @@ if (empty($panier_details) && $pdo && isset($checkout['panier_id'])) {
                 'id_produit' => $item['idOrigami'],
                 'quantite' => $item['quantite'],
                 'nom' => $item['nom'],
+                'description' => $item['description'] ?? '',
                 'prix_unitaire' => $item['prixUnitaire'],
                 'prix_total' => $prix_total,
-                'image' => 'img/default-product.jpg'
+                'image' => $item['photo'] ?? 'img/default-product.jpg'
             ];
         }
     } catch (Exception $e) {
@@ -104,7 +111,7 @@ if (empty($adresse)) {
     exit;
 }
 
-// Traitement du paiement si formulaire soumis
+// Traitement du paiement
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
     
@@ -115,7 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
             
-            // Créer la commande
             $stmt = $pdo->prepare("
                 INSERT INTO Commande (
                     idClient, idAdresseLivraison, idAdresseFacturation,
@@ -124,14 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (
                     ?, ?, ?,
                     NOW(), ?, DATE_ADD(NOW(), INTERVAL 5 DAY),
-                    ?, ?, 'payee', 'paye'
+                    ?, ?, 'payee', 'payee'
                 )
             ");
             
             $idClient = $checkout['client_id'] ?? $_SESSION[SESSION_KEY_CLIENT_ID] ?? null;
             $idAdresseLivraison = $adresse['id'] ?? null;
             $idAdresseFacturation = $checkout['adresse_facturation']['id'] ?? $idAdresseLivraison;
-            $modeReglement = ($methode === 'paypal') ? 'PayPal' : 'Carte Bancaire';
+            $modeReglement = ($methode === 'paypal') ? 'PayPal' : 'Carte Bancaire (PayPal)';
             $fraisDePort = $totaux['frais_livraison'] + $totaux['frais_emballage'];
             
             $stmt->execute([
@@ -145,7 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $commande_id = $pdo->lastInsertId();
             
-            // Ajouter les lignes de commande
             $stmt_item = $pdo->prepare("
                 INSERT INTO LigneCommande (idCommande, idOrigami, quantite, prixUnitaire)
                 VALUES (?, ?, ?, ?)
@@ -160,7 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
             
-            // Enregistrer le paiement
             $stmt_paiement = $pdo->prepare("
                 INSERT INTO Paiement (idCommande, montant, currency, statut, methode_paiement, reference, date_creation)
                 VALUES (?, ?, 'EUR', 'payee', ?, ?, NOW())
@@ -168,20 +172,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reference_finale = $reference ?? 'PAY_' . time() . '_' . $commande_id;
             $stmt_paiement->execute([$commande_id, $total_commande, $modeReglement, $reference_finale]);
             
-            // Vider le panier
             if (isset($checkout['panier_id'])) {
                 $stmt = $pdo->prepare("DELETE FROM LignePanier WHERE idPanier = ?");
                 $stmt->execute([$checkout['panier_id']]);
             }
             
-            // Nettoyer la session
             $_SESSION[SESSION_KEY_PANIER] = [];
             unset($_SESSION[SESSION_KEY_PANIER_ID]);
             unset($_SESSION[SESSION_KEY_CHECKOUT]);
             
             $pdo->commit();
             
-            // Générer la facture PDF et envoyer par email
             if (file_exists('genererFacturePDF.php')) {
                 require_once 'genererFacturePDF.php';
                 if (function_exists('genererFacturePDF')) {
@@ -219,8 +220,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paiement - Youki and Co</title>
+    <title>Paiement Sécurisé - Youki and Co</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chargement du SDK PayPal avec client-id -->
+    <script src="https://www.paypal.com/sdk/js?client-id=<?php echo PAYPAL_CLIENT_ID; ?>&currency=EUR&components=buttons&enable-funding=paypal,card&locale=fr_FR"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -235,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .payment-layout {
             display: grid;
-            grid-template-columns: 1fr 380px;
+            grid-template-columns: 1fr 420px;
             gap: 30px;
         }
         @media (max-width: 992px) {
@@ -252,18 +255,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        h1, h2, h3 {
+        h2, h3 {
             color: #2c3e50;
             margin-bottom: 20px;
         }
-        h1 {
-            border-bottom: 3px solid #e74c3c;
-            padding-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        h1 i, h2 i, h3 i { color: #e74c3c; }
+        h2 { border-bottom: 3px solid #e74c3c; padding-bottom: 15px; display: flex; align-items: center; gap: 15px; font-size: 1.5rem; }
+        h2 i, h3 i { color: #e74c3c; }
         .step-indicator {
             display: flex;
             align-items: center;
@@ -292,14 +289,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 10px;
             transition: all 0.3s;
         }
-        .step.active .step-number {
-            background: #e74c3c;
-            color: white;
-        }
-        .step.completed .step-number {
-            background: #27ae60;
-            color: white;
-        }
+        .step.active .step-number { background: #e74c3c; color: white; }
+        .step.completed .step-number { background: #27ae60; color: white; }
         .step-text { font-size: 0.85rem; color: #7f8c8d; }
         .step.active .step-text { color: #e74c3c; font-weight: 600; }
         .step.completed .step-text { color: #27ae60; }
@@ -320,76 +311,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-left: 5px solid #e74c3c;
         }
         .adresse-line { margin-bottom: 5px; color: #4a5568; }
-        .payment-options {
+        .payment-methods {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
             margin-bottom: 30px;
         }
-        .payment-option {
-            border: 2px solid #e0e0e0;
-            border-radius: 16px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .payment-option:hover { border-color: #e74c3c; }
-        .payment-option.selected {
-            border-color: #27ae60;
-            background: rgba(39,174,96,0.05);
-        }
-        .option-header {
+        .method-tab {
             display: flex;
-            align-items: center;
             gap: 15px;
-            font-weight: 600;
-            font-size: 1.1rem;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
         }
-        .btn-payer {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #27ae60, #219653);
-            color: white;
+        .method-btn {
+            padding: 12px 25px;
+            background: none;
             border: none;
-            border-radius: 50px;
-            font-size: 1.2rem;
-            font-weight: 700;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            border-radius: 30px;
             transition: all 0.3s;
-            margin-top: 20px;
         }
-        .btn-payer:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 30px rgba(39,174,96,0.3);
+        .method-btn.active {
+            background: #e74c3c;
+            color: white;
         }
-        .btn-payer:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
+        .method-btn:hover:not(.active) {
+            background: #f0f0f0;
         }
-        .cart-item-mini {
+        .payment-panel {
+            display: none;
+            padding: 20px 0;
+        }
+        .paypal-buttons-container { margin-top: 20px; min-height: 200px; }
+        .cart-item {
             display: flex;
             gap: 15px;
             padding: 15px 0;
             border-bottom: 1px solid #f0f0f0;
         }
-        .cart-item-mini:last-child { border-bottom: none; }
-        .mini-image {
-            width: 60px;
-            height: 60px;
+        .cart-item:last-child { border-bottom: none; }
+        .cart-image {
+            width: 70px;
+            height: 70px;
             border-radius: 12px;
             background: #f0f0f0;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
-        .mini-details { flex: 1; }
-        .mini-details h4 { margin-bottom: 5px; color: #2c3e50; }
-        .mini-price { font-weight: 700; color: #e74c3c; }
+        .cart-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .cart-details { flex: 1; }
+        .cart-details h4 { color: #2c3e50; margin-bottom: 5px; font-size: 1rem; }
+        .cart-details .product-desc { color: #7f8c8d; font-size: 0.8rem; margin-bottom: 8px; }
+        .cart-price { font-weight: 700; color: #e74c3c; }
+        .cart-quantity { color: #7f8c8d; font-size: 0.85rem; margin-top: 5px; }
         .summary-row {
             display: flex;
             justify-content: space-between;
@@ -419,42 +402,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 12px;
             border-left: 5px solid transparent;
         }
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border-left-color: #27ae60;
+        .message.success { background: #d4edda; color: #155724; border-left-color: #27ae60; }
+        .message.error { background: #f8d7da; color: #721c24; border-left-color: #e74c3c; }
+        .message.info { background: #d1ecf1; color: #0c5460; border-left-color: #3498db; }
+        .btn-pay-simple {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
         }
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border-left-color: #e74c3c;
-        }
-        .message.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border-left-color: #3498db;
+        .btn-pay-simple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(39,174,96,0.3);
         }
         @media (max-width: 768px) {
             .payment-main, .payment-sidebar { padding: 25px; }
+            .cart-image { width: 50px; height: 50px; }
+            .method-tab { flex-direction: column; align-items: stretch; gap: 10px; }
+            .method-btn { text-align: center; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Indicateur d'étape -->
         <div class="step-indicator">
-            <div class="step completed">
-                <div class="step-number">1</div>
-                <span class="step-text">Panier</span>
-            </div>
-            <div class="step completed">
-                <div class="step-number">2</div>
-                <span class="step-text">Livraison</span>
-            </div>
-            <div class="step active">
-                <div class="step-number">3</div>
-                <span class="step-text">Paiement</span>
-            </div>
+            <div class="step completed"><div class="step-number">1</div><span class="step-text">Panier</span></div>
+            <div class="step completed"><div class="step-number">2</div><span class="step-text">Livraison</span></div>
+            <div class="step active"><div class="step-number">3</div><span class="step-text">Paiement</span></div>
             <div class="step-line"></div>
         </div>
 
@@ -467,14 +448,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div class="payment-layout">
-            <!-- Section principale -->
             <div class="payment-main">
                 <h2><i class="fas fa-credit-card"></i> Mode de paiement</h2>
 
-                <!-- Adresse de livraison -->
                 <?php if (!empty($adresse)): ?>
                 <div class="adresse-card">
-                    <h3 style="margin-bottom: 10px;"><i class="fas fa-map-marker-alt"></i> Adresse de livraison</h3>
+                    <h3 style="margin-bottom: 10px;"><i class="fas fa-map-marker-alt"></i> Livraison</h3>
                     <p class="adresse-line"><strong><?php echo htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']); ?></strong></p>
                     <p class="adresse-line"><?php echo htmlspecialchars($adresse['adresse']); ?></p>
                     <?php if (!empty($adresse['complement'])): ?>
@@ -482,55 +461,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     <p class="adresse-line"><?php echo htmlspecialchars($adresse['code_postal'] . ' ' . $adresse['ville']); ?></p>
                     <p class="adresse-line"><?php echo htmlspecialchars($adresse['pays']); ?></p>
-                    <p class="adresse-line"><i class="fas fa-envelope"></i> <?php echo htmlspecialchars($adresse['email']); ?></p>
-                    <?php if (!empty($adresse['telephone'])): ?>
-                        <p class="adresse-line"><i class="fas fa-phone"></i> <?php echo htmlspecialchars($adresse['telephone']); ?></p>
-                    <?php endif; ?>
-                    <a href="livraison_form.php" style="color: #e74c3c; margin-top: 10px; display: inline-block;">
+                    <a href="livraison_form.php" style="color: #e74c3c; margin-top: 10px; display: inline-block; font-size: 0.9rem;">
                         <i class="fas fa-edit"></i> Modifier
                     </a>
                 </div>
                 <?php endif; ?>
 
-                <!-- Options de paiement -->
-                <div class="payment-options">
-                    <div class="payment-option selected" id="optionPaypal">
-                        <div class="option-header">
-                            <i class="fab fa-paypal" style="font-size: 28px; color: #003087;"></i>
-                            <span>PayPal</span>
-                        </div>
-                        <p style="margin-top: 10px; color: #7f8c8d; font-size: 0.9rem;">
-                            Paiement sécurisé par PayPal - Carte bancaire acceptée
-                        </p>
-                    </div>
-                </div>
-
-                <button id="btnPayer" class="btn-payer">
-                    <i class="fas fa-lock"></i> Payer <?php echo number_format($total_commande, 2, ',', ' '); ?> €
-                </button>
-
-                <div class="security-badge">
-                    <i class="fas fa-shield-alt"></i> Paiement 100% sécurisé - Cryptage SSL
+                <!-- UN SEUL BOUTON PAYPAL QUI FONCTIONNE -->
+                <div class="payment-methods">
+                    <p style="color: #7f8c8d; margin-bottom: 15px;">
+                        <i class="fas fa-lock"></i> Paiement sécurisé par PayPal - Carte bancaire acceptée sans compte
+                    </p>
+                    <div id="paypal-button-container" class="paypal-buttons-container"></div>
                 </div>
             </div>
 
-            <!-- Sidebar - Récapitulatif -->
             <div class="payment-sidebar">
-                <h3><i class="fas fa-receipt"></i> Récapitulatif</h3>
+                <h3><i class="fas fa-receipt"></i> Récapitulatif de la commande</h3>
                 
                 <div id="cart-items">
                     <?php foreach ($panier_details as $item): ?>
-                    <div class="cart-item-mini">
-                        <div class="mini-image">
-                            <i class="fas fa-gift" style="font-size: 24px; color: #e74c3c;"></i>
+                    <div class="cart-item">
+                        <div class="cart-image">
+                            <?php if (!empty($item['image']) && file_exists($item['image'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['image']); ?>" alt="<?php echo htmlspecialchars($item['nom']); ?>">
+                            <?php else: ?>
+                                <i class="fas fa-gift" style="font-size: 28px; color: #e74c3c;"></i>
+                            <?php endif; ?>
                         </div>
-                        <div class="mini-details">
+                        <div class="cart-details">
                             <h4><?php echo htmlspecialchars($item['nom']); ?></h4>
-                            <div style="display: flex; justify-content: space-between;">
-                                <span><?php echo $item['quantite']; ?> x <?php echo number_format($item['prix_unitaire'], 2, ',', ' '); ?> €</span>
-                                <span class="mini-price"><?php echo number_format($item['prix_total'], 2, ',', ' '); ?> €</span>
-                            </div>
+                            <?php if (!empty($item['description'])): ?>
+                                <div class="product-desc"><?php echo htmlspecialchars(substr($item['description'], 0, 60)) . (strlen($item['description']) > 60 ? '...' : ''); ?></div>
+                            <?php endif; ?>
+                            <div class="cart-quantity">Quantité: <?php echo $item['quantite']; ?></div>
                         </div>
+                        <div class="cart-price"><?php echo number_format($item['prix_total'], 2, ',', ' '); ?> €</div>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -557,50 +523,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="security-badge">
-                    <i class="fas fa-lock"></i> Transactions sécurisées
+                    <i class="fas fa-shield-alt"></i> Paiement 100% sécurisé par PayPal<br>
+                    <small>Vos données bancaires ne sont jamais stockées</small>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Configuration PayPal sandbox pour test
-        const PAYPAL_CLIENT_ID = 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5';
         const totalMontant = <?php echo $total_commande; ?>;
-        
-        document.getElementById('btnPayer').addEventListener('click', function() {
-            const btn = this;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création de la commande...';
-            btn.disabled = true;
-            
-            // Créer la commande avant paiement
-            fetch(window.location.href, {
+        let paymentInProgress = false;
+
+        async function createServerOrder(method, reference = null) {
+            const response = await fetch(window.location.href, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     process_payment: true, 
-                    methode_paiement: 'paypal',
+                    methode_paiement: method,
+                    reference_paiement: reference,
                     montant_total: totalMontant
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirection vers la page de confirmation (qui simulera PayPal ou redirigera)
-                    window.location.href = data.redirect;
-                } else {
-                    alert('Erreur: ' + (data.message || 'Impossible de créer la commande'));
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                alert('Erreur de connexion. Veuillez réessayer.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
             });
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Erreur création commande');
+            }
+            return data;
+        }
+
+        function redirectToSuccess(commande_id, reference) {
+            window.location.href = 'paiement-reussi-email.php?commande=' + commande_id + '&token=' + encodeURIComponent(reference);
+        }
+
+        function initPayPalButtons() {
+            if (typeof paypal === 'undefined') {
+                console.error('PayPal SDK non chargé, tentative dans 1s...');
+                setTimeout(initPayPalButtons, 1000);
+                return;
+            }
+            
+            console.log('Initialisation PayPal, montant:', totalMontant);
+            
+            paypal.Buttons({
+                style: {
+                    layout: 'vertical',
+                    color: 'blue',
+                    shape: 'rect',
+                    label: 'paypal',
+                    height: 55
+                },
+                createOrder: function(data, actions) {
+                    console.log('Création commande PayPal...');
+                    return fetch('paypal.php?action=create_order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            montant: totalMontant,
+                            commande_id: 0
+                        })
+                    })
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then(function(orderData) {
+                        if (!orderData.success) throw new Error(orderData.message);
+                        console.log('Commande PayPal créée:', orderData.order_id);
+                        return orderData.order_id;
+                    });
+                },
+                onApprove: function(data, actions) {
+                    if (paymentInProgress) return;
+                    paymentInProgress = true;
+                    
+                    console.log('Paiement approuvé:', data);
+                    
+                    return fetch('paypal.php?action=capture_order&order_id=' + data.orderID)
+                        .then(function(response) {
+                            if (!response.ok) throw new Error('HTTP ' + response.status);
+                            return response.json();
+                        })
+                        .then(function(captureData) {
+                            if (!captureData.success) throw new Error(captureData.message);
+                            return createServerOrder('paypal', captureData.capture_id || data.orderID);
+                        })
+                        .then(function(result) {
+                            redirectToSuccess(result.commande_id, result.reference || data.orderID);
+                        })
+                        .catch(function(error) {
+                            console.error('Erreur:', error);
+                            alert('Erreur: ' + error.message);
+                            paymentInProgress = false;
+                        });
+                },
+                onError: function(err) {
+                    console.error('PayPal Error:', err);
+                    alert('Erreur PayPal. Veuillez réessayer.');
+                    paymentInProgress = false;
+                },
+                onCancel: function() {
+                    console.log('Paiement annulé');
+                    paymentInProgress = false;
+                }
+            }).render('#paypal-button-container').catch(function(err) {
+                console.error('Erreur rendu:', err);
+                document.getElementById('paypal-button-container').innerHTML = 
+                    '<div style="color: red; padding: 20px; text-align: center;">' +
+                    '⚠️ Erreur de chargement PayPal. Veuillez rafraîchir la page.' +
+                    '</div>';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initPayPalButtons, 500);
         });
     </script>
 </body>

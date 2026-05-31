@@ -1,7 +1,11 @@
 <?php
 // ============================================
-// session_verification.php - Gestion des sessions et connexion BDD
-// VERSION CORRIGÉE FINALE - Compatible panier.php
+// session_verification.php - GESTION UNIFIÉE DES SESSIONS
+// Fusion avec session_config.php - Version finale
+// ============================================
+
+// ============================================
+// 1. DÉMARRAGE DE LA SESSION
 // ============================================
 
 // Activer l'affichage des erreurs pour le débogage
@@ -11,30 +15,58 @@ error_reporting(E_ALL);
 
 // Démarrer la session si ce n'est pas déjà fait
 if (session_status() === PHP_SESSION_NONE) {
+    // Configuration uniforme des sessions
+    $sessionPath = __DIR__ . '/sessions';
+    if (!is_dir($sessionPath) && is_writable(__DIR__)) {
+        mkdir($sessionPath, 0755, true);
+    }
+    
+    if (is_dir($sessionPath) && is_writable($sessionPath)) {
+        ini_set('session.save_path', $sessionPath);
+    }
+    ini_set('session.gc_maxlifetime', 86400); // 24 heures
+    ini_set('session.cookie_lifetime', 86400);
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.use_strict_mode', 1);
+    
     session_start();
 }
 
 // ============================================
-// CONSTANTES DE SESSION
+// 2. CONSTANTES DE SESSION UNIFIÉES
 // ============================================
-if (!defined('SESSION_KEY_PANIER')) {
-    define('SESSION_KEY_PANIER', 'panier');
-}
-if (!defined('SESSION_KEY_PANIER_ID')) {
-    define('SESSION_KEY_PANIER_ID', 'panier_id');
-}
-if (!defined('SESSION_KEY_CLIENT_ID')) {
-    define('SESSION_KEY_CLIENT_ID', 'id_client');
-}
-if (!defined('SESSION_KEY_CHECKOUT')) {
-    define('SESSION_KEY_CHECKOUT', 'checkout');
-}
-if (!defined('SESSION_KEY_COMMANDE')) {
-    define('SESSION_KEY_COMMANDE', 'commande_en_cours');
-}
+define('SESSION_KEY_PANIER', 'panier');
+define('SESSION_KEY_PANIER_ID', 'panier_id');
+define('SESSION_KEY_CHECKOUT', 'checkout');
+define('SESSION_KEY_COMMANDE', 'commande_en_cours');
+define('SESSION_KEY_CLIENT_ID', 'client_id');
+define('SESSION_KEY_MESSAGES', 'messages');
+define('SESSION_KEY_ERRORS', 'checkout_errors');
+
+// Structure standard du checkout
+define('CHECKOUT_STRUCTURE', json_encode([
+    'panier_id' => null,
+    'client_id' => null,
+    'client_email' => null,
+    'adresse_livraison' => [],
+    'adresse_facturation' => [],
+    'mode_livraison' => 'standard',
+    'emballage_cadeau' => false,
+    'instructions' => null,
+    'etape' => 'livraison',
+    'date_creation' => null,
+    'date_modification' => null,
+    'validation' => [
+        'panier_valide' => false,
+        'adresse_valide' => false,
+        'paiement_autorise' => false
+    ]
+]));
 
 // ============================================
-// CONSTANTES DE CONFIGURATION BDD
+// 3. CONSTANTES DE CONFIGURATION BDD
 // ============================================
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'origami');
@@ -48,7 +80,7 @@ $GLOBALS['cart_cache_time'] = 0;
 $GLOBALS['cart_cache_ttl'] = 30;
 
 // ============================================
-// FONCTIONS DE CONNEXION BDD
+// 4. FONCTIONS DE CONNEXION BDD
 // ============================================
 
 /**
@@ -64,7 +96,6 @@ function getPDOConnection() {
             $pdo->query("SELECT 1");
             return $pdo;
         } catch (PDOException $e) {
-            // Connexion perdue, on va en recréer une nouvelle
             error_log("Connexion PDO perdue, reconnexion...");
             $pdo = null;
         }
@@ -98,20 +129,25 @@ function getPDOConnection() {
  */
 function checkDatabaseConnection() {
     $pdo = getPDOConnection();
-    if (!$pdo) {
-        return false;
-    }
+    if (!$pdo) return false;
     try {
-        $stmt = $pdo->query("SELECT 1");
-        return $stmt !== false;
+        $pdo->query("SELECT 1");
+        return true;
     } catch (Exception $e) {
         error_log("checkDatabaseConnection: " . $e->getMessage());
         return false;
     }
 }
 
+/**
+ * Alias pour compatibilité ascendante
+ */
+function getConnexionBD() {
+    return getPDOConnection();
+}
+
 // ============================================
-// FONCTIONS DE GESTION DU PANIER (SESSION UNIQUEMENT)
+// 5. FONCTIONS DE GESTION DE SESSION
 // ============================================
 
 /**
@@ -124,8 +160,75 @@ function initPanier() {
 }
 
 /**
+ * Initialise/Réinitialise le checkout avec la structure standard
+ */
+function initCheckout($panier_id = null) {
+    $_SESSION[SESSION_KEY_CHECKOUT] = json_decode(CHECKOUT_STRUCTURE, true);
+    $_SESSION[SESSION_KEY_CHECKOUT]['panier_id'] = $panier_id;
+    $_SESSION[SESSION_KEY_CHECKOUT]['date_creation'] = date('Y-m-d H:i:s');
+    $_SESSION[SESSION_KEY_CHECKOUT]['date_modification'] = date('Y-m-d H:i:s');
+}
+
+/**
+ * Ajoute un message en session
+ * @param string $message Le message
+ * @param string $type Type de message (success, error, info)
+ */
+function addSessionMessage($message, $type = 'success') {
+    if (!isset($_SESSION[SESSION_KEY_MESSAGES])) {
+        $_SESSION[SESSION_KEY_MESSAGES] = [];
+    }
+    $_SESSION[SESSION_KEY_MESSAGES][] = [
+        'message' => $message,
+        'type' => $type,
+        'date' => date('Y-m-d H:i:s')
+    ];
+}
+
+/**
+ * Récupère et efface les messages de session
+ * @return array
+ */
+function getSessionMessages() {
+    $messages = $_SESSION[SESSION_KEY_MESSAGES] ?? [];
+    unset($_SESSION[SESSION_KEY_MESSAGES]);
+    return $messages;
+}
+
+/**
+ * Ajoute des erreurs de formulaire
+ */
+function addCheckoutErrors($errors) {
+    $_SESSION[SESSION_KEY_ERRORS] = $errors;
+}
+
+/**
+ * Récupère et efface les erreurs
+ */
+function getCheckoutErrors() {
+    $errors = $_SESSION[SESSION_KEY_ERRORS] ?? [];
+    unset($_SESSION[SESSION_KEY_ERRORS]);
+    return $errors;
+}
+
+/**
+ * Nettoyer complètement la session de l'utilisateur
+ */
+function cleanUserSession() {
+    unset($_SESSION[SESSION_KEY_PANIER]);
+    unset($_SESSION[SESSION_KEY_PANIER_ID]);
+    unset($_SESSION[SESSION_KEY_CHECKOUT]);
+    unset($_SESSION[SESSION_KEY_COMMANDE]);
+    unset($_SESSION[SESSION_KEY_CLIENT_ID]);
+    cleanPayPalFlags();
+}
+
+// ============================================
+// 6. FONCTIONS DE GESTION DU PANIER
+// ============================================
+
+/**
  * Vérifie si le panier contient des articles
- * Version améliorée qui vérifie aussi via l'API si nécessaire
  * @return bool
  */
 function hasValidCart() {
@@ -170,11 +273,11 @@ function hasValidCart() {
 }
 
 /**
- * Compte le nombre d'articles dans le panier (session uniquement)
+ * Compte le nombre d'articles dans le panier
  * @param bool $forceRefresh Forcer le rafraîchissement du cache
  * @return int Nombre total d'articles
  */
-function countCartItemsSession($forceRefresh = false) {
+function countCartItems($forceRefresh = false) {
     // Vérifier le cache
     if (!$forceRefresh && 
         $GLOBALS['cart_cache'] !== null && 
@@ -196,152 +299,22 @@ function countCartItemsSession($forceRefresh = false) {
 }
 
 /**
- * Alias pour compatibilité ascendante
- */
-function countCartItems($forceRefresh = false) {
-    return countCartItemsSession($forceRefresh);
-}
-
-/**
- * Récupère le contenu complet du panier (session uniquement)
+ * Récupère le contenu complet du panier
  * @return array
  */
-function getCartItemsSession() {
+function getCartItems() {
     initPanier();
     return $_SESSION[SESSION_KEY_PANIER];
 }
 
 /**
- * Alias pour compatibilité ascendante
- */
-function getCartItems() {
-    return getCartItemsSession();
-}
-
-/**
- * Récupère le contenu complet du panier depuis la BDD avec format API
- * @param PDO $pdo Connexion PDO
- * @return array Tableau formaté pour l'API
- */
-function getCartItemsFromBDD($pdo) {
-    if (!$pdo) {
-        return [
-            'success' => false,
-            'message' => 'Erreur de connexion à la base de données',
-            'panier' => [],
-            'sous_total' => 0,
-            'total_items' => 0
-        ];
-    }
-    
-    $session_id = session_id();
-    $client_id = $_SESSION[SESSION_KEY_CLIENT_ID] ?? null;
-    
-    try {
-        // Récupérer le panier actif
-        if ($client_id) {
-            $stmt = $pdo->prepare("
-                SELECT id_panier FROM panier 
-                WHERE id_client = ? AND statut = 'actif'
-                ORDER BY date_creation DESC LIMIT 1
-            ");
-            $stmt->execute([$client_id]);
-        } else {
-            $stmt = $pdo->prepare("
-                SELECT id_panier FROM panier 
-                WHERE session_id = ? AND statut = 'actif'
-                ORDER BY date_creation DESC LIMIT 1
-            ");
-            $stmt->execute([$session_id]);
-        }
-        
-        $panier = $stmt->fetch();
-        
-        if (!$panier) {
-            return [
-                'success' => true,
-                'panier' => [],
-                'sous_total' => 0,
-                'total_items' => 0
-            ];
-        }
-        
-        $id_panier = $panier['id_panier'];
-        
-        // Récupérer les articles avec les infos produits
-        $stmt = $pdo->prepare("
-            SELECT 
-                pi.id_item,
-                pi.id_produit,
-                pi.quantite,
-                pi.prix_unitaire,
-                pi.date_ajout,
-                p.nom,
-                p.reference,
-                p.slug,
-                p.quantite_stock,
-                p.description_courte,
-                (SELECT url_image FROM images_produits WHERE id_produit = p.id_produit AND principale = 1 LIMIT 1) as image,
-                (pi.quantite * pi.prix_unitaire) as prix_total
-            FROM panier_items pi
-            INNER JOIN produits p ON pi.id_produit = p.id_produit
-            WHERE pi.id_panier = ?
-            ORDER BY pi.date_ajout DESC
-        ");
-        $stmt->execute([$id_panier]);
-        $items = $stmt->fetchAll();
-        
-        // Calculer les totaux
-        $sous_total = 0;
-        $total_items = 0;
-        
-        foreach ($items as &$item) {
-            $sous_total += floatval($item['prix_total'] ?? 0);
-            $total_items += intval($item['quantite'] ?? 0);
-            
-            // Vérifier la disponibilité
-            $item['disponible'] = (intval($item['quantite_stock'] ?? 0) >= intval($item['quantite'] ?? 0));
-            
-            // Image par défaut si aucune
-            if (empty($item['image'])) {
-                $images_defaut = [
-                    1 => 'https://via.placeholder.com/300x300/2c3e50/ffffff?text=Bougie',
-                    2 => 'https://via.placeholder.com/300x300/27ae60/ffffff?text=Coffret',
-                    3 => 'https://via.placeholder.com/300x300/3498db/ffffff?text=Montre',
-                    4 => 'https://via.placeholder.com/300x300/e74c3c/ffffff?text=Bijoux'
-                ];
-                $item['image'] = $images_defaut[$item['id_produit']] ?? 'https://via.placeholder.com/300x300/95a5a6/ffffff?text=Produit';
-            }
-        }
-        
-        return [
-            'success' => true,
-            'panier' => $items,
-            'sous_total' => round($sous_total, 2),
-            'total_items' => $total_items,
-            'panier_id' => (int)$id_panier
-        ];
-        
-    } catch (Exception $e) {
-        error_log("Erreur getCartItemsFromBDD: " . $e->getMessage());
-        return [
-            'success' => false,
-            'message' => 'Erreur lors de la récupération du panier',
-            'panier' => [],
-            'sous_total' => 0,
-            'total_items' => 0
-        ];
-    }
-}
-
-/**
- * Ajoute un article au panier (session uniquement)
+ * Ajoute un article au panier
  * @param int $id_produit ID du produit
  * @param int $quantite Quantité
- * @param float $prix Prix unitaire
+ * @param float|null $prix Prix unitaire
  * @return bool
  */
-function addToCartSession($id_produit, $quantite = 1, $prix = null) {
+function addToCart($id_produit, $quantite = 1, $prix = null) {
     initPanier();
     
     // Vérifier si le produit existe déjà
@@ -359,24 +332,18 @@ function addToCartSession($id_produit, $quantite = 1, $prix = null) {
     $_SESSION[SESSION_KEY_PANIER][] = [
         'id_produit' => $id_produit,
         'quantite' => $quantite,
-        'prix' => $prix
+        'prix' => $prix,
+        'nom' => null
     ];
     return true;
 }
 
 /**
- * Alias pour compatibilité ascendante
- */
-function addToCart($id_produit, $quantite = 1, $prix = null) {
-    return addToCartSession($id_produit, $quantite, $prix);
-}
-
-/**
- * Supprime un article du panier (session uniquement)
+ * Supprime un article du panier
  * @param int $id_produit ID du produit
  * @return bool
  */
-function removeFromCartSession($id_produit) {
+function removeFromCart($id_produit) {
     initPanier();
     foreach ($_SESSION[SESSION_KEY_PANIER] as $key => $item) {
         if ($item['id_produit'] == $id_produit) {
@@ -389,30 +356,16 @@ function removeFromCartSession($id_produit) {
 }
 
 /**
- * Alias pour compatibilité ascendante
+ * Vide complètement le panier
  */
-function removeFromCart($id_produit) {
-    return removeFromCartSession($id_produit);
-}
-
-/**
- * Vide complètement le panier (session uniquement)
- */
-function clearCartSession() {
+function clearCart() {
     $_SESSION[SESSION_KEY_PANIER] = [];
     unset($_SESSION[SESSION_KEY_PANIER_ID]);
     $GLOBALS['cart_cache'] = null;
 }
 
-/**
- * Alias pour compatibilité ascendante
- */
-function clearCart() {
-    clearCartSession();
-}
-
 // ============================================
-// FONCTIONS DE GESTION DES PRODUITS
+// 7. FONCTIONS DE GESTION DES PRODUITS
 // ============================================
 
 /**
@@ -431,27 +384,16 @@ function getProductDetails($id_produit, $pdo = null) {
     
     try {
         $stmt = $pdo->prepare("
-            SELECT p.*, 
-                   c.nom as categorie_nom,
-                   (SELECT url_image FROM images_produits WHERE id_produit = p.id_produit AND principale = 1 LIMIT 1) as image
-            FROM produits p
-            LEFT JOIN categories c ON p.id_categorie = c.id_categorie
-            WHERE p.id_produit = ? AND p.statut = 'actif'
+            SELECT idOrigami as id_produit, nom, description, photo as image, prixHorsTaxe as prix_ht, 
+                   prixHorsTaxe as prix_ttc, 'origami' as type
+            FROM Origami 
+            WHERE idOrigami = ? AND visible = 1
         ");
         $stmt->execute([$id_produit]);
         $produit = $stmt->fetch();
         
-        if ($produit) {
-            // Ajouter une image par défaut si nécessaire
-            if (empty($produit['image'])) {
-                $images_defaut = [
-                    1 => 'https://via.placeholder.com/300x300/2c3e50/ffffff?text=Bougie',
-                    2 => 'https://via.placeholder.com/300x300/27ae60/ffffff?text=Coffret',
-                    3 => 'https://via.placeholder.com/300x300/3498db/ffffff?text=Montre',
-                    4 => 'https://via.placeholder.com/300x300/e74c3c/ffffff?text=Bijoux'
-                ];
-                $produit['image'] = $images_defaut[$produit['id_produit']] ?? 'img/default-product.jpg';
-            }
+        if ($produit && empty($produit['image'])) {
+            $produit['image'] = 'img/default-product.jpg';
         }
         
         return $produit ?: null;
@@ -463,7 +405,7 @@ function getProductDetails($id_produit, $pdo = null) {
 }
 
 // ============================================
-// FONCTIONS DE GESTION DE LA LIVRAISON
+// 8. FONCTIONS DE GESTION DE LA LIVRAISON
 // ============================================
 
 /**
@@ -504,7 +446,7 @@ function hasShippingAddress() {
 }
 
 // ============================================
-// FONCTIONS DE SYNCHRONISATION PANIER
+// 9. FONCTIONS DE SYNCHRONISATION PANIER
 // ============================================
 
 /**
@@ -513,61 +455,30 @@ function hasShippingAddress() {
  * @param string $session_id ID de session
  */
 function synchroniserPanierSessionBDD($pdo, $session_id) {
-    if (!$pdo) {
-        return;
-    }
+    if (!$pdo) return;
     
     try {
-        // Vérifier si un panier BDD existe pour cette session
-        $stmt = $pdo->prepare("SELECT id_panier FROM panier WHERE session_id = ? AND statut = 'actif'");
-        $stmt->execute([$session_id]);
-        $panier_bdd = $stmt->fetch();
+        // Vérifier si la table Panier existe
+        $stmt = $pdo->prepare("SHOW TABLES LIKE 'Panier'");
+        $stmt->execute();
+        if ($stmt->rowCount() == 0) return;
         
-        if (!$panier_bdd && !empty($_SESSION[SESSION_KEY_PANIER])) {
-            // Créer un nouveau panier en BDD
-            $stmt = $pdo->prepare("INSERT INTO panier (session_id, statut, date_creation) VALUES (?, 'actif', NOW())");
-            $stmt->execute([$session_id]);
-            $panier_id = $pdo->lastInsertId();
-            $_SESSION[SESSION_KEY_PANIER_ID] = $panier_id;
+        // Récupérer le client ID
+        $client_id = $_SESSION[SESSION_KEY_CLIENT_ID] ?? null;
+        
+        if ($client_id) {
+            // Vérifier si un panier BDD existe pour ce client
+            $stmt = $pdo->prepare("SELECT idPanier FROM Panier WHERE idClient = ?");
+            $stmt->execute([$client_id]);
+            $panier_bdd = $stmt->fetch();
             
-            // Ajouter les items
-            $stmt_item = $pdo->prepare("
-                INSERT INTO panier_items (id_panier, id_produit, quantite, prix_unitaire, date_ajout)
-                VALUES (?, ?, ?, ?, NOW())
-            ");
-            
-            foreach ($_SESSION[SESSION_KEY_PANIER] as $item) {
-                $produit = getProductDetails($item['id_produit'], $pdo);
-                $prix = $produit['prix_ttc'] ?? $item['prix'] ?? 19.99;
-                
-                $stmt_item->execute([
-                    $panier_id,
-                    $item['id_produit'],
-                    $item['quantite'],
-                    $prix
-                ]);
-            }
-        } elseif ($panier_bdd) {
-            $_SESSION[SESSION_KEY_PANIER_ID] = $panier_bdd['id_panier'];
-            
-            // Récupérer les items de la BDD vers la session si nécessaire
-            if (empty($_SESSION[SESSION_KEY_PANIER])) {
-                $stmt_items = $pdo->prepare("
-                    SELECT id_produit, quantite, prix_unitaire as prix
-                    FROM panier_items
-                    WHERE id_panier = ?
-                ");
-                $stmt_items->execute([$panier_bdd['id_panier']]);
-                $items = $stmt_items->fetchAll();
-                
-                $_SESSION[SESSION_KEY_PANIER] = [];
-                foreach ($items as $item) {
-                    $_SESSION[SESSION_KEY_PANIER][] = [
-                        'id_produit' => $item['id_produit'],
-                        'quantite' => $item['quantite'],
-                        'prix' => $item['prix']
-                    ];
-                }
+            if ($panier_bdd) {
+                $_SESSION[SESSION_KEY_PANIER_ID] = $panier_bdd['idPanier'];
+            } elseif (!empty($_SESSION[SESSION_KEY_PANIER])) {
+                // Créer un nouveau panier
+                $stmt = $pdo->prepare("INSERT INTO Panier (idClient, dateModification) VALUES (?, NOW())");
+                $stmt->execute([$client_id]);
+                $_SESSION[SESSION_KEY_PANIER_ID] = $pdo->lastInsertId();
             }
         }
     } catch (Exception $e) {
@@ -576,7 +487,7 @@ function synchroniserPanierSessionBDD($pdo, $session_id) {
 }
 
 // ============================================
-// FONCTIONS DE CALCUL DES TOTAUX
+// 10. FONCTIONS DE CALCUL DES TOTAUX
 // ============================================
 
 /**
@@ -620,68 +531,7 @@ function calculerTotauxPanier($panier_details, $checkout = []) {
 }
 
 // ============================================
-// FONCTIONS DE GESTION DES MESSAGES
-// ============================================
-
-/**
- * Récupère et efface les messages de session
- * @return array
- */
-function getSessionMessages() {
-    $messages = [];
-    if (isset($_SESSION['messages']) && is_array($_SESSION['messages'])) {
-        $messages = $_SESSION['messages'];
-        unset($_SESSION['messages']);
-    }
-    return $messages;
-}
-
-/**
- * Ajoute un message en session
- * @param string $message Le message
- * @param string $type Type de message (success, error, info)
- */
-function addSessionMessage($message, $type = 'info') {
-    if (!isset($_SESSION['messages'])) {
-        $_SESSION['messages'] = [];
-    }
-    $_SESSION['messages'][] = [
-        'message' => $message,
-        'type' => $type,
-        'time' => time()
-    ];
-}
-
-/**
- * Récupère et efface les erreurs de checkout
- * @return array
- */
-function getCheckoutErrors() {
-    $errors = [];
-    if (isset($_SESSION['checkout_errors']) && is_array($_SESSION['checkout_errors'])) {
-        $errors = $_SESSION['checkout_errors'];
-        unset($_SESSION['checkout_errors']);
-    }
-    return $errors;
-}
-
-/**
- * Ajoute une erreur de checkout
- * @param string|array $error
- */
-function addCheckoutErrors($error) {
-    if (!isset($_SESSION['checkout_errors'])) {
-        $_SESSION['checkout_errors'] = [];
-    }
-    if (is_array($error)) {
-        $_SESSION['checkout_errors'] = array_merge($_SESSION['checkout_errors'], $error);
-    } else {
-        $_SESSION['checkout_errors'][] = $error;
-    }
-}
-
-// ============================================
-// FONCTIONS DE GESTION PAYPAL
+// 11. FONCTIONS DE GESTION PAYPAL
 // ============================================
 
 /**
@@ -692,22 +542,11 @@ function cleanPayPalFlags() {
     unset($_SESSION['paypal_order_id']);
     unset($_SESSION['paypal_commande_id']);
     unset($_SESSION['paypal_token']);
-}
-
-/**
- * Nettoie la session utilisateur
- */
-function cleanUserSession() {
-    clearCartSession();
-    unset($_SESSION[SESSION_KEY_CHECKOUT]);
-    unset($_SESSION[SESSION_KEY_COMMANDE]);
-    unset($_SESSION[SESSION_KEY_CLIENT_ID]);
-    unset($_SESSION[SESSION_KEY_PANIER_ID]);
-    cleanPayPalFlags();
+    unset($_SESSION['paypal_montant']);
 }
 
 // ============================================
-// FONCTIONS D'INFORMATION SESSION
+// 12. FONCTIONS D'INFORMATION SESSION
 // ============================================
 
 /**
@@ -744,52 +583,65 @@ function getSessionInfo() {
 }
 
 // ============================================
-// FONCTIONS DE NETTOYAGE
+// 13. FONCTIONS DE NETTOYAGE
 // ============================================
 
 /**
- * Nettoie les paniers expirés
- * @param int $days Nombre de jours avant expiration
- * @return int
+ * Nettoie les tokens expirés
+ * @param PDO $pdo Connexion PDO
  */
-function cleanupExpiredCarts($days = 30) {
-    $pdo = getPDOConnection();
-    if (!$pdo) {
-        return 0;
-    }
-    
+function nettoyerTokensExpires($pdo) {
+    if (!$pdo) return;
     try {
-        $sql = "
-            UPDATE panier 
-            SET statut = 'abandonne' 
-            WHERE statut = 'actif' 
-              AND date_modification < DATE_SUB(NOW(), INTERVAL :days DAY)
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([':days' => $days]);
-        
-        $updated = $stmt->rowCount();
-        if ($updated > 0) {
-            error_log("Cleanup: $updated paniers expirés nettoyés");
-        }
-        return $updated;
-        
+        $stmt = $pdo->prepare("DELETE FROM tokens_confirmation WHERE expiration < NOW()");
+        $stmt->execute();
     } catch (Exception $e) {
-        error_log("Erreur cleanupExpiredCarts: " . $e->getMessage());
-        return 0;
+        error_log("Erreur nettoyage tokens: " . $e->getMessage());
+    }
+}
+
+/**
+ * Nettoie les clients temporaires obsolètes
+ * @param PDO $pdo Connexion PDO
+ */
+function nettoyerClientsTemporairesAmeliore($pdo) {
+    if (!$pdo) return;
+    try {
+        $stmt = $pdo->prepare("
+            DELETE FROM Client 
+            WHERE type = 'temporaire' 
+            AND date_creation < DATE_SUB(NOW(), INTERVAL 1 DAY)
+            AND idClient NOT IN (SELECT DISTINCT idClient FROM Commande WHERE idClient IS NOT NULL)
+        ");
+        $stmt->execute();
+    } catch (Exception $e) {
+        error_log("Erreur nettoyage clients: " . $e->getMessage());
     }
 }
 
 // ============================================
-// INITIALISATION
+// 14. INITIALISATION
 // ============================================
 
 // Initialiser le panier
 initPanier();
 
+// Initialiser le checkout si inexistant
+if (!isset($_SESSION[SESSION_KEY_CHECKOUT])) {
+    initCheckout();
+}
+
 // Nettoyage périodique (10% des requêtes)
 if (rand(1, 100) <= 10) {
-    cleanupExpiredCarts(30);
+    $pdo = getPDOConnection();
+    if ($pdo) {
+        if (function_exists('nettoyerTokensExpires')) {
+            nettoyerTokensExpires($pdo);
+        }
+        if (function_exists('nettoyerClientsTemporairesAmeliore')) {
+            nettoyerClientsTemporairesAmeliore($pdo);
+        }
+    }
     
     // Vider le cache si trop vieux
     if ($GLOBALS['cart_cache_time'] > 0 && (time() - $GLOBALS['cart_cache_time']) > 3600) {
@@ -806,6 +658,5 @@ if (!isset($GLOBALS['db_check_done'])) {
     }
 }
 
-// Journalisation pour débogage
 error_log("session_verification.php chargé - Session ID: " . session_id());
 ?>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paiement Sécurisé - HEURE DU CADEAU</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/panier.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- SDK PayPal -->
+    <script src="https://www.paypal.com/sdk/js?client-id=TEST&currency=EUR&components=buttons,hosted-fields&enable-funding=card,paypal"></script>
+
+    <style>
+      .payment-page {
+        background: #f8f9fa;
+        min-height: 100vh;
+      }
+      .payment-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .payment-layout {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 30px;
+        margin-top: 20px;
+      }
+      @media (max-width: 992px) {
+        .payment-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .payment-main,
+      .payment-sidebar {
+        background: white;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      }
+      .payment-sidebar {
+        height: fit-content;
+        position: sticky;
+        top: 20px;
+      }
+
+      .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        position: relative;
+      }
+      .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+      }
+      .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #ecf0f1;
+        color: #7f8c8d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+      }
+      .step.active .step-number {
+        background: #3498db;
+        color: white;
+      }
+      .step.completed .step-number {
+        background: #27ae60;
+        color: white;
+      }
+      .step-line {
+        position: absolute;
+        top: 20px;
+        left: 20%;
+        right: 20%;
+        height: 2px;
+        background: #ecf0f1;
+        z-index: 0;
+      }
+
+      .payment-methods-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+      .payment-method-card {
+        border: 2px solid #ecf0f1;
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+      .payment-method-card:hover {
+        border-color: #3498db;
+        transform: translateY(-2px);
+      }
+      .payment-method-card.selected {
+        border-color: #3498db;
+        background: rgba(52, 152, 219, 0.05);
+      }
+
+      .paypal-button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .paypal-button-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px;
+        border: 2px solid #e0e6ed;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .paypal-button-item:hover {
+        border-color: #003087;
+        background: rgba(0, 48, 135, 0.05);
+      }
+      .paypal-button-item.selected {
+        border-color: #003087;
+        background: rgba(0, 48, 135, 0.1);
+      }
+
+      .paypal-card-fields {
+        margin-top: 20px;
+        padding: 20px;
+        border: 2px solid #e0e6ed;
+        border-radius: 8px;
+        background: #f8f9fa;
+      }
+      .paypal-field-container {
+        margin-bottom: 15px;
+      }
+      .paypal-field {
+        width: 100%;
+        height: 40px;
+        padding: 0 10px;
+        border: 2px solid #d1d9e6;
+        border-radius: 4px;
+        background: white;
+      }
+
+      .payment-loading,
+      .payment-success {
+        text-align: center;
+        padding: 40px;
+      }
+      .order-summary-card {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 25px;
+        margin-top: 30px;
+        border: 2px solid #e9ecef;
+      }
+      .order-summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+      .summary-row.total {
+        font-weight: 700;
+        font-size: 1.2rem;
+        border-bottom: none;
+        margin-top: 10px;
+      }
+
+      .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: none;
+      }
+      .alert-danger {
+        background: #fee;
+        border: 1px solid #fcc;
+        color: #c33;
+      }
+      .alert-success {
+        background: #efffed;
+        border: 1px solid #cfc;
+        color: #3a3;
+      }
+      .alert-info {
+        background: #e8f4fc;
+        border: 1px solid #b6d4fe;
+        color: #084298;
+      }
+
+      .security-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #27ae60;
+      }
+      .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+      .btn-primary {
+        background: #3498db;
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="container header-container">
+        <a href="index.html" class="logo">
+          <i class="fas fa-gift logo-icon"></i>
+          <span class="logo-text"
+            >HEURE<span class="logo-highlight">DU CADEAU</span></span
+          >
+        </a>
+        <nav class="nav-main">
+          <ul class="nav-list">
+            <li>
+              <a href="index.html" class="nav-link"
+                ><i class="fas fa-home"></i> Accueil</a
+              >
+            </li>
+            <li>
+              <a href="produitsprincipale.php" class="nav-link"
+                ><i class="fas fa-box-open"></i> Cadeaux</a
+              >
+            </li>
+            <li>
+              <a href="panier.html" class="nav-link"
+                ><i class="fas fa-shopping-cart"></i> Panier</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Page de paiement -->
+    <main class="payment-page">
+      <div class="payment-container">
+        <!-- Indicateur d'étape -->
+        <div class="step-indicator">
+          <div class="step completed">
+            <div class="step-number">1</div>
+            <span class="step-text">Panier</span>
+          </div>
+          <div class="step active">
+            <div class="step-number">2</div>
+            <span class="step-text">Paiement</span>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <span class="step-text">Confirmation</span>
+          </div>
+          <div class="step-line"></div>
+        </div>
+
+        <div class="payment-layout">
+          <!-- Section principale -->
+          <div class="payment-main">
+            <div id="paymentStep1">
+              <h2><i class="fas fa-credit-card"></i> Méthode de paiement</h2>
+              <div id="paymentAlert" class="alert" style="display: none"></div>
+
+              <!-- Sélection méthode -->
+              <div class="payment-methods-grid">
+                <div class="payment-method-card selected" data-method="paypal">
+                  <div class="payment-method-icon" style="color: #003087">
+                    <i class="fab fa-paypal"></i>
+                  </div>
+                  <div class="payment-method-name">PayPal & Cartes</div>
+                  <div class="payment-method-desc">Paiement sécurisé</div>
+                </div>
+              </div>
+
+              <!-- Formulaire PayPal -->
+              <div id="paypalForm" class="payment-form active">
+                <div class="alert alert-info">
+                  <i class="fas fa-info-circle"></i> Paiement 100% sécurisé via
+                  PayPal.
+                </div>
+
+                <div class="paypal-button-group" id="paypalMethodSelector">
+                  <div
+                    class="paypal-button-item selected"
+                    data-method="paypal_account"
+                  >
+                    <div class="paypal-button-icon">
+                      <i class="fab fa-paypal"></i>
+                    </div>
+                    <div class="paypal-button-text">
+                      <div class="paypal-button-title">Payer avec PayPal</div>
+                      <div class="paypal-button-desc">
+                        Utilisez votre compte PayPal
+                      </div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                  </div>
+
+                  <div class="paypal-button-item" data-method="paypal_card">
+                    <div class="paypal-button-icon">
+                      <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="paypal-button-text">
+                      <div class="paypal-button-title">Payer par carte</div>
+                      <div class="paypal-button-desc">Visa, Mastercard, CB</div>
+                    </div>
+                    <i class="fas fa-chevron-right"></i>
+                  </div>
+                </div>
+
+                <!-- Zone boutons PayPal -->
+                <div id="paypal-button-container"></div>
+
+                <!-- Zone champs carte -->
+                <div
+                  id="paypalCardForm"
+                  class="paypal-card-fields"
+                  style="display: none"
+                >
+                  <h4><i class="fas fa-credit-card"></i> Paiement par carte</h4>
+                  <div id="card-container">
+                    <div class="paypal-field-container">
+                      <label class="paypal-field-label">Numéro de carte</label>
+                      <div id="card-number" class="paypal-field"></div>
+                    </div>
+                    <div
+                      style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 15px;
+                      "
+                    >
+                      <div class="paypal-field-container">
+                        <label class="paypal-field-label"
+                          >Date d'expiration</label
+                        >
+                        <div id="expiration-date" class="paypal-field"></div>
+                      </div>
+                      <div class="paypal-field-container">
+                        <label class="paypal-field-label">CVV</label>
+                        <div id="cvv" class="paypal-field"></div>
+                      </div>
+                    </div>
+                    <div class="paypal-field-container">
+                      <label class="paypal-field-label">Nom sur la carte</label>
+                      <div id="card-holder-name" class="paypal-field"></div>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 20px">
+                    <button
+                      id="submitPayPalCard"
+                      class="btn btn-primary"
+                      style="width: 100%; padding: 15px"
+                    >
+                      <i class="fas fa-lock"></i> Payer avec ma carte
+                    </button>
+                  </div>
+
+                  <div class="security-badge" style="margin-top: 20px">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                      <strong>Paiement sécurisé par PayPal</strong><br /><small
+                        >Vos données sont cryptées</small
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Étape de chargement -->
+            <div
+              id="paymentStep2"
+              class="payment-loading"
+              style="display: none"
+            >
+              <i class="fas fa-spinner fa-spin"></i>
+              <h3>Traitement du paiement</h3>
+              <p>Veuillez patienter...</p>
+            </div>
+
+            <!-- Étape de confirmation -->
+            <div
+              id="paymentStep3"
+              class="payment-success"
+              style="display: none"
+            >
+              <i class="fas fa-check-circle"></i>
+              <h3>Paiement accepté !</h3>
+              <div class="order-summary-card">
+                <h4>Récapitulatif</h4>
+                <div class="order-summary-row">
+                  <span>Numéro :</span><span id="orderNumber">-</span>
+                </div>
+                <div class="order-summary-row">
+                  <span>Date :</span><span id="orderDate">-</span>
+                </div>
+                <div class="order-summary-row">
+                  <span>Total :</span><span id="orderTotal">-</span>
+                </div>
+                <div class="order-summary-row">
+                  <span>Mode :</span><span id="orderMethod">-</span>
+                </div>
+              </div>
+              <div style="margin-top: 30px">
+                <a href="index.html" class="btn btn-primary"
+                  ><i class="fas fa-home"></i> Accueil</a
+                >
+                <a href="#" class="btn btn-secondary" id="viewOrderBtn"
+                  ><i class="fas fa-receipt"></i> Voir commande</a
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Sidebar - Récapitulatif -->
+          <aside class="payment-sidebar">
+            <h3><i class="fas fa-receipt"></i> Récapitulatif</h3>
+            <div id="orderItems" style="margin: 20px 0"></div>
+            <div class="summary-details">
+              <div class="summary-row">
+                <span>Sous-total</span><span id="summarySubtotal">0,00 €</span>
+              </div>
+              <div class="summary-row">
+                <span>Livraison</span
+                ><span class="free-shipping">Gratuite</span>
+              </div>
+              <div class="summary-row total">
+                <span>Total TTC</span><span id="summaryTotal">0,00 €</span>
+              </div>
+            </div>
+            <div class="security-badge">
+              <i class="fas fa-shield-alt"></i>
+              <div>
+                <strong>Paiement 100% sécurisé</strong><br /><small
+                  >SSL 256 bits</small
+                >
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>HEURE DU CADEAU</h4>
+            <p>Boutique de cadeaux d'exception.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Paiements sécurisés</h4>
+            <div style="font-size: 2rem; margin-top: 10px">
+              <i class="fab fa-cc-visa"></i><i class="fab fa-cc-mastercard"></i
+              ><i class="fab fa-cc-paypal"></i>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom"><p>&copy; 2025 HEURE DU CADEAU.</p></div>
+      </div>
+    </footer>
+
+    <script>
+      class PaymentSystem {
+        constructor() {
+          this.apiUrl = "/api/paiement.php";
+          this.orderData = null;
+          this.selectedPayPalMethod = "paypal_account";
+          this.paypalButtons = null;
+          this.cardFields = null;
+          this.init();
+        }
+
+        init() {
+          this.loadOrderFromCart();
+          this.setupEventListeners();
+          this.initPayPal();
+        }
+
+        setupEventListeners() {
+          document.querySelectorAll(".paypal-button-item").forEach((item) => {
+            item.addEventListener("click", () => {
+              document
+                .querySelectorAll(".paypal-button-item")
+                .forEach((i) => i.classList.remove("selected"));
+              item.classList.add("selected");
+              this.selectedPayPalMethod = item.dataset.method;
+              this.showPayPalMethod();
+            });
+          });
+
+          document
+            .getElementById("submitPayPalCard")
+            ?.addEventListener("click", (e) => {
+              e.preventDefault();
+              this.submitPayPalCard();
+            });
+        }
+
+        showPayPalMethod() {
+          const paypalContainer = document.getElementById(
+            "paypal-button-container"
+          );
+          const cardForm = document.getElementById("paypalCardForm");
+
+          if (this.selectedPayPalMethod === "paypal_account") {
+            paypalContainer.style.display = "block";
+            cardForm.style.display = "none";
+            if (this.paypalButtons) {
+              document.getElementById("paypal-button-container").innerHTML = "";
+              this.paypalButtons.render("#paypal-button-container");
+            }
+          } else {
+            paypalContainer.style.display = "none";
+            cardForm.style.display = "block";
+            if (!this.cardFields) this.initPayPalCardFields();
+          }
+        }
+
+        async loadOrderFromCart() {
+          try {
+            const response = await fetch("/api/panier.php?action=get");
+            const data = await response.json();
+
+            if (data.success && data.items) {
+              this.orderData = {
+                items: data.items,
+                total: parseFloat(data.total_prix || 0),
+                subtotal: parseFloat(data.total_prix || 0),
+                shipping: 0,
+              };
+              this.updateOrderSummary();
+              if (typeof paypal !== "undefined") this.initPayPalButtons();
+            }
+          } catch (error) {
+            console.error("Erreur chargement panier:", error);
+            this.showAlert("Erreur lors du chargement du panier", "danger");
+          }
+        }
+
+        updateOrderSummary() {
+          if (!this.orderData) return;
+          const itemsContainer = document.getElementById("orderItems");
+          if (itemsContainer) {
+            let html = "";
+            this.orderData.items.forEach((item) => {
+              html += `<div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <div><div style="font-weight: 500;">${
+                              item.nom
+                            }</div><small style="color: #7f8c8d;">Qté: ${
+                item.quantite
+              }</small></div>
+                            <div>${(item.prix_unitaire * item.quantite).toFixed(
+                              2
+                            )} €</div>
+                        </div>`;
+            });
+            itemsContainer.innerHTML = html;
+          }
+          document.getElementById("summarySubtotal").textContent =
+            this.orderData.subtotal.toFixed(2) + " €";
+          document.getElementById("summaryTotal").textContent =
+            this.orderData.total.toFixed(2) + " €";
+        }
+
+        initPayPal() {
+          if (typeof paypal === "undefined") {
+            this.showAlert("PayPal SDK non chargé", "danger");
+            return;
+          }
+          this.initPayPalCardFields();
+          this.initPayPalButtons();
+        }
+
+        initPayPalButtons() {
+          if (!this.orderData || this.orderData.total <= 0) return;
+
+          this.paypalButtons = paypal.Buttons({
+            style: {
+              layout: "vertical",
+              color: "blue",
+              shape: "rect",
+              label: "paypal",
+              height: 55,
+            },
+            createOrder: () => this.createPayPalOrder(),
+            onApprove: async (data, actions) =>
+              await this.processPayPalApproval(data, actions),
+            onError: (err) =>
+              this.showAlert("Erreur PayPal: " + err.message, "danger"),
+            onCancel: () => this.showAlert("Paiement annulé", "danger"),
+          });
+
+          if (this.selectedPayPalMethod === "paypal_account") {
+            this.paypalButtons.render("#paypal-button-container");
+          }
+        }
+
+        initPayPalCardFields() {
+          if (typeof paypal === "undefined" || this.cardFields) return;
+
+          paypal.HostedFields.render({
+            createOrder: () => this.createPayPalOrder(),
+            styles: {
+              ".valid": { color: "green" },
+              ".invalid": { color: "red" },
+            },
+            fields: {
+              number: {
+                selector: "#card-number",
+                placeholder: "4111 1111 1111 1111",
+              },
+              cvv: { selector: "#cvv", placeholder: "123" },
+              expirationDate: {
+                selector: "#expiration-date",
+                placeholder: "MM/AA",
+              },
+              cardholderName: {
+                selector: "#card-holder-name",
+                placeholder: "NOM PRENOM",
+              },
+            },
+          })
+            .then((hf) => {
+              this.cardFieldsInstance = hf;
+            })
+            .catch((error) => {
+              console.error("Erreur champs carte PayPal:", error);
+              this.showAlert("Erreur formulaire carte", "danger");
+            });
+        }
+
+        async createPayPalOrder() {
+          if (!this.orderData || this.orderData.total <= 0)
+            throw new Error("Montant invalide");
+
+          const response = await fetch(this.apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "create_paypal_order",
+              orderData: this.orderData,
+              amount: this.orderData.total.toFixed(2),
+            }),
+          });
+
+          const result = await response.json();
+          if (result.success && result.orderId) return result.orderId;
+          throw new Error(result.message || "Erreur création commande PayPal");
+        }
+
+        async processPayPalApproval(data, actions) {
+          this.showLoading();
+          try {
+            const details = await actions.order.capture();
+            const response = await fetch(this.apiUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "capture_paypal_order",
+                orderData: this.orderData,
+                paypalDetails: details,
+                orderId: data.orderID,
+                paymentMethod: "paypal",
+              }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              this.showSuccess(result);
+            } else {
+              this.showAlert(result.message, "danger");
+              this.hideLoading();
+            }
+          } catch (error) {
+            this.showAlert("Erreur paiement: " + error.message, "danger");
+            this.hideLoading();
+          }
+        }
+
+        async submitPayPalCard() {
+          if (!this.cardFieldsInstance) {
+            this.showAlert("Formulaire carte non initialisé", "danger");
+            return;
+          }
+          this.showLoading();
+          try {
+            const validationResults = await this.cardFieldsInstance.getState();
+            const isValid = Object.values(validationResults.fields).every(
+              (field) => field.isValid
+            );
+
+            if (!isValid) {
+              this.showAlert(
+                "Corrigez les erreurs dans le formulaire",
+                "danger"
+              );
+              this.hideLoading();
+              return;
+            }
+
+            const submitResponse = await this.cardFieldsInstance.submit({
+              contingencies: ["SCA_ALWAYS"],
+            });
+
+            const response = await fetch(this.apiUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "capture_paypal_order",
+                orderData: this.orderData,
+                orderId: submitResponse.orderId,
+                paymentMethod: "card",
+              }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              this.showSuccess(result);
+            } else {
+              this.showAlert(result.message, "danger");
+              this.hideLoading();
+            }
+          } catch (error) {
+            this.showAlert("Erreur carte: " + error.message, "danger");
+            this.hideLoading();
+          }
+        }
+
+        showLoading() {
+          document.getElementById("paymentStep1").style.display = "none";
+          document.getElementById("paymentStep2").style.display = "block";
+          document.getElementById("paymentStep3").style.display = "none";
+        }
+
+        hideLoading() {
+          document.getElementById("paymentStep1").style.display = "block";
+          document.getElementById("paymentStep2").style.display = "none";
+        }
+
+        showSuccess(result) {
+          document.getElementById("paymentStep1").style.display = "none";
+          document.getElementById("paymentStep2").style.display = "none";
+          document.getElementById("paymentStep3").style.display = "block";
+
+          if (result.order) {
+            document.getElementById("orderNumber").textContent =
+              result.order.numero_commande || "CMD-" + Date.now();
+            document.getElementById("orderDate").textContent =
+              new Date().toLocaleDateString("fr-FR");
+            document.getElementById("orderTotal").textContent = result.order
+              .total_ttc
+              ? parseFloat(result.order.total_ttc).toFixed(2) + " €"
+              : this.orderData.total.toFixed(2) + " €";
+
+            let methodText =
+              this.selectedPayPalMethod === "paypal_card"
+                ? "Carte bancaire (via PayPal)"
+                : "PayPal";
+            document.getElementById("orderMethod").textContent = methodText;
+
+            if (result.order.id_commande) {
+              document.getElementById("viewOrderBtn").href =
+                "commande.html?id=" + result.order.id_commande;
+            }
+          }
+          this.clearCart();
+        }
+
+        async clearCart() {
+          try {
+            await fetch("/api/panier.php?action=vider&confirmation=1");
+          } catch (error) {
+            console.error("Erreur vidage panier:", error);
+          }
+        }
+
+        showAlert(message, type = "danger") {
+          const alertDiv = document.getElementById("paymentAlert");
+          alertDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+          alertDiv.className = `alert alert-${type}`;
+          alertDiv.style.display = "block";
+          setTimeout(() => {
+            alertDiv.style.display = "none";
+          }, 5000);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        window.paymentSystem = new PaymentSystem();
+      });
+    </script>
+  </body>
+</html>

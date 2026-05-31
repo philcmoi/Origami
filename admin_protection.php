@@ -8,29 +8,34 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// Vérifier la dernière activité pour la sécurité
-$timeout_duration = 1800; // 30 minutes en secondes
+// Timeout session : 30 minutes
+$timeout_duration = 1800;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout_duration) {
-    // Session expirée
     session_unset();
     session_destroy();
     header('Location: admin_login.php?expired=1');
     exit;
 }
 
-// Mettre à jour le timestamp de dernière activité
 $_SESSION['last_activity'] = time();
 
-// Protection contre les attaques de fixation de session
+// Protection IP
 if (!isset($_SESSION['admin_ip'])) {
     $_SESSION['admin_ip'] = $_SERVER['REMOTE_ADDR'];
-} else {
-    if ($_SESSION['admin_ip'] !== $_SERVER['REMOTE_ADDR']) {
-        // Adresse IP a changé - déconnexion forcée
-        session_unset();
-        session_destroy();
-        header('Location: admin_login.php?security=1');
-        exit;
-    }
+} elseif ($_SESSION['admin_ip'] !== $_SERVER['REMOTE_ADDR']) {
+    session_unset();
+    session_destroy();
+    header('Location: admin_login.php?security=1');
+    exit;
+}
+
+// Protection User-Agent (optionnel mais recommandé)
+if (!isset($_SESSION['admin_user_agent'])) {
+    $_SESSION['admin_user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+} elseif ($_SESSION['admin_user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
+    session_unset();
+    session_destroy();
+    header('Location: admin_login.php?security=1');
+    exit;
 }
 ?>

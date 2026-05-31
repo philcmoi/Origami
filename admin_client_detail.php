@@ -3,13 +3,11 @@ session_start();
 
 require_once 'config.php';
 
-// Vérifier la connexion administrateur
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     header('Location: admin_login.php');
     exit;
 }
 
-// Vérifier que l'ID client est présent
 if (!isset($_GET['id']) || empty($_GET['id'])) {
     header('Location: admin_clients.php');
     exit;
@@ -17,16 +15,12 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $client_id = intval($_GET['id']);
 
-
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Récupérer les informations du client
-    $stmt_client = $pdo->prepare("
-        SELECT * FROM Client 
-        WHERE idClient = ?
-    ");
+    $stmt_client = $pdo->prepare("SELECT * FROM Client WHERE idClient = ?");
     $stmt_client->execute([$client_id]);
     $client = $stmt_client->fetch(PDO::FETCH_ASSOC);
 
@@ -34,7 +28,7 @@ try {
         die("Client non trouvé");
     }
 
-    // Récupérer les adresses du client
+    // Récupérer les adresses
     $stmt_adresses = $pdo->prepare("
         SELECT * FROM Adresse 
         WHERE idClient = ?
@@ -43,7 +37,6 @@ try {
     $stmt_adresses->execute([$client_id]);
     $adresses = $stmt_adresses->fetchAll(PDO::FETCH_ASSOC);
 
-    // Séparer les adresses de livraison et facturation
     $adresse_livraison = null;
     $adresse_facturation = null;
     
@@ -55,7 +48,7 @@ try {
         }
     }
 
-    // Récupérer les commandes du client
+    // Récupérer les commandes
     $stmt_commandes = $pdo->prepare("
         SELECT c.*, COUNT(lc.idLigneCommande) as nb_articles
         FROM Commande c
@@ -67,7 +60,7 @@ try {
     $stmt_commandes->execute([$client_id]);
     $commandes = $stmt_commandes->fetchAll(PDO::FETCH_ASSOC);
 
-    // Calculer les statistiques du client
+    // Statistiques
     $stmt_stats = $pdo->prepare("
         SELECT 
             COUNT(*) as total_commandes,
@@ -82,7 +75,7 @@ try {
     $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    die("Erreur de base de données: " . $e->getMessage());
+    die("Erreur: " . $e->getMessage());
 }
 ?>
 
@@ -90,145 +83,192 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Détails Client #<?= $client_id ?> - Youki and Co</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Client #<?= $client_id ?> - Youki and Co</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        :root {
+            --primary: #c0392b;
+            --primary-dark: #a93226;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --border-radius: 12px;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            color: #333;
+            font-family: 'Inter', sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-800);
         }
-        
-        .header {
-            background: white;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo h1 {
-            color: #d40000;
-            font-size: 24px;
-        }
-        
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .btn-logout {
-            background: #d40000;
-            color: white;
-            padding: 8px 15px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .container {
-            display: flex;
-            min-height: calc(100vh - 80px);
-        }
+
+        .app { display: flex; min-height: 100vh; }
         
         .sidebar {
-            width: 250px;
+            width: 260px;
             background: white;
-            padding: 20px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 1px solid var(--gray-200);
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            overflow-y: auto;
         }
         
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); width: 280px; z-index: 100; }
+            .sidebar.open { transform: translateX(0); }
+        }
+        
+        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--gray-200); }
+        .sidebar-header h2 { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .sidebar-header p { font-size: 0.7rem; color: var(--gray-500); margin-top: 4px; }
+        
+        .nav-menu { padding: 16px 12px; }
         .nav-item {
-            display: block;
-            padding: 12px 15px;
-            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: var(--gray-700);
             text-decoration: none;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            transition: background 0.3s;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
-        
-        .nav-item:hover, .nav-item.active {
-            background: #d40000;
-            color: white;
-        }
+        .nav-item i { width: 20px; color: var(--gray-500); }
+        .nav-item:hover { background: var(--gray-100); color: var(--primary); }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item.active i { color: white; }
         
         .main-content {
             flex: 1;
-            padding: 30px;
+            margin-left: 260px;
+            min-height: 100vh;
         }
+        @media (max-width: 768px) { .main-content { margin-left: 0; } }
         
-        .page-header {
+        .top-bar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 12px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            flex-wrap: wrap;
+            gap: 12px;
         }
         
-        .page-title h2 {
-            color: #333;
-            font-size: 28px;
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 8px;
         }
+        @media (max-width: 768px) { .menu-toggle { display: block; } }
         
+        .page-title h1 { font-size: 1.25rem; font-weight: 600; }
         .breadcrumb {
-            color: #666;
-            font-size: 14px;
+            font-size: 0.7rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+        .breadcrumb a { color: var(--primary); text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        
+        .user-info { display: flex; align-items: center; gap: 16px; }
+        .user-email { font-size: 0.8rem; color: var(--gray-600); }
+        .btn-logout {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-logout:hover { background: var(--gray-200); color: var(--primary); }
+        
+        .content-wrapper { padding: 24px; }
+        @media (max-width: 640px) { .content-wrapper { padding: 16px; } }
+        
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-bottom: 20px;
         }
         
-        .breadcrumb a {
-            color: #d40000;
-            text-decoration: none;
-        }
+        .btn-back:hover { background: var(--gray-200); }
         
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
         
         .stat-card {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            border: 1px solid var(--gray-200);
             text-align: center;
         }
         
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #d40000;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 12px;
-        }
+        .stat-number { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 0.65rem; color: var(--gray-500); text-transform: uppercase; }
         
         .section {
             background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+            overflow: hidden;
         }
         
-        .section h3 {
-            margin-bottom: 20px;
-            color: #333;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
         }
+        
+        .section-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-header h2 i { color: var(--primary); }
+        
+        .section-body { padding: 20px; }
         
         .info-grid {
             display: grid;
@@ -236,415 +276,369 @@ try {
             gap: 20px;
         }
         
-        .info-group {
-            margin-bottom: 15px;
-        }
-        
+        .info-group { margin-bottom: 0; }
         .info-label {
-            font-weight: bold;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--gray-500);
+            margin-bottom: 4px;
         }
-        
         .info-value {
-            color: #333;
-            font-size: 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gray-800);
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        
-        th {
-            background: #f8f9fa;
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.65rem;
             font-weight: 600;
         }
-        
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .status-en_attente {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-confirmee {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .status-expediee {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-livree {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        .btn-action {
-            padding: 6px 12px;
-            background: #d40000;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-action:hover {
-            background: #b30000;
-        }
-        
-        .btn-secondary {
-            padding: 6px 12px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-secondary:hover {
-            background: #545b62;
-        }
-        
-        .type-badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .type-permanent {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .type-temporaire {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .email-confirmed {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .email-pending {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .address-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        
-        .address-type {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #d40000;
-            color: white;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-bottom: 5px;
-        }
+        .badge-permanent { background: #d4edda; color: #155724; }
+        .badge-temporaire { background: #fff3cd; color: #856404; }
+        .badge-confirmed { background: #d4edda; color: #155724; }
+        .badge-pending { background: #fff3cd; color: #856404; }
         
         .addresses-comparison {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .address-column {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-        }
-        
-        .address-title {
-            font-weight: bold;
-            color: #d40000;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .same-address-notice {
-            background: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-            margin-top: 20px;
         }
         
         @media (max-width: 768px) {
-            .addresses-comparison {
-                grid-template-columns: 1fr;
-            }
+            .addresses-comparison { grid-template-columns: 1fr; gap: 16px; }
         }
+        
+        .address-column {
+            background: var(--gray-100);
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .address-title {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .address-content {
+            font-size: 0.8rem;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+        
+        .same-address-notice {
+            margin-top: 16px;
+            padding: 10px 16px;
+            background: #d4edda;
+            color: #155724;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .table-wrapper { overflow-x: auto; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 550px;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        th {
+            background: var(--gray-100);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--gray-600);
+        }
+        
+        td { font-size: 0.8rem; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .status-en_attente_paiement, .status-en_attente { background: #fff3cd; color: #856404; }
+        .status-payee { background: #d4edda; color: #155724; }
+        .status-expediee { background: #d1ecf1; color: #0c5460; }
+        .status-livree { background: #fef2f2; color: var(--primary); }
+        .status-annulee { background: var(--gray-200); color: var(--gray-600); }
+        
+        .btn-action {
+            padding: 5px 12px;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-action:hover { background: var(--primary-dark); }
+        
+        @media (max-width: 640px) {
+            .desktop-table { display: none; }
+            .mobile-orders { display: flex; flex-direction: column; gap: 12px; }
+            .order-card {
+                background: var(--gray-100);
+                border-radius: 12px;
+                padding: 16px;
+                border-left: 3px solid var(--primary);
+            }
+            .order-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--gray-300);
+            }
+            .order-id { font-weight: 700; font-size: 0.9rem; }
+            .order-date { font-size: 0.7rem; color: var(--gray-500); }
+            .order-details {
+                display: flex;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin: 12px 0;
+                font-size: 0.8rem;
+            }
+            .order-amount { font-weight: 700; color: var(--primary); }
+        }
+        
+        @media (min-width: 641px) { .mobile-orders { display: none; } }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: var(--gray-500);
+            border-top: 1px solid var(--gray-200);
+            margin-top: 24px;
+        }
+        
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 90;
+        }
+        .sidebar-overlay.active { display: block; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">
-            <h1>Youki and Co - Administration</h1>
-        </div>
-        <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
-            <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
-        </div>
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Youki & Co</h2>
+                <p>Administration</p>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.php" class="nav-item"><i class="fas fa-chart-pie"></i> Tableau de bord</a>
+                <a href="admin_commandes.php" class="nav-item"><i class="fas fa-shopping-cart"></i> Commandes</a>
+                <a href="admin_factures.php" class="nav-item"><i class="fas fa-file-invoice"></i> Factures</a>
+                <a href="admin_clients.php" class="nav-item active"><i class="fas fa-users"></i> Clients</a>
+                <a href="admin_produits.php" class="nav-item"><i class="fas fa-box"></i> Produits</a>
+            </nav>
+        </aside>
+        
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
+        <main class="main-content">
+            <div class="top-bar">
+                <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+                <div class="page-title">
+                    <h1>Détail du client</h1>
+                    <div class="breadcrumb">
+                        <a href="dashboard.php">Dashboard</a> &gt;
+                        <a href="admin_clients.php">Clients</a> &gt;
+                        Client #<?= $client_id ?>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <span class="user-email"><?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+                    <a href="dashboard.php?logout=1" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                </div>
+            </div>
+            
+            <div class="content-wrapper">
+                <a href="admin_clients.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour à la liste</a>
+                
+                <!-- Statistiques -->
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-number"><?= $stats['total_commandes'] ?? 0 ?></div><div class="stat-label">Commandes</div></div>
+                    <div class="stat-card"><div class="stat-number"><?= number_format($stats['total_depense'] ?? 0, 2, ',', ' ') ?>€</div><div class="stat-label">Total dépensé</div></div>
+                    <div class="stat-card"><div class="stat-number"><?= number_format($stats['moyenne_commande'] ?? 0, 2, ',', ' ') ?>€</div><div class="stat-label">Moyenne/commande</div></div>
+                    <div class="stat-card"><div class="stat-number" style="font-size: 0.9rem;"><?= $stats['premiere_commande'] ? date('d/m/Y', strtotime($stats['premiere_commande'])) : '-' ?></div><div class="stat-label">1ère commande</div></div>
+                </div>
+                
+                <!-- Informations personnelles -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-user"></i> Informations personnelles</h2>
+                    </div>
+                    <div class="section-body">
+                        <div class="info-grid">
+                            <div><div class="info-label">ID Client</div><div class="info-value">#<?= $client_id ?></div></div>
+                            <div><div class="info-label">Nom complet</div><div class="info-value"><?= htmlspecialchars($client['prenom'] . ' ' . $client['nom']) ?></div></div>
+                            <div><div class="info-label">Email</div><div class="info-value"><?= htmlspecialchars($client['email']) ?> <?= $client['email_confirme'] ? '<span class="badge badge-confirmed">✓ Confirmé</span>' : '<span class="badge badge-pending">✗ Non confirmé</span>' ?></div></div>
+                            <div><div class="info-label">Téléphone</div><div class="info-value"><?= htmlspecialchars($client['telephone'] ?? 'Non renseigné') ?></div></div>
+                            <div><div class="info-label">Type de compte</div><div class="info-value"><span class="badge badge-<?= ($client['type'] ?? 'temporaire') == 'permanent' ? 'permanent' : 'temporaire' ?>"><?= $client['type'] ?? 'temporaire' ?></span></div></div>
+                            <div><div class="info-label">Date d'inscription</div><div class="info-value"><?= date('d/m/Y à H:i', strtotime($client['date_creation'])) ?></div></div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <a href="admin_client_edit.php?id=<?= $client_id ?>" class="btn-action"><i class="fas fa-edit"></i> Modifier les informations</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Adresses -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-map-marker-alt"></i> Adresses</h2>
+                    </div>
+                    <div class="section-body">
+                        <?php if (count($adresses) > 0): ?>
+                            <div class="addresses-comparison">
+                                <div class="address-column">
+                                    <div class="address-title"><i class="fas fa-truck"></i> Adresse de livraison</div>
+                                    <?php if ($adresse_livraison): ?>
+                                        <div class="address-content">
+                                            <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
+                                            <?= nl2br(htmlspecialchars($adresse_livraison['adresse'])) ?><br>
+                                            <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?><br>
+                                            <?= htmlspecialchars($adresse_livraison['pays']) ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="address-content" style="color: var(--gray-500);">Aucune adresse de livraison</div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="address-column">
+                                    <div class="address-title"><i class="fas fa-file-invoice"></i> Adresse de facturation</div>
+                                    <?php if ($adresse_facturation): ?>
+                                        <div class="address-content">
+                                            <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
+                                            <?= nl2br(htmlspecialchars($adresse_facturation['adresse'])) ?><br>
+                                            <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?><br>
+                                            <?= htmlspecialchars($adresse_facturation['pays']) ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="address-content" style="color: var(--gray-500);">Aucune adresse de facturation</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php if ($adresse_livraison && $adresse_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse']): ?>
+                                <div class="same-address-notice">
+                                    <i class="fas fa-info-circle"></i> Les adresses de livraison et facturation sont identiques
+                                </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <div style="text-align: center; padding: 30px; color: var(--gray-500);">
+                                <i class="fas fa-map-marker-alt" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i>
+                                <p>Aucune adresse enregistrée</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- Historique des commandes -->
+                <div class="section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-history"></i> Historique des commandes</h2>
+                    </div>
+                    <div class="section-body">
+                        <?php if (count($commandes) > 0): ?>
+                            <div class="desktop-table table-wrapper">
+                                <table>
+                                    <thead><tr><th>N°</th><th>Date</th><th>Articles</th><th>Montant</th><th>Statut</th><th></th></tr></thead>
+                                    <tbody>
+                                        <?php foreach ($commandes as $commande): ?>
+                                        <tr>
+                                            <td>#<?= $commande['idCommande'] ?></td>
+                                            <td><?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></td>
+                                            <td><?= $commande['nb_articles'] ?> article(s)</td>
+                                            <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
+                                            <td><span class="status-badge status-<?= $commande['statut'] ?>"><?= $commande['statut'] ?></span></td>
+                                            <td><a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action"><i class="fas fa-eye"></i> Voir</a></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="mobile-orders">
+                                <?php foreach ($commandes as $commande): ?>
+                                <div class="order-card">
+                                    <div class="order-card-header">
+                                        <span class="order-id">#<?= $commande['idCommande'] ?></span>
+                                        <span class="order-date"><?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></span>
+                                        <span class="status-badge status-<?= $commande['statut'] ?>"><?= $commande['statut'] ?></span>
+                                    </div>
+                                    <div class="order-details">
+                                        <span>📦 <?= $commande['nb_articles'] ?> article(s)</span>
+                                        <span class="order-amount">💰 <?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</span>
+                                    </div>
+                                    <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action" style="display: inline-flex; justify-content: center; width: 100%;"><i class="fas fa-eye"></i> Voir détails</a>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
+                                <p>Aucune commande pour ce client</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>&copy; <?= date('Y') ?> Youki and Co - Créations artisanales japonaises</p>
+            </div>
+        </main>
     </div>
     
-    <div class="container">
-        <div class="sidebar">
-            <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_clients.php" class="nav-item active">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
-        </div>
+    <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
         
-        <div class="main-content">
-            <div class="page-header">
-                <div class="page-title">
-                    <h2>Détails du Client</h2>
-                    <div class="breadcrumb">
-                        <a href="admin_dashboard.php">Tableau de bord</a> &gt; 
-                        <a href="admin_clients.php">Clients</a> &gt; 
-                        Détails client #<?= $client_id ?>
-                    </div>
-                </div>
-                <div>
-                    <a href="admin_clients.php" class="btn-secondary">← Retour à la liste</a>
-                </div>
-            </div>
-            
-            <!-- Statistiques du client -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number"><?= $stats['total_commandes'] ?? 0 ?></div>
-                    <div class="stat-label">Commandes totales</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['total_depense'] ?? 0, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Total dépensé</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number"><?= number_format($stats['moyenne_commande'] ?? 0, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Moyenne par commande</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">
-                        <?= $stats['premiere_commande'] ? date('d/m/Y', strtotime($stats['premiere_commande'])) : 'N/A' ?>
-                    </div>
-                    <div class="stat-label">Première commande</div>
-                </div>
-            </div>
-            
-            <!-- Informations personnelles -->
-            <div class="section">
-                <h3>Informations Personnelles</h3>
-                <div class="info-grid">
-                    <div class="info-group">
-                        <div class="info-label">ID Client</div>
-                        <div class="info-value">#<?= $client_id ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Nom complet</div>
-                        <div class="info-value"><?= htmlspecialchars($client['prenom'] . ' ' . $client['nom']) ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">
-                            <?= htmlspecialchars($client['email']) ?>
-                            <?php if ($client['email_confirme'] == 1): ?>
-                                <span class="email-confirmed">✓ Confirmé</span>
-                            <?php else: ?>
-                                <span class="email-pending">✗ Non confirmé</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Téléphone</div>
-                        <div class="info-value"><?= htmlspecialchars($client['telephone'] ?? 'Non renseigné') ?></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Type de compte</div>
-                        <div class="info-value">
-                            <span class="type-badge type-<?= $client['type'] ?? 'temporaire' ?>">
-                                <?= $client['type'] ?? 'temporaire' ?>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Date d'inscription</div>
-                        <div class="info-value"><?= date('d/m/Y à H:i', strtotime($client['date_creation'])) ?></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Adresses -->
-<div class="section">
-    <h3>Adresses</h3>
-    <?php if (count($adresses) > 0): ?>
-        <?php 
-        $has_livraison = !is_null($adresse_livraison);
-        $has_facturation = !is_null($adresse_facturation);
-        $same_address = $has_livraison && $has_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse'];
-        ?>
-        
-        <!-- Affichage côte à côte pour montrer les deux adresses séparément -->
-        <div class="addresses-comparison">
-            <!-- Colonne Livraison -->
-            <div class="address-column">
-                <div class="address-title">
-                    📍 Adresse de Livraison 
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la facturation)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_livraison): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_livraison['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['telephone']) ?>
-                        <?php if (!empty($adresse_livraison['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_livraison['societe']) ?>
-                        <?php endif; ?>
-                        <?php if (!empty($adresse_livraison['instructions'])): ?>
-                            <br>Instructions: <?= htmlspecialchars($adresse_livraison['instructions']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de livraison enregistrée</p>
-                <?php endif; ?>
-            </div>
-            
-            <!-- Colonne Facturation -->
-            <div class="address-column">
-                <div class="address-title">
-                    📄 Adresse de Facturation
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la livraison)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_facturation): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_facturation['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['telephone']) ?>
-                        <?php if (!empty($adresse_facturation['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_facturation['societe']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de facturation enregistrée</p>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <!-- Affichage des adresses supplémentaires s'il y en a -->
-        <?php 
-        $adresses_supplementaires = array_filter($adresses, function($adresse) use ($adresse_livraison, $adresse_facturation) {
-            return $adresse['idAdresse'] != ($adresse_livraison['idAdresse'] ?? null) && 
-                   $adresse['idAdresse'] != ($adresse_facturation['idAdresse'] ?? null);
+        menuToggle?.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
         });
-        ?>
-        
-        <?php if (count($adresses_supplementaires) > 0): ?>
-            <div style="margin-top: 30px;">
-                <h4 style="margin-bottom: 15px; color: #666;">Adresses supplémentaires</h4>
-                <div class="info-grid">
-                    <?php foreach ($adresses_supplementaires as $adresse): ?>
-                        <div class="address-card">
-                            <span class="address-type"><?= $adresse['type'] ?? 'livraison' ?></span>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']) ?></strong><br>
-                                <?= htmlspecialchars($adresse['adresse']) ?><br>
-                                <?= htmlspecialchars($adresse['codePostal'] . ' ' . $adresse['ville']) ?><br>
-                                <?= htmlspecialchars($adresse['pays']) ?><br>
-                                <?= htmlspecialchars($adresse['telephone']) ?>
-                                <?php if (!empty($adresse['societe'])): ?>
-                                    <br>Société: <?= htmlspecialchars($adresse['societe']) ?>
-                                <?php endif; ?>
-                                <?php if (!empty($adresse['instructions']) && $adresse['type'] == 'livraison'): ?>
-                                    <br>Instructions: <?= htmlspecialchars($adresse['instructions']) ?>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        <?php endif; ?>
-        
-    <?php else: ?>
-        <p>Aucune adresse enregistrée pour ce client.</p>
-    <?php endif; ?>
-</div>
-            
-            <!-- Historique des commandes -->
-            <div class="section">
-                <h3>Historique des Commandes</h3>
-                <?php if (count($commandes) > 0): ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID Commande</th>
-                                <th>Date</th>
-                                <th>Articles</th>
-                                <th>Montant</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($commandes as $commande): ?>
-                            <tr>
-                                <td>#<?= $commande['idCommande'] ?></td>
-                                <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
-                                <td><?= $commande['nb_articles'] ?> article(s)</td>
-                                <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
-                                <td>
-                                    <span class="status-badge status-<?= $commande['statut'] ?>">
-                                        <?= $commande['statut'] ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p>Aucune commande pour ce client.</p>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+    </script>
 </body>
 </html>
