@@ -17,7 +17,6 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
 
 $client_id = intval($_GET['id']);
 
-
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -90,7 +89,7 @@ try {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Détails Client #<?= $client_id ?> - Youki and Co</title>
     <style>
         * {
@@ -105,24 +104,34 @@ try {
             color: #333;
         }
         
+        /* Header responsive */
         .header {
             background: white;
-            padding: 20px;
+            padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
+            gap: 15px;
         }
         
         .logo h1 {
             color: #d40000;
-            font-size: 24px;
+            font-size: 1.5rem;
+        }
+        
+        @media (max-width: 640px) {
+            .logo h1 {
+                font-size: 1.2rem;
+            }
         }
         
         .admin-info {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .btn-logout {
@@ -134,16 +143,36 @@ try {
             font-size: 14px;
         }
         
+        /* Container responsive */
         .container {
             display: flex;
+            flex-wrap: wrap;
             min-height: calc(100vh - 80px);
         }
         
+        /* Sidebar responsive */
         .sidebar {
             width: 250px;
             background: white;
             padding: 20px;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                box-shadow: none;
+                border-bottom: 1px solid #eee;
+                padding: 10px 20px;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .sidebar .nav-item {
+                display: inline-block;
+                margin-right: 10px;
+                margin-bottom: 0;
+            }
         }
         
         .nav-item {
@@ -161,26 +190,44 @@ try {
             color: white;
         }
         
+        /* Main content responsive */
         .main-content {
             flex: 1;
-            padding: 30px;
+            padding: 20px;
+            min-width: 0;
         }
         
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 15px;
+            }
+        }
+        
+        /* Page header responsive */
         .page-header {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 25px;
         }
         
         .page-title h2 {
+            font-size: 1.5rem;
             color: #333;
-            font-size: 28px;
+        }
+        
+        @media (max-width: 480px) {
+            .page-title h2 {
+                font-size: 1.2rem;
+            }
         }
         
         .breadcrumb {
+            font-size: 0.75rem;
             color: #666;
-            font-size: 14px;
+            word-break: break-word;
         }
         
         .breadcrumb a {
@@ -188,39 +235,48 @@ try {
             text-decoration: none;
         }
         
+        /* Stats grid responsive */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }
         
         .stat-card {
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             text-align: center;
         }
         
         .stat-number {
-            font-size: 24px;
+            font-size: 1.3rem;
             font-weight: bold;
             color: #d40000;
-            margin-bottom: 5px;
+            word-break: break-word;
         }
         
         .stat-label {
+            font-size: 0.7rem;
             color: #666;
-            font-size: 12px;
         }
         
+        @media (max-width: 480px) {
+            .stat-number {
+                font-size: 1rem;
+            }
+        }
+        
+        /* Section responsive */
         .section {
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            overflow-x: auto;
         }
         
         .section h3 {
@@ -228,12 +284,20 @@ try {
             color: #333;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 10px;
+            font-size: 1.2rem;
         }
         
+        /* Info grid responsive */
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        @media (max-width: 480px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         .info-group {
@@ -243,136 +307,28 @@ try {
         .info-label {
             font-weight: bold;
             color: #666;
-            font-size: 14px;
+            font-size: 0.7rem;
             margin-bottom: 5px;
         }
         
         .info-value {
             color: #333;
-            font-size: 16px;
+            font-size: 0.9rem;
+            word-break: break-word;
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-        }
-        
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .status-en_attente {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-confirmee {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .status-expediee {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status-livree {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        .btn-action {
-            padding: 6px 12px;
-            background: #d40000;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-action:hover {
-            background: #b30000;
-        }
-        
-        .btn-secondary {
-            padding: 6px 12px;
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            border-radius: 3px;
-            font-size: 12px;
-            margin-right: 5px;
-        }
-        
-        .btn-secondary:hover {
-            background: #545b62;
-        }
-        
-        .type-badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .type-permanent {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .type-temporaire {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .email-confirmed {
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .email-pending {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        
-        .address-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        
-        .address-type {
-            display: inline-block;
-            padding: 2px 8px;
-            background: #d40000;
-            color: white;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-bottom: 5px;
-        }
-        
+        /* Addresses comparison responsive */
         .addresses-comparison {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .addresses-comparison {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
         }
         
         .address-column {
@@ -387,21 +343,172 @@ try {
             margin-bottom: 10px;
             padding-bottom: 5px;
             border-bottom: 1px solid #ddd;
+            font-size: 0.9rem;
+        }
+        
+        /* Table responsive */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -5px;
+            padding: 0 5px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 500px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        
+        td {
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 480px) {
+            th, td {
+                padding: 8px;
+                font-size: 0.75rem;
+            }
+        }
+        
+        /* Badges */
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .status-en_attente { background: #fff3cd; color: #856404; }
+        .status-confirmee { background: #d1ecf1; color: #0c5460; }
+        .status-expediee { background: #d4edda; color: #155724; }
+        .status-livree { background: #e2e3e5; color: #383d41; }
+        
+        .type-badge {
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        
+        .type-permanent { background: #d4edda; color: #155724; }
+        .type-temporaire { background: #fff3cd; color: #856404; }
+        
+        .email-confirmed { color: #28a745; font-weight: bold; font-size: 0.7rem; }
+        .email-pending { color: #dc3545; font-weight: bold; font-size: 0.7rem; }
+        
+        .btn-action {
+            padding: 5px 10px;
+            background: #d40000;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+        
+        .btn-secondary {
+            padding: 5px 10px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+        
+        @media (max-width: 480px) {
+            .btn-action, .btn-secondary {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
         }
         
         .same-address-notice {
             background: #d4edda;
             color: #155724;
-            padding: 15px;
+            padding: 12px;
             border-radius: 5px;
             text-align: center;
-            margin-top: 20px;
+            margin-top: 15px;
+            font-size: 0.8rem;
         }
         
-        @media (max-width: 768px) {
-            .addresses-comparison {
-                grid-template-columns: 1fr;
+        .address-card {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        /* Version mobile commandes en carte */
+        @media (max-width: 480px) {
+            .orders-cards {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
             }
+            
+            .order-card {
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 12px;
+                border-left: 3px solid #d40000;
+            }
+            
+            .order-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .order-id {
+                font-weight: bold;
+                font-size: 0.9rem;
+            }
+            
+            .order-date {
+                font-size: 0.7rem;
+                color: #666;
+            }
+            
+            .order-details {
+                font-size: 0.8rem;
+                margin-bottom: 10px;
+            }
+            
+            .desktop-table {
+                display: none;
+            }
+        }
+        
+        @media (min-width: 481px) {
+            .mobile-orders {
+                display: none;
+            }
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: #666;
         }
     </style>
 </head>
@@ -411,7 +518,7 @@ try {
             <h1>Youki and Co - Administration</h1>
         </div>
         <div class="admin-info">
-            <span>Connecté en tant que: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
+            <span>Connecté: <?= htmlspecialchars($_SESSION['admin_email']) ?></span>
             <a href="admin_dashboard.php?logout=1" class="btn-logout">Déconnexion</a>
         </div>
     </div>
@@ -419,9 +526,10 @@ try {
     <div class="container">
         <div class="sidebar">
             <a href="admin_dashboard.php" class="nav-item">Tableau de Bord</a>
-            <a href="admin_commandes.php" class="nav-item">Gestion des Commandes</a>
-            <a href="admin_clients.php" class="nav-item active">Gestion des Clients</a>
-            <a href="admin_produits.php" class="nav-item">Gestion des Produits</a>
+            <a href="admin_commandes.php" class="nav-item">Commandes</a>
+            <a href="admin_factures.php" class="nav-item">Factures</a>
+            <a href="admin_clients.php" class="nav-item active">Clients</a>
+            <a href="admin_produits.php" class="nav-item">Produits</a>
         </div>
         
         <div class="main-content">
@@ -431,19 +539,19 @@ try {
                     <div class="breadcrumb">
                         <a href="admin_dashboard.php">Tableau de bord</a> &gt; 
                         <a href="admin_clients.php">Clients</a> &gt; 
-                        Détails client #<?= $client_id ?>
+                        Client #<?= $client_id ?>
                     </div>
                 </div>
                 <div>
-                    <a href="admin_clients.php" class="btn-secondary">← Retour à la liste</a>
+                    <a href="admin_clients.php" class="btn-secondary">← Retour</a>
                 </div>
             </div>
             
-            <!-- Statistiques du client -->
+            <!-- Statistiques -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number"><?= $stats['total_commandes'] ?? 0 ?></div>
-                    <div class="stat-label">Commandes totales</div>
+                    <div class="stat-label">Commandes</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= number_format($stats['total_depense'] ?? 0, 2, ',', ' ') ?>€</div>
@@ -451,13 +559,13 @@ try {
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= number_format($stats['moyenne_commande'] ?? 0, 2, ',', ' ') ?>€</div>
-                    <div class="stat-label">Moyenne par commande</div>
+                    <div class="stat-label">Moyenne/commande</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">
                         <?= $stats['premiere_commande'] ? date('d/m/Y', strtotime($stats['premiere_commande'])) : 'N/A' ?>
                     </div>
-                    <div class="stat-label">Première commande</div>
+                    <div class="stat-label">1ère commande</div>
                 </div>
             </div>
             
@@ -504,147 +612,107 @@ try {
             </div>
             
             <!-- Adresses -->
-<div class="section">
-    <h3>Adresses</h3>
-    <?php if (count($adresses) > 0): ?>
-        <?php 
-        $has_livraison = !is_null($adresse_livraison);
-        $has_facturation = !is_null($adresse_facturation);
-        $same_address = $has_livraison && $has_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse'];
-        ?>
-        
-        <!-- Affichage côte à côte pour montrer les deux adresses séparément -->
-        <div class="addresses-comparison">
-            <!-- Colonne Livraison -->
-            <div class="address-column">
-                <div class="address-title">
-                    📍 Adresse de Livraison 
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la facturation)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_livraison): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_livraison['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_livraison['telephone']) ?>
-                        <?php if (!empty($adresse_livraison['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_livraison['societe']) ?>
-                        <?php endif; ?>
-                        <?php if (!empty($adresse_livraison['instructions'])): ?>
-                            <br>Instructions: <?= htmlspecialchars($adresse_livraison['instructions']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de livraison enregistrée</p>
-                <?php endif; ?>
-            </div>
-            
-            <!-- Colonne Facturation -->
-            <div class="address-column">
-                <div class="address-title">
-                    📄 Adresse de Facturation
-                    <?php if ($same_address): ?>
-                        <span style="font-size: 12px; color: #28a745;">(identique à la livraison)</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ($has_facturation): ?>
-                    <div class="info-value">
-                        <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
-                        <?= htmlspecialchars($adresse_facturation['adresse']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['pays']) ?><br>
-                        <?= htmlspecialchars($adresse_facturation['telephone']) ?>
-                        <?php if (!empty($adresse_facturation['societe'])): ?>
-                            <br>Société: <?= htmlspecialchars($adresse_facturation['societe']) ?>
-                        <?php endif; ?>
-                    </div>
-                <?php else: ?>
-                    <p style="color: #666; font-style: italic;">Aucune adresse de facturation enregistrée</p>
-                <?php endif; ?>
-            </div>
-        </div>
-        
-        <!-- Affichage des adresses supplémentaires s'il y en a -->
-        <?php 
-        $adresses_supplementaires = array_filter($adresses, function($adresse) use ($adresse_livraison, $adresse_facturation) {
-            return $adresse['idAdresse'] != ($adresse_livraison['idAdresse'] ?? null) && 
-                   $adresse['idAdresse'] != ($adresse_facturation['idAdresse'] ?? null);
-        });
-        ?>
-        
-        <?php if (count($adresses_supplementaires) > 0): ?>
-            <div style="margin-top: 30px;">
-                <h4 style="margin-bottom: 15px; color: #666;">Adresses supplémentaires</h4>
-                <div class="info-grid">
-                    <?php foreach ($adresses_supplementaires as $adresse): ?>
-                        <div class="address-card">
-                            <span class="address-type"><?= $adresse['type'] ?? 'livraison' ?></span>
-                            <div class="info-value">
-                                <strong><?= htmlspecialchars($adresse['prenom'] . ' ' . $adresse['nom']) ?></strong><br>
-                                <?= htmlspecialchars($adresse['adresse']) ?><br>
-                                <?= htmlspecialchars($adresse['codePostal'] . ' ' . $adresse['ville']) ?><br>
-                                <?= htmlspecialchars($adresse['pays']) ?><br>
-                                <?= htmlspecialchars($adresse['telephone']) ?>
-                                <?php if (!empty($adresse['societe'])): ?>
-                                    <br>Société: <?= htmlspecialchars($adresse['societe']) ?>
-                                <?php endif; ?>
-                                <?php if (!empty($adresse['instructions']) && $adresse['type'] == 'livraison'): ?>
-                                    <br>Instructions: <?= htmlspecialchars($adresse['instructions']) ?>
-                                <?php endif; ?>
-                            </div>
+            <div class="section">
+                <h3>Adresses</h3>
+                <?php if (count($adresses) > 0): ?>
+                    <?php 
+                    $has_livraison = !is_null($adresse_livraison);
+                    $has_facturation = !is_null($adresse_facturation);
+                    $same_address = $has_livraison && $has_facturation && $adresse_livraison['idAdresse'] == $adresse_facturation['idAdresse'];
+                    ?>
+                    
+                    <div class="addresses-comparison">
+                        <div class="address-column">
+                            <div class="address-title">📍 Livraison</div>
+                            <?php if ($has_livraison): ?>
+                                <div class="info-value">
+                                    <strong><?= htmlspecialchars($adresse_livraison['prenom'] . ' ' . $adresse_livraison['nom']) ?></strong><br>
+                                    <?= htmlspecialchars($adresse_livraison['adresse']) ?><br>
+                                    <?= htmlspecialchars($adresse_livraison['codePostal'] . ' ' . $adresse_livraison['ville']) ?>
+                                </div>
+                            <?php else: ?>
+                                <p style="color: #666; font-style: italic;">Aucune adresse</p>
+                            <?php endif; ?>
                         </div>
-                    <?php endforeach; ?>
-                </div>
+                        
+                        <div class="address-column">
+                            <div class="address-title">📄 Facturation</div>
+                            <?php if ($has_facturation): ?>
+                                <div class="info-value">
+                                    <strong><?= htmlspecialchars($adresse_facturation['prenom'] . ' ' . $adresse_facturation['nom']) ?></strong><br>
+                                    <?= htmlspecialchars($adresse_facturation['adresse']) ?><br>
+                                    <?= htmlspecialchars($adresse_facturation['codePostal'] . ' ' . $adresse_facturation['ville']) ?>
+                                </div>
+                            <?php else: ?>
+                                <p style="color: #666; font-style: italic;">Aucune adresse</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <?php if ($same_address): ?>
+                        <div class="same-address-notice">
+                            ℹ️ Les adresses de livraison et facturation sont identiques
+                        </div>
+                    <?php endif; ?>
+                    
+                <?php else: ?>
+                    <p>Aucune adresse enregistrée.</p>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
-        
-    <?php else: ?>
-        <p>Aucune adresse enregistrée pour ce client.</p>
-    <?php endif; ?>
-</div>
             
             <!-- Historique des commandes -->
             <div class="section">
                 <h3>Historique des Commandes</h3>
                 <?php if (count($commandes) > 0): ?>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID Commande</th>
-                                <th>Date</th>
-                                <th>Articles</th>
-                                <th>Montant</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($commandes as $commande): ?>
-                            <tr>
-                                <td>#<?= $commande['idCommande'] ?></td>
-                                <td><?= date('d/m/Y H:i', strtotime($commande['dateCommande'])) ?></td>
-                                <td><?= $commande['nb_articles'] ?> article(s)</td>
-                                <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
-                                <td>
-                                    <span class="status-badge status-<?= $commande['statut'] ?>">
-                                        <?= $commande['statut'] ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    
+                    <!-- Version tableau desktop -->
+                    <div class="desktop-table table-wrapper">
+                        <table>
+                            <thead>
+                                <tr><th>ID</th><th>Date</th><th>Articles</th><th>Montant</th><th>Statut</th><th>Action</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($commandes as $commande): ?>
+                                <tr>
+                                    <td>#<?= $commande['idCommande'] ?></td>
+                                    <td><?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></td>
+                                    <td><?= $commande['nb_articles'] ?> article(s)</td>
+                                    <td><?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</td>
+                                    <td><span class="status-badge status-<?= $commande['statut'] ?>"><?= $commande['statut'] ?></span></td>
+                                    <td><a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">Voir</a></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Version mobile cartes -->
+                    <div class="mobile-orders">
+                        <?php foreach ($commandes as $commande): ?>
+                        <div class="order-card">
+                            <div class="order-card-header">
+                                <span class="order-id">#<?= $commande['idCommande'] ?></span>
+                                <span class="order-date"><?= date('d/m/Y', strtotime($commande['dateCommande'])) ?></span>
+                                <span class="status-badge status-<?= $commande['statut'] ?>"><?= $commande['statut'] ?></span>
+                            </div>
+                            <div class="order-details">
+                                <div>📦 <?= $commande['nb_articles'] ?> article(s)</div>
+                                <div>💰 <?= number_format($commande['montantTotal'], 2, ',', ' ') ?>€</div>
+                            </div>
+                            <a href="admin_commande_detail.php?id=<?= $commande['idCommande'] ?>" class="btn-action">👁️ Voir détails</a>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
                 <?php else: ?>
                     <p>Aucune commande pour ce client.</p>
                 <?php endif; ?>
             </div>
         </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; <?= date('Y') ?> Youki and Co</p>
     </div>
 </body>
 </html>

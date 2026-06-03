@@ -9,6 +9,7 @@ ini_set('display_errors', 1);
 
 require_once __DIR__ . '/session_verification.php';
 require_once __DIR__ . '/smtp_config.php';
+require_once 'modal_paiement_test.php';
 
 // Configuration PayPal
 define('PAYPAL_CLIENT_ID', 'Aac1-P0VrxBQ_5REVeo4f557_-p6BDeXA_hyiuVZfi21sILMWccBFfTidQ6nnhQathCbWaCSQaDmxJw5');
@@ -431,6 +432,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+
+    <!-- Votre formulaire de paiement existant -->
+    <div style="text-align: center; margin-top: 50px;">
+        <h2>Formulaire de paiement</h2>
+    
+    <!-- Bouton pour afficher la modal d'aide -->
+        <button type="button" onclick="ouvrirModalPaiement()" style="background-color: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+            📋 Afficher les coordonnées de test
+        </button>
+    
+    </div>
+
+
     <div class="container">
         <div class="step-indicator">
             <div class="step completed"><div class="step-number">1</div><span class="step-text">Panier</span></div>
@@ -639,5 +653,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setTimeout(initPayPalButtons, 500);
         });
     </script>
+
+
+<?php
+    // Appel de la fonction qui génère la modal (en bas de page)
+    afficherModalCartesTest();
+?>
+
 </body>
 </html>
