@@ -819,6 +819,145 @@
         background: #ffc107;
         color: #856404;
       }
+
+      /* ==================== STYLES MODALE PERSONNALISABLE ==================== */
+      .custom-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: 11000;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(3px);
+      }
+
+      .custom-modal.show {
+        display: flex;
+      }
+
+      .modal-container {
+        background: white;
+        border-radius: 20px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: modalSlideIn 0.3s ease-out;
+        overflow: hidden;
+      }
+
+      @keyframes modalSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-30px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .modal-header {
+        background: linear-gradient(135deg, #d40000, #b30000);
+        padding: 20px 25px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-header h3 {
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin: 0;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        line-height: 1;
+        transition: transform 0.2s;
+      }
+
+      .modal-close:hover {
+        transform: scale(1.1);
+      }
+
+      .modal-body {
+        padding: 30px 25px;
+      }
+
+      .modal-message {
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #2c3e50;
+      }
+
+      .modal-message p {
+        margin-bottom: 12px;
+      }
+
+      .modal-footer {
+        padding: 20px 25px;
+        background-color: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        border-top: 1px solid #eee;
+      }
+
+      .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #555;
+      }
+
+      .checkbox-container input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #d40000;
+      }
+
+      .btn-modal {
+        padding: 10px 25px;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .btn-modal-primary {
+        background-color: #d40000;
+        color: white;
+      }
+
+      .btn-modal-primary:hover {
+        background-color: #b30000;
+        transform: translateY(-2px);
+      }
+
+      .btn-modal-secondary {
+        background-color: #e0e0e0;
+        color: #333;
+      }
+
+      .btn-modal-secondary:hover {
+        background-color: #ccc;
+      }
     </style>
   </head>
   <body>
@@ -1421,8 +1560,56 @@
       </div>
     </div>
 
+    <!-- ==================== MODALE PERSONNALISABLE ==================== -->
+    <div id="customModal" class="custom-modal">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 id="modalTitle">🎁 Bienvenue chez Youki and Co</h3>
+          <button class="modal-close" id="closeCustomModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-message" id="modalMessage">
+            <p>✨ Découvrez nos créations uniques d'origami !</p>
+            <p>
+              <strong>Code promo : BIENVENUE10</strong> pour -10% sur votre
+              première commande.
+            </p>
+            <p>Livraison offerte dès 50€ d'achat.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <label class="checkbox-container">
+            <input type="checkbox" id="dontShowAgain" />
+            <span>Ne plus afficher ce message</span>
+          </label>
+          <div>
+            <button class="btn-modal btn-modal-secondary" id="modalLaterBtn">
+              Plus tard
+            </button>
+            <button class="btn-modal btn-modal-primary" id="modalConfirmBtn">
+              D'accord
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
-      // Variables globales
+      // ==================== CONFIGURATION MODALE PERSONNALISABLE ====================
+      const MODAL_CONFIG = {
+        title: "🎁 Bienvenue chez Youki and Co",
+        message: `
+          <p>✨ Découvrez ce site en construction !</p>
+          <p><strong style="color: #d40000;">BIENVENUE</strong> Vous pouvez utiliser ce site dans toute sa puissance.</p>
+          <hr style="margin: 15px 0; border-color: #eee;">
+          <p style="font-size: 0.9rem; color: #666;">Effectuer des achats sans paiement réel. Des identifiants de paiement, vous seront fournis lorsque vous effectuerez un paiement fictif.</p>
+        `,
+        dontShowAgainDuration: 0, // jours
+      };
+
+      const MODAL_STORAGE_KEY = "youki_modal_dont_show_until";
+
+      // Variables globales existantes
       let panierData = null;
       let emailEnCours = "";
       let typeProcessus = "";
@@ -1566,7 +1753,59 @@
       // Initialisation de l'API
       const origamiAPI = new OrigamiAPI();
 
-      // FONCTIONS DE PAGINATION
+      // ==================== FONCTIONS MODALE PERSONNALISABLE ====================
+      function shouldShowCustomModal() {
+        const dontShowUntil = localStorage.getItem(MODAL_STORAGE_KEY);
+        if (!dontShowUntil) return true;
+        const untilDate = new Date(dontShowUntil);
+        const now = new Date();
+        return now > untilDate;
+      }
+
+      function setDontShowCustomModal() {
+        const expiryDate = new Date();
+        expiryDate.setDate(
+          expiryDate.getDate() + MODAL_CONFIG.dontShowAgainDuration,
+        );
+        localStorage.setItem(MODAL_STORAGE_KEY, expiryDate.toISOString());
+      }
+
+      function closeCustomModal(savePreference = false) {
+        const modal = document.getElementById("customModal");
+        if (modal) {
+          modal.classList.remove("show");
+        }
+        if (savePreference) {
+          const dontShowCheckbox = document.getElementById("dontShowAgain");
+          if (dontShowCheckbox && dontShowCheckbox.checked) {
+            setDontShowCustomModal();
+          }
+        }
+      }
+
+      function showCustomModal() {
+        const modal = document.getElementById("customModal");
+        if (modal) {
+          modal.classList.add("show");
+        }
+      }
+
+      function initCustomModal() {
+        const sessionClosed = sessionStorage.getItem(
+          "youki_modal_session_closed",
+        );
+        if (sessionClosed === "true") return;
+        if (!shouldShowCustomModal()) return;
+
+        const titleElement = document.getElementById("modalTitle");
+        const messageElement = document.getElementById("modalMessage");
+        if (titleElement) titleElement.innerHTML = MODAL_CONFIG.title;
+        if (messageElement) messageElement.innerHTML = MODAL_CONFIG.message;
+
+        showCustomModal();
+      }
+
+      // ==================== FONCTIONS DE PAGINATION ====================
       async function chargerProduits(page = 1) {
         const grid = document.getElementById("produits-grid");
         grid.innerHTML =
@@ -1643,7 +1882,7 @@
         window.location.href = "#nosCreations";
       }
 
-      // FONCTION POUR AJOUTER AU PANIER DEPUIS UN BOUTON
+      // ==================== FONCTIONS PANIER ====================
       async function ajouterAuPanierDepuisBouton(event, idProduit, nomProduit) {
         event.preventDefault();
         event.stopPropagation();
@@ -1684,7 +1923,6 @@
         }
       }
 
-      // FONCTIONS POUR LE PANIER
       async function updateAffichagePanier() {
         try {
           const panier = await origamiAPI.getPanier();
@@ -1804,7 +2042,7 @@
         return icones[type] || "ℹ️";
       }
 
-      // FONCTIONS POUR LA MODAL PANIER
+      // ==================== FONCTIONS MODAL PANIER ====================
       function afficherPanierModal() {
         let modal = document.getElementById("panier-modal");
         if (!modal) {
@@ -1876,7 +2114,7 @@
                                     <th style="text-align: center; padding: 10px;">Quantité</th>
                                     <th style="text-align: center; padding: 10px;">Total</th>
                                     <th style="text-align: center; padding: 10px;">Action</th>
-                                </tr>
+                                 </tr>
                             </thead>
                             <tbody>
                 `;
@@ -1894,7 +2132,7 @@
                                         <small style="color: #666;">${article.description ? article.description.substring(0, 50) + "..." : "Description non disponible"}</small>
                                     </div>
                                 </div>
-                            </td>
+                             </td>
                             <td style="text-align: center; padding: 10px;">${article.prixUnitaire}€</td>
                             <td style="text-align: center; padding: 10px;">
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
@@ -1902,18 +2140,18 @@
                                     <span style="min-width: 30px; display: inline-block;">${article.quantite}</span>
                                     <button onclick="modifierQuantite(${article.idLignePanier}, ${article.quantite + 1})" style="width: 30px; height: 30px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>
                                 </div>
-                            </td>
+                             </td>
                             <td style="text-align: center; padding: 10px; font-weight: bold;">${article.totalLigne}€</td>
                             <td style="text-align: center; padding: 10px;">
                                 <button onclick="supprimerArticle(${article.idLignePanier})" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">×</button>
-                            </td>
-                        </tr>
+                             </td>
+                         </tr>
                     `;
             });
 
             html += `
                             </tbody>
-                        </table>
+                         </table>
                     </div>
                     <div style="border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between;">
                         <span>Total:</span>
@@ -2026,7 +2264,7 @@
         afficherCommandeModal();
       }
 
-      // FONCTIONS POUR LA MODAL DE COMMANDE
+      // ==================== FONCTIONS MODAL COMMANDE ====================
       function afficherCommandeModal() {
         const modal = document.getElementById("commande-modal");
         if (modal) {
@@ -2156,6 +2394,75 @@
         });
       }
 
+      // ==================== INITIALISATION ====================
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("Page chargée - Initialisation...");
+
+        chargerProduits(1);
+        updateAffichagePanier();
+
+        document
+          .getElementById("lien-panier")
+          .addEventListener("click", function (e) {
+            e.preventDefault();
+            afficherPanierModal();
+          });
+
+        // Initialisation de la modale personnalisable
+        initCustomModal();
+
+        // Événements modale personnalisable
+        const closeCustomBtn = document.getElementById("closeCustomModalBtn");
+        const confirmBtn = document.getElementById("modalConfirmBtn");
+        const laterBtn = document.getElementById("modalLaterBtn");
+        const dontShowCheckbox = document.getElementById("dontShowAgain");
+
+        if (closeCustomBtn) {
+          closeCustomBtn.addEventListener("click", function () {
+            closeCustomModal(false);
+          });
+        }
+
+        if (confirmBtn) {
+          confirmBtn.addEventListener("click", function () {
+            const shouldSave = dontShowCheckbox
+              ? dontShowCheckbox.checked
+              : false;
+            closeCustomModal(shouldSave);
+          });
+        }
+
+        if (laterBtn) {
+          laterBtn.addEventListener("click", function () {
+            closeCustomModal(false);
+            sessionStorage.setItem("youki_modal_session_closed", "true");
+          });
+        }
+
+        // Fermeture en cliquant sur le fond
+        const customModal = document.getElementById("customModal");
+        if (customModal) {
+          customModal.addEventListener("click", function (e) {
+            if (e.target === customModal) {
+              closeCustomModal(false);
+            }
+          });
+        }
+
+        // Touche Echap
+        document.addEventListener("keydown", function (e) {
+          if (
+            e.key === "Escape" &&
+            customModal &&
+            customModal.classList.contains("show")
+          ) {
+            closeCustomModal(false);
+          }
+        });
+
+        console.log("Initialisation terminée");
+      });
+
       // Fermer les modals en cliquant à l'extérieur
       document.addEventListener("click", function (e) {
         const panierModal = document.getElementById("panier-modal");
@@ -2170,7 +2477,6 @@
         }
       });
 
-      // Empêcher la fermeture en cliquant à l'intérieur du contenu modal
       document
         .querySelectorAll("#panier-modal > div, #commande-modal > div")
         .forEach((modalContent) => {
@@ -2179,26 +2485,53 @@
           });
         });
 
-      // INITIALISATION
-      document.addEventListener("DOMContentLoaded", function () {
-        console.log("Page chargée - Initialisation...");
+      // ==================== API PUBLIQUE POUR PERSONNALISATION ====================
+      window.customizeModal = function (config) {
+        if (config.title) {
+          MODAL_CONFIG.title = config.title;
+          const titleElement = document.getElementById("modalTitle");
+          if (titleElement) titleElement.innerHTML = config.title;
+        }
+        if (config.message) {
+          MODAL_CONFIG.message = config.message;
+          const messageElement = document.getElementById("modalMessage");
+          if (messageElement) messageElement.innerHTML = config.message;
+        }
+        if (config.dontShowAgainDuration) {
+          MODAL_CONFIG.dontShowAgainDuration = config.dontShowAgainDuration;
+        }
+      };
 
-        // Charger les produits avec pagination
-        chargerProduits(1);
+      window.forceShowModal = function (customContent) {
+        if (customContent) {
+          if (customContent.title) {
+            document.getElementById("modalTitle").innerHTML =
+              customContent.title;
+          }
+          if (customContent.message) {
+            document.getElementById("modalMessage").innerHTML =
+              customContent.message;
+          }
+        } else {
+          document.getElementById("modalTitle").innerHTML = MODAL_CONFIG.title;
+          document.getElementById("modalMessage").innerHTML =
+            MODAL_CONFIG.message;
+        }
+        showCustomModal();
+      };
 
-        // Initialiser le panier
-        updateAffichagePanier();
+      window.resetModalPreference = function () {
+        localStorage.removeItem(MODAL_STORAGE_KEY);
+        sessionStorage.removeItem("youki_modal_session_closed");
+        console.log("Préférence de la modale réinitialisée");
+      };
 
-        // Lien du panier
-        document
-          .getElementById("lien-panier")
-          .addEventListener("click", function (e) {
-            e.preventDefault();
-            afficherPanierModal();
-          });
-
-        console.log("Initialisation terminée");
-      });
+      console.log("=== Youki and Co - Site prêt ===");
+      console.log(
+        "Pour personnaliser la modale : window.customizeModal({title: '...', message: '...'})",
+      );
+      console.log("Pour forcer l'affichage : window.forceShowModal()");
+      console.log("Pour réinitialiser : window.resetModalPreference()");
     </script>
   </body>
 </html>
